@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Changed by Sanctuary Computer (quickbooks-mcp-285): the attachable upload tool is no longer registered.
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { QuickbooksMCPServer } from "./server/qbo-mcp-server.js";
@@ -181,7 +182,6 @@ import { UpdateCompanyInfoTool } from "./tools/update-company-info.tool.js";
 import { GetPreferencesTool } from "./tools/get-preferences.tool.js";
 
 // Attachable tools
-import { CreateAttachableTool } from "./tools/create-attachable.tool.js";
 import { GetAttachableTool } from "./tools/get-attachable.tool.js";
 import { UpdateAttachableTool } from "./tools/update-attachable.tool.js";
 import { DeleteAttachableTool } from "./tools/delete-attachable.tool.js";
@@ -411,7 +411,6 @@ const main = async () => {
   RegisterTool(server, GetPreferencesTool);
 
   // Add tools for attachables
-  RegisterTool(server, CreateAttachableTool);
   RegisterTool(server, GetAttachableTool);
   RegisterTool(server, UpdateAttachableTool);
   RegisterTool(server, DeleteAttachableTool);
