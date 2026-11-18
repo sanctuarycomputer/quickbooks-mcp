@@ -51,8 +51,17 @@ const SWEPT_TEXT = [
   'QUICKBOOKS_ENVIRONMENT',
 ];
 
-const NETWORK_IMPORT =
-  /\b(?:from\s*|import\s*\(\s*|require\s*\(\s*)["'](?:node:)?(?:open|http|https|http2|net|tls|dns|dns\/promises|dgram|child_process|worker_threads)["']/;
+// Any way to load a module: `from "x"`, a side-effect `import "x"`, `import("x")`, `require("x")`,
+// with any quote (backticks included), bare or `node:`, and any subpath (`dns/promises`).
+function moduleLoad(names: string): RegExp {
+  return new RegExp(
+    '(?:\\bfrom\\s*|\\bimport\\s*\\(\\s*|\\bimport\\s+|\\brequire\\s*\\(\\s*)["\'`](?:node:)?(?:' +
+      names +
+      ')(?:/[^"\'`]*)?["\'`]',
+  );
+}
+
+const NETWORK_IMPORT = moduleLoad('open|http|https|http2|net|tls|dns|dgram|child_process|worker_threads');
 
 const KEY_NAMES = ['CLIENT_ID', 'CLIENT_SECRET', 'REFRESH_TOKEN', 'REALM_ID'].map((k) => 'QUICKBOOKS_' + k);
 
@@ -72,9 +81,9 @@ describe('removals', () => {
     }
     if (pkg.scripts && pkg.scripts.auth !== undefined) found.push('package.json scripts.auth');
     const lock = JSON.parse(read('package-lock.json'));
-    for (const name of REMOVED_PACKAGES) {
-      if (Object.prototype.hasOwnProperty.call(lock.packages, `node_modules/${name}`)) {
-        found.push(`package-lock.json packages.node_modules/${name}`);
+    for (const key of Object.keys(lock.packages)) {
+      for (const name of REMOVED_PACKAGES) {
+        if (key === `node_modules/${name}` || key.endsWith(`/node_modules/${name}`)) found.push(`package-lock.json packages.${key}`);
       }
     }
     expect(found).toEqual([]);

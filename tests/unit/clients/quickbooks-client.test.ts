@@ -20,18 +20,21 @@ afterAll(() => {
 
 describe('QuickbooksClient', () => {
   it('R4: import has no side effects', async () => {
-    const before = process.listenerCount('uncaughtException') + process.listenerCount('unhandledRejection');
+    const count = () => process.eventNames().reduce((n, e) => n + process.listenerCount(e), 0);
+    const before = count();
     await expect(import('../../../src/clients/quickbooks-client.js')).resolves.toBeDefined();
-    const after = process.listenerCount('uncaughtException') + process.listenerCount('unhandledRejection');
-    expect(after).toBe(before);
+    expect(count()).toBe(before);
   });
 
   it('R4: client source has no env, process hooks or fs', () => {
     const text = fs.readFileSync(CLIENT, 'utf8');
     expect(text).not.toContain('process.env');
-    expect(text).not.toContain('process.on');
-    expect(text).not.toMatch(/\bfrom\s*["'](?:node:)?(?:fs|path)["']/);
-    expect(text).not.toMatch(/\b(?:import|require)\s*\(\s*["'](?:node:)?(?:fs|path)["']/);
+    // Every listener method: on, once, addListener, prependListener, prependOnceListener.
+    expect(text).not.toMatch(/\bprocess\s*\.\s*(?:on|once|addListener|prependListener|prependOnceListener)\b/);
+    // Any load of fs or path: from, side-effect import, import(), require(), any quote, bare or node:, any subpath.
+    expect(text).not.toMatch(
+      /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)["'`](?:node:)?(?:fs|path)(?:\/[^"'`]*)?["'`]/,
+    );
   });
 
   it('R4: getInstance rejects', async () => {
