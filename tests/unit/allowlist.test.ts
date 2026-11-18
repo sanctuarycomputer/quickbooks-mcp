@@ -81,7 +81,7 @@ describe('allowlist', () => {
     expect(calls.map((c) => c[0]).sort()).toEqual([...APPENDIX_A, 'qbo_companies'].sort());
     for (const c of calls) {
       if (c[0] === 'qbo_companies') {
-        expect(c[2]).toEqual({});
+        expect(Object.keys(c[2])).toEqual([]);
         expect(c[1]).toBe(QboCompaniesTool.description);
         expect(c[3]).toBe(QboCompaniesTool.handler);
       } else {
@@ -125,6 +125,22 @@ describe('allowlist', () => {
     expect(() => registerReadTools(server, schemaless)).toThrow(/^allowlist: unlisted search_bills$/);
     const withSchema = fullTools().map((t) => (t === QboCompaniesTool ? fakeDef('qbo_companies') : t));
     expect(() => registerReadTools(server, withSchema)).toThrow(/^allowlist: unlisted qbo_companies$/);
+    const undefinedSchema = fullTools().map((t) =>
+      t.name === 'search_bills' ? ({ ...t, schema: undefined } as unknown as ReadTool) : t,
+    );
+    expect(() => registerReadTools(server, undefinedSchema)).toThrow(/^allowlist: unlisted search_bills$/);
+    expect(calls).toHaveLength(0);
+  });
+
+  it('A3/A4: the checks run in order: duplicate, then missing, then unlisted', () => {
+    const { server, calls } = fakeServer();
+    const withoutVendors = fullTools().filter((t) => t.name !== 'search_vendors');
+    expect(() => registerReadTools(server, [...withoutVendors, fakeDef('search_bills')])).toThrow(
+      /^allowlist: duplicate search_bills$/,
+    );
+    expect(() => registerReadTools(server, [fakeDef('create_invoice'), ...withoutVendors])).toThrow(
+      /^allowlist: missing search_vendors$/,
+    );
     expect(calls).toHaveLength(0);
   });
 });

@@ -52,6 +52,11 @@ export interface CompaniesToolDefinition {
 
 export type ReadTool = ToolDefinition<any> | CompaniesToolDefinition;
 
+// A `schema` key holding undefined counts as no schema, so it can't slip a listed name past the checks.
+function hasSchema(tool: ReadTool): tool is ToolDefinition<any> {
+  return "schema" in tool && tool.schema !== undefined;
+}
+
 /** The reason the server must not start, or null. Checks presence only; a value is never read. */
 export function startRefusal(env: Record<string, string | undefined>): string | null {
   for (const key of REFUSED_KEYS) {
@@ -74,11 +79,11 @@ export function registerReadTools(server: McpServer, tools: readonly ReadTool[])
     if (!seen.has(name)) throw new Error(`allowlist: missing ${name}`);
   }
   for (const tool of tools) {
-    const allowed = "schema" in tool ? READ_ALLOWLIST.includes(tool.name) : tool.name === COMPANIES_TOOL;
+    const allowed = hasSchema(tool) ? READ_ALLOWLIST.includes(tool.name) : tool.name === COMPANIES_TOOL;
     if (!allowed) throw new Error(`allowlist: unlisted ${tool.name}`);
   }
   for (const tool of tools) {
-    if ("schema" in tool) RegisterTool(server, tool);
+    if (hasSchema(tool)) RegisterTool(server, tool);
     else server.tool(tool.name, tool.description, {}, tool.handler);
   }
 }
