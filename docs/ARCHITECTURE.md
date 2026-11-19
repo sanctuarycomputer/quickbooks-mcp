@@ -112,7 +112,7 @@ Every failure is one error, `refused to start: <reason>`.
 ```
 src/
 ├── index.ts                    # MCP server entry point
-│                               # - Registers all tools
+│                               # - Registers the 31 allowlisted tools and the stub, through startReadServer
 │                               # - Handles MCP protocol communication
 │
 ├── clients/
@@ -252,34 +252,24 @@ Tools are registered only through `startReadServer` in `src/allowlist.ts`, calle
 
 ## Error Handling
 
-### Three Layers of Error Handling
+### Two Kinds of Error
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Layer 1: Client Errors                          │
+│  Getting the client fails                        │
 │  • No token source (until ticket 286)           │
 │  • Token request failures (from ticket 286)     │
-│  • Network issues                               │
-│  Handled by: try/catch in handler               │
+│  Handled by: the handler's try/catch            │
 └─────────────────────────────────────────────────┘
-                      │
-                      ▼
 ┌─────────────────────────────────────────────────┐
-│  Layer 2: QuickBooks API Errors                  │
-│  • Validation errors (invalid data)             │
-│  • Not found errors                             │
-│  • Permission errors                            │
-│  Handled by: Callback err parameter             │
-└─────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│  Layer 3: General Errors                         │
-│  • Unexpected exceptions                        │
-│  • Serialization errors                         │
-│  Handled by: outer try/catch                    │
+│  The QuickBooks call fails                       │
+│  • Validation, not found, permission errors     │
+│  • Network errors                               │
+│  Handled by: the callback's err parameter       │
 └─────────────────────────────────────────────────┘
 ```
+
+Both become `{ result: null, isError: true, error: formatError(...) }`.
 
 ### Response Format
 
