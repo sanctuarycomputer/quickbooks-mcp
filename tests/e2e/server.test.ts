@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeAll, afterEach, jest } from '@jest/globals';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { READ_ALLOWLIST } from '../../src/allowlist';
-import { QboCompaniesTool } from '../../src/tools/qbo-companies.tool';
 import { assertFreshBuild, connectClient, spawnRaw, COMPANY_RESERVE } from './helpers';
 
 jest.setTimeout(30000);
@@ -49,7 +48,10 @@ describe('spawned server', () => {
   it('A9: qbo_companies answers the stub error', async () => {
     const { client } = await connect();
     const result = await client.callTool({ name: 'qbo_companies', arguments: {} });
-    expect(result).toEqual(await QboCompaniesTool.handler());
+    expect(result).toEqual({
+      isError: true,
+      content: [{ type: 'text', text: 'reason: fork-error\n\nqbo_companies lands with the Stacks token client' }],
+    });
   });
 
   it.each(KEYS)('R7: each refused key stops the server (%s)', async (k) => {
