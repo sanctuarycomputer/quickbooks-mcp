@@ -13,19 +13,22 @@ function entries(name: string): Array<{ key: string; version: string }> {
     .map(([key, v]) => ({ key, version: v.version ?? '' }));
 }
 
+// A prerelease (1.20.0-beta.1) sorts below its release, so it never meets that release's floor.
 function atLeast(version: string, floor: string): boolean {
-  const a = version.split('-')[0].split('.').map(Number);
+  const [base, pre] = version.split('-', 2);
+  const a = base.split('.').map(Number);
   const b = floor.split('.').map(Number);
   for (let i = 0; i < 3; i++) {
     if (a[i] !== b[i]) return a[i] > b[i];
   }
-  return true;
+  return pre === undefined;
 }
 
 describe('dependency floors', () => {
   it('P6: axios is one copy at 1.20.0 or later', () => {
     const found = entries('axios');
     expect(found).toHaveLength(1);
+    expect(found[0].key).toBe('node_modules/axios');
     expect({ ...found[0], ok: atLeast(found[0].version, '1.20.0') }).toMatchObject({ ok: true });
   });
 
@@ -53,5 +56,7 @@ describe('dependency floors', () => {
     expect(atLeast('1.19.9', '1.20.0')).toBe(false);
     expect(atLeast('2.0.0', '1.20.0')).toBe(true);
     expect(atLeast('0.99.0', '1.0.0')).toBe(false);
+    expect(atLeast('1.20.0-beta.1', '1.20.0')).toBe(false);
+    expect(atLeast('1.20.1-beta.1', '1.20.0')).toBe(true);
   });
 });
