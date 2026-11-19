@@ -51,14 +51,11 @@ const SWEPT_TEXT = [
   'QUICKBOOKS_ENVIRONMENT',
 ];
 
-// Any way to load a module: `from "x"`, a side-effect `import "x"`, `import("x")`, `require("x")`,
-// with any quote (backticks included), bare or `node:`, and any subpath (`dns/promises`).
+// The module's name as a string literal anywhere: every way to load it (from, a side-effect import,
+// import() with or without comments, require(), process.getBuiltinModule()) has to spell it so.
+// Any quote (backticks included), bare or `node:`, and any subpath (`dns/promises`).
 function moduleLoad(names: string): RegExp {
-  return new RegExp(
-    '(?:\\bfrom\\s*|\\bimport\\s*\\(\\s*|\\bimport\\s+|\\brequire\\s*\\(\\s*)["\'`](?:node:)?(?:' +
-      names +
-      ')(?:/[^"\'`]*)?["\'`]',
-  );
+  return new RegExp('["\'`](?:node:)?(?:' + names + ')(?:/[^"\'`]*)?["\'`]');
 }
 
 const NETWORK_IMPORT = moduleLoad('open|http|https|http2|net|tls|dns|dgram|child_process|worker_threads');
@@ -100,7 +97,7 @@ describe('removals', () => {
       if (text.includes('writeFileSync') && f !== 'src/tools/get-invoice-pdf.tool.ts') hits.push(`${f}: writeFileSync`);
       text.split('\n').forEach((line, i) => {
         for (const k of KEY_NAMES) {
-          if (line.includes(k) && !(f === 'src/allowlist.ts' && line.includes('REFUSED_KEYS'))) {
+          if (line.includes(k) && !(f === 'src/allowlist.ts' && line.startsWith('export const REFUSED_KEYS'))) {
             hits.push(`${f}:${i + 1}: ${k}`);
           }
         }

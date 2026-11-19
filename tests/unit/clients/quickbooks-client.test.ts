@@ -28,13 +28,11 @@ describe('QuickbooksClient', () => {
 
   it('R4: client source has no env, process hooks or fs', () => {
     const text = fs.readFileSync(CLIENT, 'utf8');
-    expect(text).not.toContain('process.env');
+    expect(text).not.toMatch(/\bprocess\s*(?:\.\s*env\b|\[)/);
     // Every listener method: on, once, addListener, prependListener, prependOnceListener.
     expect(text).not.toMatch(/\bprocess\s*\.\s*(?:on|once|addListener|prependListener|prependOnceListener)\b/);
-    // Any load of fs or path: from, side-effect import, import(), require(), any quote, bare or node:, any subpath.
-    expect(text).not.toMatch(
-      /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+|\brequire\s*\(\s*)["'`](?:node:)?(?:fs|path)(?:\/[^"'`]*)?["'`]/,
-    );
+    // fs or path named as a string literal, which every way to load them needs: any quote, bare or node:, any subpath.
+    expect(text).not.toMatch(/["'`](?:node:)?(?:fs|path)(?:\/[^"'`]*)?["'`]/);
   });
 
   it('R4: getInstance rejects', async () => {
