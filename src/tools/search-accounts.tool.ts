@@ -1,3 +1,4 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-285): zod 4 takes z.record with a key schema.
 import { searchQuickbooksAccounts } from "../handlers/search-quickbooks-accounts.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
@@ -105,8 +106,8 @@ const advancedCriteriaSchema = z.object({
 
 // Runtime schema keeps full validation
 const RUNTIME_CRITERIA_SCHEMA = z.union([
-  z.record(z.any()),
-  z.array(z.record(z.any())),
+  z.record(z.string(), z.any()),
+  z.array(z.record(z.string(), z.any())),
   advancedCriteriaSchema,
 ]);
 
