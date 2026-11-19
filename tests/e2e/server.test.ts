@@ -1,6 +1,7 @@
 // Sanctuary Computer (quickbooks-mcp-285): the built server lists only the allowlist, fits the size bound and refuses sign-in keys.
 import { describe, it, expect, beforeAll, afterEach, jest } from '@jest/globals';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { READ_ALLOWLIST } from '../../src/allowlist';
 import { assertFreshBuild, connectClient, spawnRaw, COMPANY_RESERVE } from './helpers';
 
@@ -52,6 +53,22 @@ describe('spawned server', () => {
       isError: true,
       content: [{ type: 'text', text: 'reason: fork-error\n\nqbo_companies lands with the Stacks token client' }],
     });
+  });
+
+  // Contract §5 (sdk-absent-arguments.json, re-pinned by scripts-292 at the pinned SDK): a tools/call with
+  // no `arguments` reaches the handler as `{}`; an SDK that refuses it again turns this red.
+  it('A9: qbo_companies without arguments answers as with {}', async () => {
+    const { client } = await connect();
+    const absent = await client.request(
+      { method: 'tools/call', params: { name: 'qbo_companies' } },
+      CallToolResultSchema,
+    );
+    const empty = await client.callTool({ name: 'qbo_companies', arguments: {} });
+    expect(absent).toEqual(empty);
+    expect(absent.isError).toBe(true);
+    expect(absent.content).toEqual([
+      { type: 'text', text: 'reason: fork-error\n\nqbo_companies lands with the Stacks token client' },
+    ]);
   });
 
   it.each(KEYS)('R7: each refused key stops the server (%s)', async (k) => {
