@@ -1,3 +1,4 @@
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285): describes the read-only fork. -->
 # QuickBooks Online MCP Server
 
 ## This fork
@@ -8,7 +9,7 @@ This is Sanctuary Computer's read-only fork of the QuickBooks Online MCP server.
 - There is no sign-in. The OAuth flow, the auth server, the auth command and the token store are removed. Until the Stacks token client lands (ticket 286), the client has no token source, so every tool call fails with "no QuickBooks token source" and `qbo_companies` answers with a fork error.
 - The server refuses to start if any of `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_REFRESH_TOKEN` or `QUICKBOOKS_REALM_ID` is present in its environment, even with an empty value. It never reads or prints the value.
 - Configuration for the new token source comes with ticket 286, which documents its keys. Until then there is nothing to configure.
-- Files changed in this fork carry a "Changed by Sanctuary Computer (quickbooks-mcp-285)" header comment.
+- Files this fork changed carry a "Changed by Sanctuary Computer (quickbooks-mcp-285)" notice where the format allows a comment (source, tests, `jest.config.js`, the docs and `.env.example`); `package.json` and `package-lock.json` can't hold one, and the fork's pull request lists their changes. Deleted files are listed there too.
 - Licence mismatch: `LICENSE` holds the Apache-2.0 text (with "January 2025" typed for "January 2004" and a filled-in "Copyright 2025 Intuit, Inc."), while `package.json` says MIT. This fork leaves both as they are. See the ticket 283 fork review.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the start check works.
@@ -134,9 +135,12 @@ src/
 └── index.ts         # Server entry point
 
 tests/
-├── unit/            # Unit tests
-│   ├── handlers/    # Handler tests (15 test files)
-│   └── helpers/     # Helper tests
+├── unit/            # Unit tests (allowlist, removals, client, stub, entry point, lockfile floors)
+│   ├── clients/     # Client test
+│   ├── handlers/    # Handler tests (25 test files)
+│   ├── helpers/     # Helper tests
+│   └── tools/       # Tool tests
+├── e2e/             # Tests that spawn the built server
 └── mocks/           # Test mocks
 
 docs/

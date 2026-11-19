@@ -1,3 +1,4 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-285): the client floor goes with the code it covered.
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 export default {
   preset: 'ts-jest/presets/default-esm',

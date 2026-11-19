@@ -1,3 +1,4 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-285): the removed switches' cases are gone.
 import { describe, it, expect, jest } from "@jest/globals";
 import {
   knownParamKeys,

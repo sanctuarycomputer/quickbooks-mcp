@@ -55,8 +55,9 @@ describe('spawned server', () => {
     });
   });
 
-  // Contract §5 (sdk-absent-arguments.json, re-pinned by scripts-292 at the pinned SDK): a tools/call with
-  // no `arguments` reaches the handler as `{}`; an SDK that refuses it again turns this red.
+  // Contract §5 and §11 (sdk-absent-arguments.json): at the pinned SDK a tools/call with no `arguments`
+  // reaches the handler as `{}`. Contract 1.0 pinned SDK 1.30.0's refusal; scripts-292 re-pins the fixture
+  // to this answer (ruling d-20261118-234219059), so 285 merges after 292. An SDK that refuses again turns this red.
   it('A9: qbo_companies without arguments answers as with {}', async () => {
     const { client } = await connect();
     const absent = await client.request(

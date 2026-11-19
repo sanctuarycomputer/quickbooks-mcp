@@ -1,3 +1,4 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-285): the removed credentials mock is gone.
 /**
  * Mock for the QuickBooks client and node-quickbooks library.
  * Used by all handler and tool tests to avoid actual API calls.

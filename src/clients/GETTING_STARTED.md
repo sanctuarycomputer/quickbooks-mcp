@@ -1,3 +1,4 @@
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285): no sign-in setup in this fork. -->
 ## Setup
 
 1. Install dependencies:

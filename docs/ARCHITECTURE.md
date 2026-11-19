@@ -1,3 +1,4 @@
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285): describes the read-only fork. -->
 # Architecture Documentation
 
 This document explains the architecture, design decisions, and code patterns used in the QuickBooks Online MCP Server.
@@ -86,7 +87,7 @@ This fork registers read tools only.
 
 **The allowlist.** `READ_ALLOWLIST` in `src/allowlist.ts` lists 31 tool names (`get_*` reports and `search_*` queries). `COMPANIES_TOOL` is `qbo_companies`, a stub that answers a fork error until ticket 286. Together that is 32 registered tools.
 
-**`startReadServer(env, server, tools)`** does these steps in order, all before any tool registers:
+**`startReadServer(env, server, tools)`** does these steps in order; steps 1 and 2 finish before any tool registers:
 
 1. Refuse if any of the four refused keys is in the environment.
 2. Check the tool list against the allowlist: a duplicate name, a missing name or an unlisted name throws.
@@ -96,7 +97,9 @@ Every failure is one error, `refused to start: <reason>`.
 
 **Refused keys.** `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_REFRESH_TOKEN` and `QUICKBOOKS_REALM_ID`. The start is refused when a key is present at all, even with an empty value. The value is never read or printed.
 
-**Removed.** The OAuth sign-in flow, the auth server, the token store with its refresh and rotation, the switches that disabled write, update and delete tools, the attachable upload and file source, and the create, update and delete tools.
+**Removed.** The OAuth sign-in flow, the auth server, the token store with its refresh and rotation, the switches that disabled write, update and delete tools, the attachable upload (its tool and handler) and the attachable file source.
+
+**Unregistered, not removed.** The other create, update and delete tools and their handlers are still in `src/tools/` and `src/handlers/` as upstream wrote them, but nothing registers them: `src/index.ts` passes only the allowlisted tools to `startReadServer`, and an unlisted name refuses the start.
 
 **Still to come.**
 - Ticket 286 adds the Stacks token client: `getInstance` gets a token from Stacks, tools take a `company` argument, and `qbo_companies` gives a real answer. It documents its new configuration keys.
@@ -174,9 +177,13 @@ Standardizes error messages:
 
 ```typescript
 export function formatError(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
-  return JSON.stringify(error);
+  if (error instanceof Error) {
+    return `Error: ${error.message}`;
+  } else if (typeof error === 'string') {
+    return `Error: ${error}`;
+  } else {
+    return `Unknown error: ${JSON.stringify(error)}`;
+  }
 }
 ```
 
@@ -208,7 +215,11 @@ export async function searchQuickbooksCustomers(
         if (err) {
           resolve({ result: null, isError: true, error: formatError(err) });
         } else {
-          resolve({ result: customers?.QueryResponse?.Customer ?? [], isError: false, error: null });
+          resolve({
+            result: customers?.QueryResponse?.Customer ?? customers?.QueryResponse?.totalCount ?? [],
+            isError: false,
+            error: null,
+          });
         }
       });
     });
@@ -223,7 +234,7 @@ export async function searchQuickbooksCustomers(
 
 1. **Type Safety**: TypeScript interfaces ensure compile-time validation
 2. **Consistency**: Same structure across the handlers makes codebase predictable
-3. **Error Handling**: Three-level error handling (auth, API, general)
+3. **Error Handling**: two levels: the API callback's error, and a failure getting the client (today, always: no token source)
 4. **Field Mapping**: Clean separation between snake_case inputs and PascalCase API
 
 ---
@@ -285,7 +296,7 @@ interface ToolResponse<T> {
 { result: { Id: '123', ... }, isError: false, error: null }
 
 // Error response
-{ result: null, isError: true, error: 'Customer not found' }
+{ result: null, isError: true, error: 'Error: Customer not found' }
 ```
 
 ---
@@ -391,7 +402,7 @@ MCP client sends a tool invocation
 
 ## Security
 
-1. **No Hardcoded Credentials**: All secrets via environment variables
+1. **No credentials in this server**: it holds no QuickBooks secret; ticket 286's token client gets tokens from Stacks
 2. **No sign-in material**: the server refuses to start if any of the four sign-in keys is present
 3. **Read only**: only the allowlisted read tools are registered
 4. **Input Validation**: Zod schemas validate all inputs
@@ -400,4 +411,4 @@ MCP client sends a tool invocation
 
 ## Extending the Server
 
-A new tool is exposed only if it is added to `READ_ALLOWLIST` in `src/allowlist.ts`, listed in `src/index.ts`, and covered by tests. That is a change to what the server exposes, so it is a deliberate change. Write and delete tools are not part of this fork.
+A new tool is exposed only if it is added to `READ_ALLOWLIST` in `src/allowlist.ts`, listed in `src/index.ts`, and covered by tests. That is a change to what the server exposes, so it is a deliberate change. The write, update and delete tools in `src/tools/` stay unregistered.
