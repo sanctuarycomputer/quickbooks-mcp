@@ -551,10 +551,11 @@ export function installBackstop(deps?: { modules?: { http: object; https: object
 
 const has = (env: NodeJS.ProcessEnv, key: string) => Object.prototype.hasOwnProperty.call(env, key);
 
-/** Node splits NODE_OPTIONS on whitespace and drops quotes around a token. */
 /**
- * NODE_OPTIONS split as Node splits it: whitespace outside double quotes ends a token, quotes are dropped wherever they
- * stand, and inside quotes a backslash takes the next character literally.
+ * NODE_OPTIONS split as Node splits it, but stricter on one point: Node ends a token only at a space outside double
+ * quotes, this ends one at any whitespace (a tab-joined pair is two tokens here, so it can only refuse more). Quotes
+ * are dropped wherever they stand, and inside quotes a backslash takes the next character literally (outside them
+ * Node reads it as a plain character).
  */
 function nodeOptionTokens(value: string | undefined): string[] {
   // An empty token (`""`) names no option (optionName gives undefined), so it needs no filtering.
@@ -610,6 +611,11 @@ export function checkStartEnv(env: NodeJS.ProcessEnv, execArgv: readonly string[
 export function secureStart(env: NodeJS.ProcessEnv, execArgv: readonly string[], deps?: { resolveAxios?: () => unknown }): () => void {
   const check = checkStartEnv(env, execArgv);
   if (!check.ok) throw new Error(`qbo-guard: start refused: ${check.key}`);
+  // The effect itself, whatever turned it on (a config-file flag after the script name is in neither execArgv nor
+  // NODE_OPTIONS): Node gives https.globalAgent a proxyEnv only when its env proxy is on.
+  if ((https.globalAgent as { options?: { proxyEnv?: unknown } }).options?.proxyEnv != null) {
+    throw new Error("qbo-guard: start refused: --use-env-proxy");
+  }
   if (holder.scope !== undefined) throw new Error("qbo-guard: install failed"); // a second start would add a second interceptor
   let restoreGuard: (() => void) | undefined;
   const previousCtx = holder.ctx;

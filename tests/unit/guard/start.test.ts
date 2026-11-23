@@ -1,7 +1,7 @@
 // Sanctuary Computer (quickbooks-mcp-291): start: the transport refusals (contract §3), secureStart in process, and the built entry in a process.
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
 import { trapNetwork } from '../../fakes/no-network.js';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import fs from 'fs';
 import http from 'http';
 import https from 'https';
@@ -69,6 +69,8 @@ describe('checkStartEnv (A1.10(a))', () => {
     [{}, ['--experimental-config-file=node.config.json'], '--experimental-config-file'],
     [{}, ['--experimental-config-file', 'x.json'], '--experimental-config-file'],
     [{ NODE_OPTIONS: '--experimental_default_config_file' }, [], '--experimental-default-config-file'],
+    // TI2: stricter than Node on purpose: a tab ends a token here
+    [{ NODE_OPTIONS: '--no-warnings\t--use-env-proxy' }, [], '--use-env-proxy'],
     [{ NODE_TLS_REJECT_UNAUTHORIZED: '0' }, [], 'NODE_TLS_REJECT_UNAUTHORIZED'],
     [{ NODE_EXTRA_CA_CERTS: '/nonexistent' }, [], 'NODE_EXTRA_CA_CERTS'],
     [{ NODE_EXTRA_CA_CERTS: '' }, [], 'NODE_EXTRA_CA_CERTS'],
@@ -86,6 +88,9 @@ describe('checkStartEnv (A1.10(a))', () => {
     [{ NODE_OPTIONS: '"a b"  ""' }, []],
     [{ NODE_OPTIONS: '--title="a --use-env-proxy"' }, []],
     [{ NODE_OPTIONS: 'xxuse-env-proxy' }, ['xxuse-env-proxy']],
+    // TI2: an escape outside quotes is a plain character (Node then rejects the option), and `--` must lead the token
+    [{ NODE_OPTIONS: '--use-env\\-proxy' }, []],
+    [{ NODE_OPTIONS: 'x--use-env-proxy' }, ['x--use-env-proxy']],
     [{ node_use_env_proxy: '1', PATH: '/bin' }, []],
   ] as Array<[NodeJS.ProcessEnv, string[]]>)('%j %j → ok', (env, argv) => {
     expect(checkStartEnv(env, argv)).toEqual({ ok: true });
@@ -103,6 +108,19 @@ describe('checkStartEnv (A1.10(a))', () => {
       ok: false,
       key: 'NODE_TLS_REJECT_UNAUTHORIZED',
     });
+  });
+
+  it('TI1: secureStart refuses when https.globalAgent has a proxyEnv, whatever turned it on, and installs nothing', () => {
+    const options = (https.globalAgent as any).options;
+    const before = [https.request, http.request, guardedAxios().defaults.adapter];
+    options.proxyEnv = { HTTPS_PROXY: 'http://127.0.0.1:9' };
+    try {
+      expect(() => secureStart({}, [])).toThrow(new Error('qbo-guard: start refused: --use-env-proxy'));
+    } finally {
+      delete options.proxyEnv;
+    }
+    expect([https.request, http.request, guardedAxios().defaults.adapter]).toEqual(before);
+    expect(() => defaultCallScope()).toThrow('qbo-guard: not started');
   });
 
   it('secureStart throws the refusal naming the key, never the value, and installs nothing', () => {
@@ -269,9 +287,9 @@ const INITIALIZE =
 type Run = { code: number | null; killed: boolean; stdout: string; stderr: string };
 
 /** Runs node <nodeArgs> dist/index.js with exactly env (plus PATH, SystemRoot), writes initialize, and kills it once `until` is seen on stdout or after the timeout. */
-function runEntry(nodeArgs: string[], env: Record<string, string>, until?: string, timeoutMs = 15000): Promise<Run> {
+function runEntry(nodeArgs: string[], env: Record<string, string>, until?: string, timeoutMs = 15000, entryArgs: string[] = []): Promise<Run> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [...nodeArgs, ENTRY], {
+    const child = spawn(process.execPath, [...nodeArgs, ENTRY, ...entryArgs], {
       cwd: ROOT,
       env: { PATH: process.env.PATH ?? '', ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}), ...env },
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -306,6 +324,8 @@ const lines = (s: string) => s.split(/\r?\n/).filter(Boolean);
 const ours = (s: string) => lines(s).filter((l) => !l.startsWith('Warning: Ignoring extra certs from') && !l.startsWith('(Use `node --trace-warnings'));
 
 describe('the built entry (A4.1, A1.10(c), A1.10(d))', () => {
+  // TI4: each case may wait for runEntry's own 15 s timeout, so jest's 5 s default must not end it first.
+  jest.setTimeout(30000);
   const sentinel = 'sentinel' + process.pid;
   it.each([
     ['NODE_USE_ENV_PROXY=1', [], { NODE_USE_ENV_PROXY: '1' }, 'NODE_USE_ENV_PROXY', '1'],
@@ -328,6 +348,21 @@ describe('the built entry (A4.1, A1.10(c), A1.10(d))', () => {
       if (value !== '') expect(ours(r.stderr).join('\n')).not.toContain(value);
     },
   );
+
+  // TI1: a config-file flag after the script name, where Node (24) still reads it; on a Node that doesn't, nothing to refuse.
+  const CONFIG = path.join(ROOT, 'tests', 'fixtures', 'env-proxy.config.json');
+  const configTurnsItOn =
+    spawnSync(process.execPath, [`--experimental-config-file=${CONFIG}`, '-e', 'process.stdout.write(typeof require("https").globalAgent.options.proxyEnv)'], {
+      encoding: 'utf8',
+    }).stdout === 'object';
+  (configTurnsItOn ? it : it.skip)('TI1: --experimental-config-file after the script name: our one line, exit 1, no registration', async () => {
+    assertFreshBuild();
+    const r = await runEntry(['--import', fixture('report-start.mjs')], {}, undefined, 15000, [`--experimental-config-file=${CONFIG}`]);
+    expect(r.killed).toBe(false);
+    expect(r.code).toBe(1);
+    expect(r.stdout).toBe('');
+    expect(ours(r.stderr)).toEqual(['qbo-guard: start refused: --use-env-proxy', 'report-start: no registration']);
+  });
 
   it('a clean start: at the first registration every marker and the adapter are in place (A1.10(c))', async () => {
     assertFreshBuild();
