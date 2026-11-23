@@ -347,3 +347,63 @@ export function installBackstop(deps?: { modules?: { http: object; https: object
   };
   return restore;
 }
+
+// ---- start ----
+
+const has = (env: NodeJS.ProcessEnv, key: string) => Object.prototype.hasOwnProperty.call(env, key);
+
+/** Node splits NODE_OPTIONS on whitespace and drops quotes around a token. */
+function nodeOptionTokens(value: string | undefined): string[] {
+  return (value ?? "")
+    .split(/\s+/)
+    .filter((t) => t !== "")
+    .map((t) => t.replace(/^"(.*)"$/, "$1"));
+}
+
+/** Contract §3's transport refusals. Pure: reads only its arguments, and names a key, never a value. */
+export function checkStartEnv(env: NodeJS.ProcessEnv, execArgv: readonly string[]): { ok: true } | { ok: false; key: string } {
+  if (has(env, "NODE_USE_ENV_PROXY")) return { ok: false, key: "NODE_USE_ENV_PROXY" };
+  if (execArgv.includes("--use-env-proxy") || nodeOptionTokens(env.NODE_OPTIONS).includes("--use-env-proxy")) {
+    return { ok: false, key: "--use-env-proxy" };
+  }
+  if (env.NODE_TLS_REJECT_UNAUTHORIZED === "0") return { ok: false, key: "NODE_TLS_REJECT_UNAUTHORIZED" };
+  if (has(env, "NODE_EXTRA_CA_CERTS")) return { ok: false, key: "NODE_EXTRA_CA_CERTS" };
+  return { ok: true };
+}
+
+/**
+ * Refuses an unsafe environment, then installs the guard on the CommonJS instance, then the backstop.
+ * All or nothing: any throw while installing puts back what was installed and throws `qbo-guard: install failed`.
+ * Returns a restore of both (for tests; the entry ignores it).
+ */
+export function secureStart(env: NodeJS.ProcessEnv, execArgv: readonly string[], deps?: { resolveAxios?: () => unknown }): () => void {
+  const check = checkStartEnv(env, execArgv);
+  if (!check.ok) throw new Error(`qbo-guard: start refused: ${check.key}`);
+  if (holder.scope !== undefined) throw new Error("qbo-guard: install failed"); // a second start would add a second interceptor
+  let restoreGuard: (() => void) | undefined;
+  const previousCtx = holder.ctx;
+  try {
+    const ax = (deps?.resolveAxios ?? guardedAxios)() as Partial<AxiosStatic> | undefined;
+    if (typeof ax?.getAdapter !== "function" || typeof ax.getUri !== "function") throw new Error("axios");
+    const scope = createCallScope();
+    const guard = createGuard({
+      stacksUrl: env.STACKS_QBO_URL,
+      keys: () => [],
+      allowedRealm: (realm) => scope.allowedRealm(realm),
+      callRecord: () => scope.callRecord(),
+    });
+    const guardRestore = installGuard(guard);
+    restoreGuard = guardRestore;
+    const restoreBackstop = installBackstop();
+    holder.scope = scope;
+    return () => {
+      restoreBackstop();
+      guardRestore();
+      holder.scope = undefined;
+    };
+  } catch {
+    restoreGuard?.();
+    holder.ctx = previousCtx;
+    throw new Error("qbo-guard: install failed");
+  }
+}
