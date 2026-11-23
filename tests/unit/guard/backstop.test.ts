@@ -109,6 +109,9 @@ describe('the backstop in place (A1.8)', () => {
     expect(net.calls).toHaveLength(0);
     expect(stderr[0]).toBe(`qbo-guard: refused POST https://quickbooks.api.intuit.com/v3/company/${REALM}/upload (backstop)\n`);
     expect(stderr).toHaveLength(9);
+    // TF6: a WebSocket's ws:/wss: target prints, an http: one with its scheme
+    expect(stderr[7]).toBe('qbo-guard: refused GET wss://x.example.test/ (backstop)\n');
+    expect(stderr[2]).toBe('qbo-guard: refused GET http://quickbooks.api.intuit.com/ (backstop)\n');
   });
 
   it('inside a ticket: the matching request goes once; a second under the same ticket is refused', () => {

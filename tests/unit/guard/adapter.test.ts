@@ -48,7 +48,7 @@ const BASE: GuardContext = {
   callRecord: () => scope.callRecord(),
 };
 const guard = createGuard(BASE);
-const restoreGuard = installGuard(guard);
+let restoreGuard = installGuard(guard);
 const ax = guardedAxios();
 
 let stderr: string[] = [];
@@ -615,5 +615,171 @@ describe("TB1: the guard's last transform, whatever form transformRequest arrive
       'transport',
     );
     expect(net.calls).toHaveLength(0);
+  });
+});
+
+describe('task-2 pass 2: the guard transform, interceptor order, every instance (TF1-TF6)', () => {
+  const UPLOAD = { method: 'post', url: 'https://other.example.test/upload', data: 'x' };
+  /** Refused, or thrown: either way nothing reaches the stub and nothing is ticketed. */
+  const notSent = async (p: Promise<unknown>) => {
+    await expect(p).rejects.toBeDefined();
+    expect(net.calls).toHaveLength(0);
+    expect(tickets).toHaveLength(0);
+  };
+
+  it('TF1 (A): an adapter accessor that answers the guard once and http after is refused transport', async () => {
+    const t = function (this: any, d: unknown) {
+      let reads = 0;
+      Object.defineProperty(this, 'adapter', { get: () => (reads++ === 0 ? guard.adapter : 'http'), configurable: true, enumerable: true });
+      return d;
+    };
+    await refusedWith(inCall(() => ax.request({ ...UPLOAD, transformRequest: [t] } as any)), 'transport');
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it("TF1 (B): overwriting the guard's transform in this.transformRequest, then swapping the adapter, is refused", async () => {
+    const t = function (this: any, d: unknown) {
+      try {
+        this.transformRequest[this.transformRequest.length - 1] = (x: unknown) => x;
+      } catch {
+        // the guard's list is frozen
+      }
+      this.adapter = 'http';
+      return d;
+    };
+    await refusedWith(inCall(() => ax.request({ ...UPLOAD, transformRequest: [t] } as any)), 'transport');
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('TF1 (C): a method getter that swaps the adapter after the transforms sends nothing (the adapter is pinned)', async () => {
+    const t = function (this: any, d: unknown) {
+      Object.defineProperty(this, 'method', {
+        get: () => {
+          this.adapter = 'http';
+          return 'post';
+        },
+        configurable: true,
+        enumerable: true,
+      });
+      return d;
+    };
+    await notSent(inCall(() => ax.request({ ...UPLOAD, transformRequest: [t] } as any)));
+  });
+
+  it("TF1: a transform that deletes the adapter, or one that can't be pinned, is refused transport", async () => {
+    const del = function (this: any, d: unknown) {
+      delete this.adapter;
+      return d;
+    };
+    await refusedWith(inCall(() => ax.request({ ...UPLOAD, transformRequest: [del] } as any)), 'transport');
+    const unpinnable = function (this: any, d: unknown) {
+      Object.defineProperty(this, 'adapter', { value: guard.adapter, writable: false, configurable: false, enumerable: false });
+      return d;
+    };
+    await refusedWith(inCall(() => ax.request({ ...UPLOAD, transformRequest: [unpinnable] } as any)), 'transport');
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it("TF1: the given transforms run in order, with the request's data and headers, before the guard decides", async () => {
+    const order: string[] = [];
+    const one = (d: unknown, h: any) => (order.push(`one:${d}:${typeof h.set}`), undefined);
+    const two = function (this: any, d: unknown) {
+      order.push(`two:${d}:${this.url === P}`);
+      return d;
+    };
+    await inCall(() => ax.get(P, { transformRequest: [one, two] } as any));
+    expect(order).toEqual(['one:undefined:function', 'two:undefined:true']);
+    expect(net.calls).toHaveLength(1);
+  });
+
+  it.each([[false], [undefined]])('TF2: a request whose transitional.legacyInterceptorReqResOrdering is %j is refused transport', async (value) => {
+    await refusedWith(inCall(() => ax.get(P, { transitional: { legacyInterceptorReqResOrdering: value } } as any)), 'transport');
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('TF2: with the other order refused, an interceptor added later cannot run after the guard', async () => {
+    const id = ax.interceptors.request.use((config: any) => {
+      config.transformRequest = [];
+      config.adapter = 'http';
+      return config;
+    });
+    try {
+      await refusedWith(inCall(() => ax.request({ ...UPLOAD, transitional: { legacyInterceptorReqResOrdering: false } } as any)), 'transport');
+    } finally {
+      ax.interceptors.request.eject(id);
+    }
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('TF3: an instance made by create() on a created instance refuses a per-request adapter, and sends through the guard', async () => {
+    const made = ax.create().create();
+    await refusedWith(inCall(() => made.request({ ...UPLOAD, adapter: 'http' } as any)), 'transport');
+    expect(net.calls).toHaveLength(0);
+    await inCall(() => made.get(P));
+    expect(net.calls).toHaveLength(1);
+  });
+
+  it.each([
+    ['request(config)', (a: any) => a.request({ ...UPLOAD, adapter: 'http' }), 'POST https://other.example.test/upload'],
+    ['get(url)', (a: any) => a.get('https://other.example.test/x'), 'GET https://other.example.test/x'],
+    ['request(url, config)', (a: any) => a.request('https://other.example.test/y', { method: 'put' }), 'PUT https://other.example.test/y'],
+    ['request(url)', (a: any) => a.request('https://other.example.test/w'), 'GET https://other.example.test/w'],
+  ] as Array<[string, (a: any) => Promise<unknown>, string]>)('TF3: a bare new Axios() context is refused transport: %s', async (_what, call, line) => {
+    const bare = new (ax as any).Axios({});
+    await refusedWith(inCall(() => call(bare)), 'transport');
+    expect(net.calls).toHaveLength(0);
+    expect(stderr).toEqual([`qbo-guard: refused ${line} (transport)\n`]);
+  });
+
+  it('TF3: a bare context given a config that throws on read is still refused, logged as unparsable', async () => {
+    const hostile = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error('boom');
+        },
+      },
+    );
+    await refusedWith(inCall(() => new (ax as any).Axios({}).request(hostile)), 'transport');
+    expect(stderr).toHaveLength(1);
+    expect(stderr[0]).toMatch(/^qbo-guard: refused \S+ <unparsable url> \(transport\)\n$/);
+  });
+
+  it('TF3: after restore, a bare Axios context and an instance made under the guard send as plain axios', async () => {
+    const own = jest.fn(async (c: any) => ({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: c }));
+    const made = ax.create({ adapter: own as any });
+    restoreGuard();
+    try {
+      await expect(made.get('https://other.example.test/x')).resolves.toMatchObject({ data: 'ok' });
+      await expect(made.request({ url: 'https://other.example.test/y' })).resolves.toMatchObject({ data: 'ok' });
+      await expect(new (ax as any).Axios({ adapter: own }).get('https://other.example.test/z')).resolves.toMatchObject({ data: 'ok' });
+    } finally {
+      restoreGuard = installGuard(guard);
+    }
+    expect(own).toHaveBeenCalledTimes(3);
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('TF4: the headers sent are the ones decide saw, read once', async () => {
+    let reads = 0;
+    const cfg = Object.defineProperty({ ...ax.defaults, method: 'get', url: P }, 'headers', {
+      get: () => (reads++ === 0 ? {} : { 'X-Second': 'v' }),
+      enumerable: true,
+      configurable: true,
+    });
+    await inCall(() => guard.adapter(cfg));
+    expect(net.calls).toHaveLength(1);
+    expect(Object.keys(net.calls[0].headers ?? {}).map((k) => k.toLowerCase())).not.toContain('x-second');
+  });
+
+  it("TF5: create() passes the caller's instance config through", () => {
+    expect(ax.create({ timeout: 4321 }).defaults.timeout).toBe(4321);
+    expect(ax.create({ timeout: 4321 }).create({ timeout: 1234 }).defaults.timeout).toBe(1234);
+  });
+
+  it('TF6: a refused http: URL is printed with its scheme, host and path', async () => {
+    await expect(inCall(() => ax.get(`http://quickbooks.api.intuit.com/v3/company/${REALM}/preferences`))).rejects.toBeInstanceOf(GuardRefusedError);
+    expect(stderr).toHaveLength(1);
+    expect(stderr[0].startsWith(`qbo-guard: refused GET http://quickbooks.api.intuit.com/v3/company/${REALM}/preferences (`)).toBe(true);
   });
 });

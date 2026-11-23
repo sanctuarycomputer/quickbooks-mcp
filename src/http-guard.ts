@@ -125,7 +125,10 @@ const KEPT = ["method", "headers", "responseType", "timeout", "transformRequest"
 
 const ownProp = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
 
-/** Header names as axios will send them (AxiosHeaders → plain object). */
+/**
+ * Header names as axios will send them (AxiosHeaders → plain object). toJSON drops a header set to `false`, so a
+ * caller can no longer suppress an axios default that way (`User-Agent: false`); node-quickbooks sets none to false.
+ */
 function headerObject(headers: unknown): Record<string, unknown> {
   return guardedAxios().AxiosHeaders.from(headers as any).toJSON() as Record<string, unknown>;
 }
@@ -186,9 +189,27 @@ export function createGuard(ctx: GuardContext): Guard {
 
 const installed = new WeakMap<Guard, () => void>();
 
+/** What a request names, for the log line of a refusal before axios has merged it: (url[, config]) or (config). */
+function named(args: unknown[]): { method: unknown; url: unknown } {
+  try {
+    const cfg = (typeof args[0] === "string" ? args[1] : args[0]) as Record<string, unknown> | undefined;
+    const url = typeof args[0] === "string" ? args[0] : cfg?.url;
+    return { method: cfg?.method ?? "get", url };
+  } catch {
+    return { method: undefined, url: undefined };
+  }
+}
+
 /**
- * Sets the guard as the CommonJS instance's adapter and adds the identity interceptor, to that instance and to every
- * instance `create()` makes from it. Idempotent; returns restore.
+ * Sets the guard as the CommonJS instance's adapter and guards that instance, every instance `create()` makes from a
+ * guarded one, and any other Axios context (a bare `new axios.Axios()`, which has no guard, is refused). Idempotent;
+ * returns restore.
+ *
+ * Guarding an instance adds the identity interceptor first, so under axios' (default) legacy order it runs last of
+ * the request interceptors; a request asking for the other order is refused. The interceptor replaces the request's
+ * transformRequest with one function of the guard's: it runs a private copy of the given transforms on the config
+ * axios dispatches, then checks `adapter` there is a data property holding the guard and pins it (non-writable,
+ * non-configurable), so nothing axios runs after it (a `method` getter, say) can change what adapter is read.
  */
 export function installGuard(guard: Guard): () => void {
   const existing = installed.get(guard);
@@ -196,36 +217,71 @@ export function installGuard(guard: Guard): () => void {
   const ax = guardedAxios();
   const previous = ax.defaults.adapter;
   const previousCreate = ax.create;
-  ax.defaults.adapter = guard.adapter as any;
-  // Request interceptors run newest first, so this one, added at start, sees the config last. axios then copies the
-  // config and runs transformRequest with the copy as `this` before it reads the adapter, so a transform could swap it:
-  // the last transform is the guard's, which checks the adapter on that copy (nothing runs between it and the read).
+  const proto = (ax as any).Axios.prototype as { request: (...a: unknown[]) => Promise<unknown> };
+  const previousRequest = proto.request;
+  let active = true;
+  const managers = new WeakSet<object>();
+  const ejects: Array<() => void> = [];
+
   const identity = (config: any) => {
     if (config.adapter !== guard.adapter) throw refusal(config.method, config.url, "transport");
+    const transitional = config.transitional;
+    if (transitional !== undefined && transitional !== null && transitional.legacyInterceptorReqResOrdering !== true) {
+      throw refusal(config.method, config.url, "transport");
+    }
     const given = config.transformRequest;
-    const list = given === undefined || given === null ? [] : Array.isArray(given) ? given : [given];
-    config.transformRequest = [
-      ...list,
-      function qboGuardLastTransform(this: any, data: unknown) {
-        if (this.adapter !== guard.adapter) throw refusal(this.method, this.url, "transport");
-        return data;
-      },
-    ];
+    const list: Array<(this: unknown, ...a: unknown[]) => unknown> = given === undefined || given === null ? [] : Array.isArray(given) ? [...given] : [given];
+    const only = function qboGuardTransform(this: any, data: unknown, ...rest: unknown[]) {
+      let out = data;
+      for (const fn of list) out = fn.call(this, out, ...rest);
+      try {
+        const d = Object.getOwnPropertyDescriptor(this, "adapter");
+        if (d === undefined || !("value" in d) || d.value !== guard.adapter) throw new Error("adapter");
+        Object.defineProperty(this, "adapter", { value: guard.adapter, writable: false, configurable: false, enumerable: true });
+      } catch {
+        throw refusal(this.method, this.url, "transport");
+      }
+      return out;
+    };
+    config.transformRequest = Object.freeze([only]);
     return config;
   };
-  const id = ax.interceptors.request.use(identity);
-  // An instance made with create() copies the defaults but not the interceptors: give it the same check.
-  ax.create = function qboGuardCreate(this: unknown, ...args: any[]) {
-    const instance = (previousCreate as (...a: any[]) => any).apply(this, args);
-    instance.interceptors.request.use(identity);
+
+  const guardInstance = (instance: any) => {
+    managers.add(instance.interceptors.request);
+    const id = instance.interceptors.request.use(identity);
+    ejects.push(() => instance.interceptors.request.eject(id));
+    const made = instance.create;
+    // create() copies the defaults but not the interceptors: guard each instance it makes, and that one's create too.
+    instance.create = function qboGuardCreate(this: unknown, ...args: unknown[]) {
+      return guardInstance((made as (...a: unknown[]) => unknown).apply(this, args));
+    };
+    ejects.push(() => {
+      instance.create = made;
+    });
     return instance;
-  } as typeof ax.create;
+  };
+
+  ax.defaults.adapter = guard.adapter as any;
+  guardInstance(ax);
+  // An Axios context nobody guarded (`new axios.Axios(config)`, or an instance made by a create() saved before start)
+  // has no identity interceptor: its requests are refused.
+  proto.request = function qboGuardRequest(this: any, ...args: unknown[]) {
+    if (active && !managers.has(this?.interceptors?.request)) {
+      const n = named(args);
+      return Promise.reject(refusal(n.method, n.url, "transport"));
+    }
+    return previousRequest.apply(this, args);
+  };
+
   const restore = () => {
     if (installed.get(guard) !== restore) return;
     installed.delete(guard);
-    ax.interceptors.request.eject(id);
+    active = false;
+    for (const undo of ejects.reverse()) undo();
     ax.defaults.adapter = previous;
     ax.create = previousCreate;
+    proto.request = previousRequest;
   };
   installed.set(guard, restore);
   return restore;
