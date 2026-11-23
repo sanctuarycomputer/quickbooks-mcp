@@ -1,0 +1,266 @@
+{
+  "get_aged_payables": {
+    "params": {
+      "report_date": "2026-03-31",
+      "vendor": "1",
+      "aging_method": "Report_Date",
+      "days_per_aging_period": 30,
+      "num_periods": 4
+    }
+  },
+  "get_aged_receivables": {
+    "params": {
+      "report_date": "2026-03-31",
+      "customer": "1",
+      "aging_method": "Report_Date",
+      "days_per_aging_period": 30,
+      "num_periods": 4
+    }
+  },
+  "get_balance_sheet": {
+    "params": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31",
+      "accounting_method": "Cash",
+      "summarize_column_by": "Month"
+    }
+  },
+  "get_cash_flow": {
+    "params": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31",
+      "summarize_column_by": "Month"
+    }
+  },
+  "get_company_info": {
+    "params": {}
+  },
+  "get_customer_balance": {
+    "params": {
+      "report_date": "2026-03-31",
+      "customer": "1",
+      "summarize_column_by": "Month"
+    }
+  },
+  "get_customer_sales": {
+    "params": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31",
+      "customer": "1",
+      "summarize_column_by": "Month"
+    }
+  },
+  "get_general_ledger": {
+    "params": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31",
+      "accounting_method": "Cash",
+      "account": "1",
+      "source_account": "1",
+      "sort_by": "tx_date"
+    }
+  },
+  "get_preferences": {
+    "params": {}
+  },
+  "get_profit_and_loss": {
+    "params": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31",
+      "accounting_method": "Cash",
+      "summarize_column_by": "Month",
+      "customer": "1",
+      "vendor": "1",
+      "item": "1",
+      "department": "1",
+      "class": "1"
+    }
+  },
+  "get_trial_balance": {
+    "params": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31",
+      "accounting_method": "Cash"
+    }
+  },
+  "get_vendor_balance": {
+    "params": {
+      "report_date": "2026-03-31",
+      "vendor": "1",
+      "summarize_column_by": "Month"
+    }
+  },
+  "get_vendor_expenses": {
+    "params": {
+      "start_date": "2026-01-01",
+      "end_date": "2026-03-31",
+      "vendor": "1",
+      "summarize_column_by": "Month",
+      "accounting_method": "Cash"
+    }
+  },
+  "search_accounts": {
+    "params": {
+      "criteria": {
+        "filters": [
+          {
+            "field": "Id",
+            "value": "1"
+          }
+        ],
+        "limit": 10
+      }
+    }
+  },
+  "search_bill_payments": {
+    "params": {
+      "criteria": [
+        {
+          "field": "Id",
+          "value": "1"
+        }
+      ],
+      "limit": 10
+    }
+  },
+  "search_bills": {
+    "params": {
+      "criteria": [
+        {
+          "field": "Id",
+          "value": "1"
+        }
+      ],
+      "limit": 10
+    }
+  },
+  "search_classes": {
+    "params": {
+      "active": true,
+      "limit": 10
+    }
+  },
+  "search_credit_memos": {
+    "params": {
+      "customer_ref": "1",
+      "limit": 10
+    }
+  },
+  "search_customers": {
+    "params": {
+      "criteria": [
+        {
+          "field": "Id",
+          "value": "1"
+        }
+      ],
+      "limit": 10
+    }
+  },
+  "search_departments": {
+    "params": {
+      "active": true,
+      "limit": 10
+    }
+  },
+  "search_deposits": {
+    "params": {
+      "txn_date_from": "2026-01-01",
+      "limit": 10
+    }
+  },
+  "search_employees": {
+    "params": {
+      "criteria": [
+        {
+          "field": "Id",
+          "value": "1"
+        }
+      ],
+      "limit": 10
+    }
+  },
+  "search_invoices": {
+    "params": {
+      "criteria": {
+        "filters": [
+          {
+            "field": "Id",
+            "value": "1"
+          }
+        ],
+        "limit": 10
+      }
+    }
+  },
+  "search_items": {
+    "params": {
+      "criteria": {
+        "filters": [
+          {
+            "field": "Id",
+            "value": "1"
+          }
+        ],
+        "limit": 10
+      }
+    }
+  },
+  "search_journal_entries": {
+    "params": {
+      "criteria": [
+        {
+          "field": "Id",
+          "value": "1"
+        }
+      ],
+      "limit": 10
+    }
+  },
+  "search_payments": {
+    "params": {
+      "customer_ref": "1",
+      "limit": 10
+    }
+  },
+  "search_purchases": {
+    "params": {
+      "criteria": [
+        {
+          "field": "Id",
+          "value": "1"
+        }
+      ],
+      "limit": 10
+    }
+  },
+  "search_sales_receipts": {
+    "params": {
+      "customer_ref": "1",
+      "limit": 10
+    }
+  },
+  "search_transfers": {
+    "params": {
+      "txn_date_from": "2026-01-01",
+      "limit": 10
+    }
+  },
+  "search_vendor_credits": {
+    "params": {
+      "vendor_ref": "1",
+      "limit": 10
+    }
+  },
+  "search_vendors": {
+    "params": {
+      "criteria": [
+        {
+          "field": "Id",
+          "value": "1"
+        }
+      ],
+      "limit": 10
+    }
+  }
+}
