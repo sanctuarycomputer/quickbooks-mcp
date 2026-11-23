@@ -1,7 +1,9 @@
 // Sanctuary Computer (quickbooks-mcp-291): the HTTP guard on the CommonJS axios instance node-quickbooks calls (contract 1.0 §6 in Stacksbot's docs/contracts/quickbooks.md).
 import { AsyncLocalStorage } from "node:async_hooks";
+import http from "node:http";
+import http2 from "node:http2";
 import https from "node:https";
-import { createRequire } from "node:module";
+import { createRequire, syncBuiltinESMExports } from "node:module";
 import type { AxiosStatic } from "axios";
 import { decide, newCallRecord, type CallRecord, type GuardContext } from "./clients/guard-decide.js";
 
@@ -197,5 +199,151 @@ export function installGuard(guard: Guard): () => void {
     ax.defaults.adapter = previous;
   };
   installed.set(guard, restore);
+  return restore;
+}
+
+// ---- the backstop ----
+
+/** Carried by every function the backstop put in place, so a start check can see it. */
+export const BACKSTOP_MARK: unique symbol = Symbol.for("qbo-guard.backstop") as any;
+/** This module's own wraps (the marker can be forged; this set can't). */
+const ownWraps = new WeakSet<object>();
+
+function mark<F extends object>(fn: F): F {
+  Object.defineProperty(fn, BACKSTOP_MARK, { value: true });
+  ownWraps.add(fn);
+  return fn;
+}
+
+/** A best-effort URL for the refusal line (its query and userinfo never print). */
+function describeTarget(protocol: string, args: unknown[]): string {
+  const first = args[0];
+  if (typeof first === "string" || first instanceof URL) return String(first);
+  const o = (first ?? {}) as Record<string, unknown>;
+  const host = (o.hostname ?? o.host ?? "") as string;
+  const port = o.port === undefined || o.port === "" ? "" : `:${String(o.port)}`;
+  return `${protocol}//${host}${port}${(o.path as string | undefined) ?? "/"}`;
+}
+
+/** What a call to https.request/get asks for, read the way Node reads its arguments (URL, then options over it). */
+function requested(args: unknown[]): Ticket {
+  let url: URL | undefined;
+  let options: Record<string, unknown> = {};
+  const [a, b] = args;
+  if (typeof a === "string" || a instanceof URL) {
+    url = new URL(String(a));
+    if (b !== null && typeof b === "object") options = b as Record<string, unknown>;
+  } else if (a !== null && typeof a === "object") {
+    options = a as Record<string, unknown>;
+  }
+  const pick = (k: string) => (Object.prototype.hasOwnProperty.call(options, k) ? options[k] : undefined);
+  const method = pick("method") ?? "GET";
+  const hostname = pick("hostname") ?? pick("host") ?? url?.hostname;
+  const port = pick("port") ?? url?.port ?? "";
+  const path = pick("path") ?? (url ? url.pathname + url.search : "/");
+  return { method: String(method).toUpperCase(), hostname: String(hostname), port: String(port), path: String(path) };
+}
+
+/** https.request/get: only under an unused ticket whose every field equals the call's. */
+function wrapHttps(original: (...args: any[]) => any): (...args: any[]) => any {
+  return mark(function qboGuardHttps(this: unknown, ...args: any[]) {
+    let allowed = false;
+    try {
+      const ticket = currentTicket();
+      const asked = requested(args);
+      allowed =
+        ticket !== undefined &&
+        !ticket.used &&
+        ticket.method === asked.method &&
+        ticket.hostname === asked.hostname &&
+        ticket.port === asked.port &&
+        ticket.path === asked.path;
+      if (allowed) ticket!.used = true;
+    } catch {
+      allowed = false;
+    }
+    if (!allowed) throw backstopRefusal("https:", args);
+    return original.apply(this, args);
+  });
+}
+
+/** Logs and returns the backstop's refusal; describing the call never throws past here. */
+function backstopRefusal(protocol: string, args: unknown[]): GuardRefusedError {
+  let method = "OTHER";
+  let target = "";
+  try {
+    method = requested(args).method;
+  } catch {
+    // keep OTHER
+  }
+  try {
+    target = describeTarget(protocol, args);
+  } catch {
+    // keep <unparsable url>
+  }
+  return refusal(method, target, "backstop");
+}
+
+/** A function that always refuses, for fetch, WebSocket, http.request/get and http2.connect. */
+function refuseAlways(protocol: string) {
+  return mark(function qboGuardRefuse(...args: unknown[]): never {
+    throw backstopRefusal(protocol, args);
+  });
+}
+
+type Replacement = { target: object; key: string; make: (current: unknown) => object };
+
+/**
+ * Replaces fetch, WebSocket, http.request/get and http2.connect with refusals and wraps https.request/get,
+ * then syncs the ESM named exports. Idempotent per property; all or nothing: if one can't be replaced, every
+ * replacement made is put back and it throws `qbo-guard: install failed`. Returns restore.
+ */
+export function installBackstop(deps?: { modules?: { http: object; https: object; http2: object }; global?: object }): () => void {
+  const mods = deps?.modules ?? { http, https, http2 };
+  const g = deps?.global ?? globalThis;
+  const plan: Replacement[] = [
+    { target: g, key: "fetch", make: () => refuseAlways("https:") },
+    { target: g, key: "WebSocket", make: () => refuseAlways("wss:") },
+    { target: mods.http, key: "request", make: () => refuseAlways("http:") },
+    { target: mods.http, key: "get", make: () => refuseAlways("http:") },
+    { target: mods.http2, key: "connect", make: () => refuseAlways("https:") },
+    { target: mods.https, key: "get", make: (cur) => wrapHttps(cur as (...args: any[]) => any) },
+    { target: mods.https, key: "request", make: (cur) => wrapHttps(cur as (...args: any[]) => any) },
+  ];
+  const done: Array<{ target: object; key: string; desc: PropertyDescriptor | undefined }> = [];
+  const undo = () => {
+    for (const { target, key, desc } of done.reverse()) {
+      if (desc === undefined) delete (target as Record<string, unknown>)[key];
+      else if (desc.configurable) Object.defineProperty(target, key, desc);
+      else (target as Record<string, unknown>)[key] = desc.value; // writable, not configurable: it was replaced by assignment
+    }
+    done.length = 0;
+  };
+  try {
+    for (const { target, key, make } of plan) {
+      const t = target as Record<string, unknown>;
+      const current = t[key];
+      if (ownWraps.has(current as object)) continue;
+      const desc = Object.getOwnPropertyDescriptor(target, key);
+      const fn = make(current);
+      if (desc === undefined || desc.configurable) {
+        Object.defineProperty(target, key, { value: fn, writable: true, configurable: true, enumerable: desc?.enumerable ?? true });
+      } else if (desc.writable) {
+        t[key] = fn; // a data property that can be written but not redefined
+      } else {
+        throw new Error("not replaceable"); // neither writable nor configurable (or a fixed accessor)
+      }
+      done.push({ target, key, desc });
+    }
+    syncBuiltinESMExports();
+  } catch {
+    undo();
+    syncBuiltinESMExports();
+    throw new Error("qbo-guard: install failed");
+  }
+  const restore = () => {
+    undo();
+    syncBuiltinESMExports();
+  };
   return restore;
 }
