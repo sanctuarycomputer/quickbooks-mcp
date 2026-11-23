@@ -618,6 +618,9 @@ describe('own rules (A1.5)', () => {
     expect(name(d('GET', P, ctx(), { headers: { Authorization: 'Bearer ' + t } }))).toBe('allow preferences');
     expect(name(d('GET', `${S}?enterprise=garden3d`, ctx(), { headers: { 'X-Api-Key': t } }))).toBe('allow stacks');
     expect(name(d('GET', P, ctx(), { headers: undefined }))).toBe('allow preferences');
+    // task-1 TA6: null reads as no headers; the adapter's AxiosHeaders toJSON form (null prototype) is read.
+    expect(name(d('GET', P, ctx(), { headers: null as any }))).toBe('allow preferences');
+    expect(name(d('GET', P, ctx(), { headers: Object.assign(Object.create(null), { 'x-api-key': t }) }))).toBe('credential-crossing');
   });
 
   it('credential-crossing is decided after the quickbooks rule and before body', () => {
@@ -693,6 +696,19 @@ describe('fail closed (A1.11)', () => {
     ['a null param value', () => d('GET', `${Q}/preferences`, ctx(), { params: { minorversion: null } })],
     ['a class-instance params', () => d('GET', `${Q}/preferences`, ctx(), { params: new (class { minorversion = 75 })() })],
     ['headers that are not an object', () => d('GET', P, ctx(), { headers: 'x-api-key: 1' as any })],
+    // task-1 TA6: axios would send these forms; decide reads only a plain object, so it refuses the rest.
+    ['Map headers', () => d('GET', P, ctx(), { headers: new Map([['x-api-key', fakeToken()]]) as any })],
+    ['pair-array headers', () => d('GET', P, ctx(), { headers: [['x-api-key', fakeToken()]] as any })],
+    ['pair-array headers on Stacks', () => d('GET', `${S}?enterprise=garden3d`, ctx(), { headers: [['authorization', 'x']] as any })],
+    ['class-instance headers', () => d('GET', P, ctx(), { headers: new (class { a = '1' })() as any })],
+    // task-1 TA7: a record that is not a record is a fault, not "inside a call".
+    ['a null call record', () => d('GET', P, ctx({ callRecord: () => null as any }))],
+    ['a 0 call record', () => d('GET', P, ctx({ callRecord: () => 0 as any }))],
+    ['a call record without a queries array', () => d('GET', P, ctx({ callRecord: () => ({ queries: 'x' }) as any }))],
+    // task-1 TA8: keys axios would compose differently (it trims keys and drops an own __proto__).
+    ['a param key with a leading space', () => d('GET', `${Q}/preferences`, ctx(), { params: { ' minorversion': 75 } })],
+    ['a param key with a trailing space', () => d('GET', `${Q}/preferences`, ctx(), { params: { 'minorversion ': 75 } })],
+    ['an own __proto__ param key', () => d('GET', `${Q}/preferences`, ctx(), { params: JSON.parse('{"__proto__":"x","minorversion":75}') })],
   ])('%s is guard-error', (_what, run) => {
     expect(name(run())).toBe('guard-error');
   });
@@ -728,7 +744,19 @@ describe('serialiser matches axios', () => {
     [`${Q}/reports/ProfitAndLoss`, { start_date: '2026-01-01', 'a b': 'c d', x: "!'()*~:$,@/?&=+%", y: true, z: 0, '2': 'two', '1': 'one' }],
     [`${Q}/preferences?minorversion=75`, { format: 'json' }],
     [`${Q}/preferences`, Object.assign(Object.create(null), { minorversion: 75 })],
+    // task-1 TA1: an allowed text whose params hold each character the encoder keeps or rewrites (`:`, `$`, `,`, space).
+    [`${Q}/reports/ProfitAndLoss`, { start_date: 'a:b$c,d e/@', minorversion: 75 }],
+    [`${Q}/reports/ProfitAndLoss`, { start_date: 'a:b', minorversion: 75 }],
+    [`${Q}/reports/ProfitAndLoss`, { start_date: 'a$b', minorversion: 75 }],
+    [`${Q}/reports/ProfitAndLoss`, { start_date: 'a,b', minorversion: 75 }],
+    [`${Q}/reports/ProfitAndLoss`, { start_date: 'a b', minorversion: 75 }],
   ];
+  it('the TA1 cases are allowed, so their text is compared (not only their rule)', () => {
+    for (const [url, params] of pairs.slice(-5)) expect(name(decide({ method: 'GET', url, params }, ctx()))).toBe('allow reports');
+    expect(decide({ method: 'GET', url: `${Q}/reports/ProfitAndLoss`, params: { start_date: 'a:b$c,d e/@', minorversion: 75 } }, ctx())).toMatchObject({
+      text: `${Q}/reports/ProfitAndLoss?start_date=a:b$c,d+e%2F%40&minorversion=75`,
+    });
+  });
   it.each(pairs.map((p, i) => [i, p[0], p[1]]))('%i: text equals axios.getUri, url equals new URL(text).href', (_i, url, params) => {
     const dec = decide({ method: 'GET', url: url as string, params }, ctx());
     const text = getUri(url as string, params);
@@ -755,5 +783,58 @@ describe('REPORT_KEYS', () => {
   it.each(Object.keys(REPORT_KEYS).map((k) => [k]))('every key of %s is allowed on it', (report) => {
     const q = (REPORT_KEYS as Record<string, readonly string[]>)[report].map((k) => `${k}=v`).join('&');
     expect(name(d('GET', `${Q}/reports/${report}?${q}${TAIL}`))).toBe('allow reports');
+  });
+});
+
+describe('task-1 review: cases only one condition decides (TA2-TA5, TA7, TA9)', () => {
+  it.each([
+    // TA2: a trailing space inside the query pair (the pair rule allows it; new URL would strip it, so the sent URL differs).
+    ['TA2', `${Q}/query?minorversion=75&format=json&query=select * from purchase maxresults 10 `, 'raw-text'],
+    // TA3: maxresults needs whitespace before its number.
+    ['TA3', lq('select * from purchase maxresults10'), 'query'],
+    // TA4: `from` is a word: `_` or a digit on either side makes it part of another word.
+    ['TA4', lq('select * from purchase where x_from = 1 maxresults 10'), 'allow query'],
+    ['TA4', lq('select * from purchase where a1from = 1 maxresults 10'), 'allow query'],
+    ['TA4', lq('select * from purchase where from1 = 1 maxresults 10'), 'allow query'],
+    // TA5: entity-by-id is the whole rest, and report keys apply only under reports/.
+    ['TA5', `${Q}/x/purchase/5?minorversion=75`, 'refused'],
+    ['TA5', `${Q}/x/ProfitAndLoss?start_date=1&minorversion=75`, 'quickbooks'],
+  ] as Array<[string, string, string]>)('%s: GET %s → %s', (_id, url, expected) => {
+    expect(name(d('GET', url))).toBe(expected);
+  });
+
+  it('TA4: the entity is read after the one `from` word', () => {
+    const dec = d('GET', lq('select * from purchase where a1from = 1 maxresults 10'));
+    expect(dec.allow && dec.entity).toBe('purchase');
+  });
+
+  it('TA5: a 21-digit realm is not a realm, even when allowedRealm would accept it', () => {
+    const realm21 = '1'.repeat(21);
+    const c = ctx({ allowedRealm: () => true });
+    expect(name(d('GET', `https://quickbooks.api.intuit.com/v3/company/${realm21}/preferences?minorversion=75`, c))).toBe('quickbooks');
+    const realm20 = '1'.repeat(20);
+    expect(name(d('GET', `https://quickbooks.api.intuit.com/v3/company/${realm20}/preferences?minorversion=75`, c))).toBe('allow preferences');
+  });
+
+  it.each([
+    ['a Promise', () => Promise.resolve(true)],
+    ['1', () => 1],
+    ['"yes"', () => 'yes'],
+  ] as Array<[string, () => unknown]>)('TA7: allowedRealm answering %s allows no realm', (_what, answer) => {
+    expect(name(d('GET', P, ctx({ allowedRealm: answer as any })))).toBe('quickbooks');
+  });
+
+  it('TA9: an entry after a 401 with another URL is not a resend, so a later resend of it is still the call\'s one', () => {
+    const a = lq('select * from purchase maxresults 10');
+    const b = lq('select * from purchase maxresults 20');
+    const record: CallRecord = {
+      queries: [
+        { entity: 'purchase', url: new URL(a).href, status: 401 },
+        { entity: 'purchase', url: new URL(b).href, status: 401 },
+      ],
+    };
+    const dec = d('GET', b, ctx({}, record));
+    expect(name(dec)).toBe('allow query');
+    expect(dec.allow && dec.resend).toBe(401);
   });
 });

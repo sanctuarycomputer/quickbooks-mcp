@@ -75,7 +75,7 @@ function axiosEncode(value: string): string {
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
-  if (typeof v !== "object" || v === null) return false;
+  if (typeof v !== "object") return false; // callers rule out null first
   const proto = Object.getPrototypeOf(v);
   return proto === Object.prototype || proto === null;
 }
@@ -85,6 +85,8 @@ function compose(url: string, params: unknown): string {
   if (!isPlainObject(params)) throw new GuardError("params");
   const pairs: string[] = [];
   for (const key of Object.keys(params)) {
+    // axios trims each key and drops an own `__proto__` (axios.cjs:2002): such a key would not compose as getUri does.
+    if (key !== key.trim() || key === "__proto__") throw new GuardError("param key");
     const value = params[key];
     if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") throw new GuardError("param value");
     pairs.push(axiosEncode(key) + "=" + axiosEncode(String(value)));
@@ -111,11 +113,12 @@ const HEAD = /^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^/?#\\]*/;
 
 /** Contract §6 at 66cd209c: a literal space only inside the value of a pair whose key is exactly `query`. */
 function rawTextOk(t: string): boolean {
-  if (hasControl(t) || t.includes("#") || t.startsWith(" ") || t.endsWith(" ")) return false;
+  // A leading space is a space before `?`, refused below; a trailing one is refused here (new URL would strip it).
+  if (hasControl(t) || t.includes("#") || t.endsWith(" ")) return false;
   const q = t.indexOf("?");
   const before = q === -1 ? t : t.slice(0, q);
   if (before.includes(" ")) return false;
-  if (q === -1) return true;
+  // With no `?`, t.slice(0) is `before`, which has no space: the loop allows it.
   for (const pair of t.slice(q + 1).split("&")) {
     if (!pair.includes(" ")) continue;
     const eq = pair.indexOf("=");
@@ -181,10 +184,10 @@ function queryEntity(statement: string): string | null {
   const froms = [...statement.matchAll(FROM_WORD)];
   if (froms.length !== 1) return null;
   // The statement starts `select` and ends with digits, so `from` is never its first or last word: both neighbours exist.
+  // After it, FROM_WORD's lookahead plus the empty-run check below refuse anything but whitespace.
   const at = froms[0].index as number;
-  const after = at + 4;
-  if (!IS_WS.test(statement[at - 1]) || !IS_WS.test(statement[after])) return null;
-  let i = after;
+  if (!IS_WS.test(statement[at - 1])) return null;
+  let i = at + 4;
   while (IS_WS.test(statement[i])) i++;
   const run = /^[A-Za-z]*/.exec(statement.slice(i))![0];
   if (run === "" || NON_ASCII_LETTER_OR_MARK.test(statement.slice(i + run.length))) return null;
@@ -210,7 +213,7 @@ function countQuery(record: CallRecord, entity: string, url: string): { ok: true
 
 function hasHeader(headers: unknown, lower: string): boolean {
   if (headers === undefined || headers === null) return false;
-  if (typeof headers !== "object") throw new GuardError("headers");
+  if (!isPlainObject(headers)) throw new GuardError("headers"); // a Map, pair array or class instance: not read, refused
   return Object.keys(headers).some((k) => k.toLowerCase() === lower);
 }
 
@@ -226,7 +229,8 @@ function decideQuickbooks(req: GuardRequest, method: string, t: string, w: URL, 
   const allow = (rule: AllowRule, extra: { entity?: string; resend?: 401 | 429 } = {}): Decision => ({ allow: true, rule, text: t, url: w.href, ...extra });
   if (!isGet(method)) return refuse("quickbooks");
   const record = ctx.callRecord();
-  if (record === undefined) return refuse("quickbooks");
+  if (record === undefined) return refuse("quickbooks"); // outside a call
+  if (typeof record !== "object" || record === null || !Array.isArray(record.queries)) throw new GuardError("call record");
 
   // Which form's keys apply: the path's first word after the realm, and for reports the report's own keys.
   const realmMatch = REALM_PATH.exec(w.pathname);
@@ -247,7 +251,7 @@ function decideQuickbooks(req: GuardRequest, method: string, t: string, w: URL, 
   if (hasHeader(req.headers, "x-api-key")) return refuse("credential-crossing");
   if (!emptyBody(req.data)) return refuse("body");
 
-  if (realmMatch === null || !ctx.allowedRealm(realmMatch[1])) return refuse("quickbooks");
+  if (realmMatch === null || ctx.allowedRealm(realmMatch[1]) !== true) return refuse("quickbooks");
   const realm = realmMatch[1];
   if (rest === `companyinfo/${realm}`) return allow("companyinfo");
   if (rest === "preferences") return allow("preferences");
