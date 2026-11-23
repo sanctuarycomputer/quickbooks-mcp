@@ -36,7 +36,8 @@ function logRefusal(method: unknown, url: unknown, rule: string): void {
     let where = "<unparsable url>";
     try {
       const u = new URL(url as string);
-      where = `${u.protocol}//${u.host}${u.pathname}`;
+      // Only a network URL prints: a `data:` or other opaque URL's "path" is its payload.
+      if (["http:", "https:", "ws:", "wss:"].includes(u.protocol)) where = `${u.protocol}//${u.host}${u.pathname}`;
     } catch {
       // keep <unparsable url>
     }
@@ -139,22 +140,27 @@ export function createGuard(ctx: GuardContext): Guard {
     let ticket: Ticket;
     let entry: CallRecord["queries"][number] | undefined;
     let httpAdapter: (c: any) => Promise<any>;
+    // Each request field is read once: what decide saw is what is sent, ticketed and logged (an accessor can't flip it).
+    let method: unknown;
+    let url: unknown;
     try {
-      const decision = decide(
-        { method: config.method, url: config.url, params: config.params, headers: headerObject(config.headers), data: config.data },
-        holder.ctx!,
-      );
-      if (!decision.allow) throw refusal(config.method, config.url, decision.rule);
+      method = config.method;
+      url = config.url;
+      const headers = headerObject(config.headers);
+      const decision = decide({ method: method as string | undefined, url: url as string | undefined, params: config.params, headers, data: config.data }, holder.ctx!);
+      if (!decision.allow) throw refusal(method, url, decision.rule);
       const ax = guardedAxios();
-      if (ax.getUri(config) !== decision.text) throw refusal(config.method, config.url, "guard-error");
+      if (ax.getUri(config) !== decision.text) throw refusal(method, url, "guard-error");
       send = {};
-      for (const k of KEPT) if (ownProp(config, k)) send[k] = config[k];
+      for (const k of KEPT) if (k !== "method" && k !== "headers" && ownProp(config, k)) send[k] = config[k];
+      send.method = method;
+      send.headers = headers;
       send.url = decision.url;
       send.maxRedirects = 0;
       send.proxy = false;
       send.httpsAgent = AGENT;
       const w = new URL(decision.url);
-      ticket = { method: String(config.method).toUpperCase(), hostname: w.hostname, port: w.port, path: w.pathname + w.search };
+      ticket = { method: String(method).toUpperCase(), hostname: w.hostname, port: w.port, path: w.pathname + w.search };
       httpAdapter = ax.getAdapter("http") as (c: any) => Promise<any>;
       if (decision.entity !== undefined) {
         const record = holder.ctx!.callRecord();
@@ -164,7 +170,7 @@ export function createGuard(ctx: GuardContext): Guard {
       }
     } catch (e) {
       if (e instanceof GuardRefusedError) throw e;
-      throw refusal(config?.method, config?.url, "guard-error");
+      throw refusal(method, url, "guard-error");
     }
     try {
       const response = await runIssued(ticket, () => httpAdapter(send));
@@ -180,23 +186,46 @@ export function createGuard(ctx: GuardContext): Guard {
 
 const installed = new WeakMap<Guard, () => void>();
 
-/** Sets the guard as the CommonJS instance's adapter and adds the identity interceptor. Idempotent; returns restore. */
+/**
+ * Sets the guard as the CommonJS instance's adapter and adds the identity interceptor, to that instance and to every
+ * instance `create()` makes from it. Idempotent; returns restore.
+ */
 export function installGuard(guard: Guard): () => void {
   const existing = installed.get(guard);
   if (existing !== undefined) return existing;
   const ax = guardedAxios();
   const previous = ax.defaults.adapter;
+  const previousCreate = ax.create;
   ax.defaults.adapter = guard.adapter as any;
-  // Request interceptors run newest first, so this one, added at start, sees the config last.
-  const id = ax.interceptors.request.use((config: any) => {
+  // Request interceptors run newest first, so this one, added at start, sees the config last. axios then copies the
+  // config and runs transformRequest with the copy as `this` before it reads the adapter, so a transform could swap it:
+  // the last transform is the guard's, which checks the adapter on that copy (nothing runs between it and the read).
+  const identity = (config: any) => {
     if (config.adapter !== guard.adapter) throw refusal(config.method, config.url, "transport");
+    const given = config.transformRequest;
+    const list = given === undefined || given === null ? [] : Array.isArray(given) ? given : [given];
+    config.transformRequest = [
+      ...list,
+      function qboGuardLastTransform(this: any, data: unknown) {
+        if (this.adapter !== guard.adapter) throw refusal(this.method, this.url, "transport");
+        return data;
+      },
+    ];
     return config;
-  });
+  };
+  const id = ax.interceptors.request.use(identity);
+  // An instance made with create() copies the defaults but not the interceptors: give it the same check.
+  ax.create = function qboGuardCreate(this: unknown, ...args: any[]) {
+    const instance = (previousCreate as (...a: any[]) => any).apply(this, args);
+    instance.interceptors.request.use(identity);
+    return instance;
+  } as typeof ax.create;
   const restore = () => {
     if (installed.get(guard) !== restore) return;
     installed.delete(guard);
     ax.interceptors.request.eject(id);
     ax.defaults.adapter = previous;
+    ax.create = previousCreate;
   };
   installed.set(guard, restore);
   return restore;

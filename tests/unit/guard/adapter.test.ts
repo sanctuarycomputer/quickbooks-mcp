@@ -461,3 +461,159 @@ describe('installGuard', () => {
     expect(net.calls).toHaveLength(1);
   });
 });
+
+describe('task-2 review: cases only one condition decides (TB1-TB10)', () => {
+  it('TB1: a transformRequest that swaps the adapter after the interceptor sends nothing undecided', async () => {
+    const swap = function (this: any, d: unknown) {
+      this.adapter = 'http';
+      this.maxRedirects = 0;
+      return d;
+    };
+    const p = inCall(() => ax.request({ method: 'post', url: 'https://other.example.test/upload', data: 'x', transformRequest: [swap] } as any));
+    await refusedWith(p, 'transport');
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('TB1: an instance made with create() refuses a per-request adapter, and sends an allowed request through the guard', async () => {
+    const made = ax.create();
+    await refusedWith(inCall(() => made.request({ url: P, adapter: 'http' } as any)), 'transport');
+    await refusedWith(inCall(() => made.request({ method: 'post', url: 'https://other.example.test/upload', data: 'x', adapter: 'http' } as any)), 'transport');
+    expect(net.calls).toHaveLength(0);
+    await inCall(() => made.get(P));
+    expect(tickets).toHaveLength(1);
+    expect(net.calls).toHaveLength(1);
+  });
+
+  it('TB2: with HTTPS_PROXY set, the request still goes straight to QuickBooks with the guard agent', async () => {
+    const before = process.env.HTTPS_PROXY;
+    process.env.HTTPS_PROXY = 'http://127.0.0.1:9';
+    try {
+      await inCall(() => ax.get(P));
+    } finally {
+      if (before === undefined) delete process.env.HTTPS_PROXY;
+      else process.env.HTTPS_PROXY = before;
+    }
+    expect(net.calls).toHaveLength(1);
+    expect(net.calls[0]).toMatchObject({ module: 'https', hostname: 'quickbooks.api.intuit.com', path: `/v3/company/${REALM}/preferences?minorversion=75&format=json` });
+    expect(net.calls[0].agent).toBeInstanceOf(https.Agent);
+    expect((net.calls[0].agent as any).options.rejectUnauthorized).toBe(true);
+  });
+
+  it("TB3: a 302 is not followed even when the request asks for maxRedirects 5", async () => {
+    answer = () => ({ status: 302, headers: { Location: P } });
+    await expect(inCall(() => ax.get(P, { maxRedirects: 5 }))).rejects.toMatchObject({ response: { status: 302 } });
+    expect(net.calls).toHaveLength(1);
+  });
+
+  it("TB4: a request's auth is dropped: no auth option and no Authorization header reach the network", async () => {
+    await ax.get(`${S}?enterprise=garden3d`, { auth: { username: 'u', password: 'qbo-fake-' + 'pass' } });
+    expect(net.calls).toHaveLength(1);
+    expect(net.calls[0].options.auth).toBeUndefined();
+    expect(Object.keys(net.calls[0].headers ?? {}).map((k) => k.toLowerCase())).not.toContain('authorization');
+  });
+
+  // An adapter config the way axios builds one, with `method` or `url` as an accessor (axios' merge never makes one).
+  const configWith = (key: 'method' | 'url', get: () => unknown) =>
+    Object.defineProperty({ ...ax.defaults, headers: {}, method: 'get', url: P }, key, { get, enumerable: true, configurable: true });
+
+  it('TB5: a method that answers get once and post after is decided, sent and ticketed as GET', async () => {
+    let reads = 0;
+    await inCall(() => guard.adapter(configWith('method', () => (reads++ === 0 ? 'get' : 'post'))));
+    expect(net.calls.map((c) => c.method)).toEqual(['GET']);
+    expect(tickets).toMatchObject([{ method: 'GET' }]);
+  });
+
+  it.each([['url'], ['method']] as Array<['url' | 'method']>)('TB6: a %s getter that throws is guard-error, nothing sent', async (key) => {
+    await refusedWith(
+      inCall(() =>
+        guard.adapter(
+          configWith(key, () => {
+            throw new Error('boom');
+          }),
+        ),
+      ),
+      'guard-error',
+    );
+    expect(net.calls).toHaveLength(0);
+    expect(stderr).toHaveLength(1);
+    expect(stderr[0]).toMatch(/^qbo-guard: refused [A-Z]+ <unparsable url> \(guard-error\)\n$/);
+  });
+
+  it('TB7: the interceptor compares with the guard, not with whatever defaults.adapter now holds', async () => {
+    const swapped = jest.fn();
+    const previous = ax.defaults.adapter;
+    ax.defaults.adapter = swapped as any;
+    try {
+      await refusedWith(inCall(() => ax.get(P)), 'transport');
+    } finally {
+      ax.defaults.adapter = previous;
+    }
+    expect(swapped).not.toHaveBeenCalled();
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('TB8: after restore the same guard installs again with a new restore; the old, stale restore changes nothing', async () => {
+    const g2 = createGuard(BASE);
+    const first = installGuard(g2);
+    first();
+    const second = installGuard(g2);
+    expect(second).not.toBe(first);
+    expect(ax.defaults.adapter).toBe(g2.adapter);
+    await refusedWith(inCall(() => ax.request({ url: P, adapter: guard.adapter } as any)), 'transport');
+    first();
+    expect(ax.defaults.adapter).toBe(g2.adapter);
+    await refusedWith(inCall(() => ax.request({ url: P, adapter: guard.adapter } as any)), 'transport');
+    second();
+    expect(ax.defaults.adapter).toBe(guard.adapter);
+    await inCall(() => ax.get(P));
+    expect(net.calls).toHaveLength(1);
+  });
+
+  it('TB9: the ticket carries the URL port and the hostname without it', async () => {
+    createGuard({ ...BASE, stacksUrl: 'https://stacks.example.test:8443' });
+    await ax.get('https://stacks.example.test:8443/api/qbo/access_token?enterprise=garden3d');
+    expect(tickets).toEqual([{ method: 'GET', hostname: 'stacks.example.test', port: '8443', path: '/api/qbo/access_token?enterprise=garden3d', used: false }]);
+  });
+
+  it("TB10: a data: URL's payload is not printed; the line says <unparsable url>", async () => {
+    await expect(ax.get('data:application/json,%7B%22k%22%3A%22opaque%22%7D')).rejects.toBeInstanceOf(GuardRefusedError);
+    expect(stderr).toHaveLength(1);
+    expect(stderr[0]).toMatch(/^qbo-guard: refused GET <unparsable url> \([a-z-]+\)\n$/);
+    expect(stderr[0]).not.toContain('opaque');
+  });
+});
+
+describe("TB1: the guard's last transform, whatever form transformRequest arrives in", () => {
+  // An interceptor added after install runs before the guard's, so it can hand the guard any transformRequest form.
+  const withTransform = async (value: unknown) => {
+    const id = ax.interceptors.request.use((config: any) => {
+      config.transformRequest = value;
+      return config;
+    });
+    try {
+      return await inCall(() => ax.get(P));
+    } finally {
+      ax.interceptors.request.eject(id);
+    }
+  };
+
+  it('a single function is kept and runs before the check; undefined and null are an empty list', async () => {
+    const single = jest.fn((d: unknown) => d);
+    await withTransform(single);
+    expect(single).toHaveBeenCalledTimes(1);
+    await withTransform(undefined);
+    await withTransform(null);
+    expect(net.calls).toHaveLength(3);
+  });
+
+  it('a single function that swaps the adapter is refused (transport), nothing sent', async () => {
+    await refusedWith(
+      withTransform(function (this: any, d: unknown) {
+        this.adapter = 'http';
+        return d;
+      }),
+      'transport',
+    );
+    expect(net.calls).toHaveLength(0);
+  });
+});
