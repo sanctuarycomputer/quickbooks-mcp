@@ -1,5 +1,7 @@
 // Sanctuary Computer (quickbooks-mcp-291): the guard probe: asks the guard's one decide whether a request would leave, and sends nothing.
 // node dist/guard-probe.js <METHOD> <URL> --realm <R> [--stacks-url <u>] [--key <k>]...
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { decide, newCallRecord } from "./clients/guard-decide.js";
 
 const USAGE = "usage: guard-probe <METHOD> <URL> --realm <R> [--stacks-url <u>] [--key <k>]...";
@@ -20,7 +22,8 @@ function parse(argv: readonly string[]): Args | string {
     }
     if (a !== "--realm" && a !== "--stacks-url" && a !== "--key") return `unknown flag ${a}`;
     const value = argv[i + 1];
-    if (value === undefined || value.startsWith("--") || value === "") return `${a} needs a value`;
+    // An empty --stacks-url stands for a box whose STACKS_QBO_URL is set but empty (decide says stacks-config there).
+    if (value === undefined || value.startsWith("--") || (value === "" && a !== "--stacks-url")) return `${a} needs a value`;
     i++;
     if (a === "--key") keys.push(value);
     else if (a === "--realm") {
@@ -59,7 +62,29 @@ export function runProbe(argv: readonly string[], out: (line: string) => void, e
   return decision.allow ? 0 : 1;
 }
 
+/**
+ * True when argv[1] is this file, by real path: however Node was pointed at it (no extension, as Node resolves
+ * `dist/guard-probe`, or a symlink under another name). An import names some other main, so it runs nothing.
+ */
+export function isEntry(argv1: string | undefined, self: string): boolean {
+  if (argv1 === undefined || argv1 === "") return false;
+  let me: string;
+  try {
+    me = realpathSync(self);
+  } catch {
+    return false;
+  }
+  for (const candidate of [argv1, `${argv1}.js`]) {
+    try {
+      if (realpathSync(candidate) === me) return true;
+    } catch {
+      // not this candidate
+    }
+  }
+  return false;
+}
+
 // The process entry (T0's pattern: tests import this file with argv[1] set to cover it).
-if (/guard-probe\.[jt]s$/.test(process.argv[1] ?? "")) {
+if (isEntry(process.argv[1], fileURLToPath(import.meta.url))) {
   process.exitCode = runProbe(process.argv.slice(2), (l) => process.stdout.write(l + "\n"), (l) => process.stderr.write(l + "\n"));
 }

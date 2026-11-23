@@ -5,10 +5,12 @@ import fs from 'fs';
 import path from 'path';
 import { pathToFileURL } from 'url';
 import { assertFreshBuild, ROOT } from '../../e2e/helpers.js';
-import { runProbe } from '../../../src/guard-probe.js';
+import os from 'os';
+import { isEntry, runProbe } from '../../../src/guard-probe.js';
 
 const EX = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fakes/guard-examples.json'), 'utf8'));
 const PROBE = path.join(ROOT, 'dist', 'guard-probe.js');
+const SRC_PROBE = path.join(ROOT, 'src', 'guard-probe.ts');
 const COMPANYINFO = 'https://quickbooks.api.intuit.com/v3/company/123/companyinfo/123?minorversion=75&format=json';
 const S = 'https://stacks.example.test/api/qbo/access_token?enterprise=garden3d';
 
@@ -20,10 +22,10 @@ function probe(argv: string[]): { code: number; out: string[]; err: string[] } {
 }
 
 /** The built probe as a process, with any socket connect or DNS lookup exiting 97. */
-function probeProcess(argv: string[]) {
+function probeProcess(argv: string[], entry = PROBE) {
   assertFreshBuild();
   if (!fs.existsSync(PROBE)) throw new Error('dist/guard-probe.js is missing: run npm run build');
-  return spawnSync(process.execPath, ['--import', pathToFileURL(path.join(ROOT, 'tests', 'fixtures', 'no-network.mjs')).href, PROBE, ...argv], {
+  return spawnSync(process.execPath, ['--import', pathToFileURL(path.join(ROOT, 'tests', 'fixtures', 'no-network.mjs')).href, entry, ...argv], {
     cwd: ROOT,
     encoding: 'utf8',
     env: { PATH: process.env.PATH ?? '', ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}) },
@@ -32,6 +34,24 @@ function probeProcess(argv: string[]) {
 }
 
 describe('the built probe as a process (A2.1)', () => {
+  const POST = ['POST', 'https://quickbooks.api.intuit.com/v3/company/123/purchase?minorversion=75', '--realm', '123'];
+  it('TJ1: run without the extension (node dist/guard-probe), a POST is still refused, exit 1', () => {
+    const r = probeProcess(POST, path.join(ROOT, 'dist', 'guard-probe'));
+    expect({ status: r.status, stdout: r.stdout }).toEqual({ status: 1, stdout: 'refuse quickbooks\n' });
+  });
+
+  (process.platform === 'win32' ? it.skip : it)('TJ1: run through a symlink under another name, a POST is still refused, exit 1', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-probe-'));
+    try {
+      const link = path.join(dir, 'qbo-check.js');
+      fs.symlinkSync(PROBE, link);
+      const r = probeProcess(POST, link);
+      expect({ status: r.status, stdout: r.stdout }).toEqual({ status: 1, stdout: 'refuse quickbooks\n' });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('a POST is refused: a line starting `refuse `, exit 1', () => {
     const r = probeProcess(['POST', 'https://quickbooks.api.intuit.com/v3/company/123/purchase?minorversion=75', '--realm', '123']);
     expect(r.status).toBe(1);
@@ -107,6 +127,25 @@ describe('runProbe in process (A2.2)', () => {
     expect(probe(['GET', S, ...base]).code).toBe(1);
   });
 
+  it.each([
+    ['a path realm that extends --realm', '1234', '123'],
+    ['a --realm that extends the path realm', '123', '1234'],
+  ])('TJ2: %s is refused quickbooks (the realm must match exactly)', (_what, pathRealm, realm) => {
+    const url = `https://quickbooks.api.intuit.com/v3/company/${pathRealm}/companyinfo/${pathRealm}?minorversion=75`;
+    expect(probe(['GET', url, '--realm', realm])).toEqual({ code: 1, out: ['refuse quickbooks'], err: [] });
+  });
+
+  it('TJ3: a single-dash word is a positional, not a flag', () => {
+    const r = probe(['GET', COMPANYINFO, '-realm', '123']);
+    expect(r.code).toBe(2);
+    expect(r.err[0]).toMatch(/\(too many arguments\)$/);
+  });
+
+  it('TJ5: an empty --stacks-url stands for an empty STACKS_QBO_URL: a Stacks request is refused stacks-config', () => {
+    expect(probe(['GET', S, '--realm', '123', '--stacks-url', ''])).toEqual({ code: 1, out: ['refuse stacks-config'], err: [] });
+    expect(probe(['GET', COMPANYINFO, '--realm', '123', '--stacks-url', ''])).toEqual({ code: 0, out: ['allow companyinfo'], err: [] });
+  });
+
   it('flags may come before the positionals', () => {
     expect(probe(['--realm', '123', 'GET', COMPANYINFO])).toEqual({ code: 0, out: ['allow companyinfo'], err: [] });
   });
@@ -135,8 +174,8 @@ describe('one decide (A2.3)', () => {
   const specifiers = (text: string) => [...text.matchAll(IMPORT_RE)].map((m) => m[1] ?? m[2] ?? m[3] ?? m[4]);
   const importsOf = (file: string) => specifiers(fs.readFileSync(path.join(ROOT, file), 'utf8'));
 
-  it('guard-probe.ts imports only ./clients/guard-decide.js', () => {
-    expect(importsOf('src/guard-probe.ts')).toEqual(['./clients/guard-decide.js']);
+  it('guard-probe.ts imports only node:fs and node:url (to find its own path) and ./clients/guard-decide.js', () => {
+    expect(importsOf('src/guard-probe.ts')).toEqual(['node:fs', 'node:url', './clients/guard-decide.js']);
   });
 
   it('guard-decide.ts imports nothing, so no network module', () => {
@@ -168,13 +207,13 @@ describe('the process entry line (T0 pattern)', () => {
       return true;
     }) as any);
     try {
-      process.argv = [argv[0], '/x/dist/guard-probe.js', 'GET', COMPANYINFO, '--realm', '123'];
+      process.argv = [argv[0], SRC_PROBE, 'GET', COMPANYINFO, '--realm', '123'];
       await jest.isolateModulesAsync(async () => {
         await import('../../../src/guard-probe.js');
       });
       expect(out).toEqual(['allow companyinfo\n']);
       expect(process.exitCode).toBe(0);
-      process.argv = [argv[0], '/x/src/guard-probe.ts', 'POST', COMPANYINFO, '--realm', '123'];
+      process.argv = [argv[0], SRC_PROBE, 'POST', COMPANYINFO, '--realm', '123'];
       out.length = 0;
       await jest.isolateModulesAsync(async () => {
         await import('../../../src/guard-probe.js');
@@ -197,7 +236,7 @@ describe('the process entry line (T0 pattern)', () => {
       return true;
     }) as any);
     try {
-      process.argv = [argv[0], '/x/dist/guard-probe.js'];
+      process.argv = [argv[0], SRC_PROBE];
       await jest.isolateModulesAsync(async () => {
         await import('../../../src/guard-probe.js');
       });
@@ -211,8 +250,54 @@ describe('the process entry line (T0 pattern)', () => {
     }
   });
 
-  it('importing the module under jest (argv[1] is jest) prints nothing', () => {
-    expect(/guard-probe\.[jt]s$/.test(process.argv[1] ?? '')).toBe(false);
+  it.each([
+    ['jest itself (an import)', () => process.argv[1]],
+    ['another file named guard-probe.js', (dir: string) => fs.writeFileSync(path.join(dir, 'guard-probe.js'), '') ?? path.join(dir, 'guard-probe.js')],
+    ['guard-probe.js.bak', () => `${PROBE}.bak`],
+    ['other-probe.js', () => path.join(ROOT, 'dist', 'other-probe.js')],
+    ['a missing file', () => path.join(ROOT, 'no-such-dir', 'guard-probe.ts')],
+  ] as Array<[string, (dir: string) => string]>)('TJ6: with argv[1] %s, importing the module runs nothing', async (_what, make) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-probe-'));
+    const argv = process.argv;
+    const exitCode = process.exitCode;
+    const writes: string[] = [];
+    const o = jest.spyOn(process.stdout, 'write').mockImplementation(((c: string) => (writes.push(String(c)), true)) as any);
+    const e = jest.spyOn(process.stderr, 'write').mockImplementation(((c: string) => (writes.push(String(c)), true)) as any);
+    try {
+      process.argv = [argv[0], make(dir), 'POST', COMPANYINFO, '--realm', '123'];
+      await jest.isolateModulesAsync(async () => {
+        await import('../../../src/guard-probe.js');
+      });
+      expect(writes).toEqual([]);
+      expect(process.exitCode).toBe(exitCode);
+    } finally {
+      o.mockRestore();
+      e.mockRestore();
+      process.argv = argv;
+      process.exitCode = exitCode;
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('isEntry: this file by real path, with or without .js, through a symlink; not another file, nothing, or a missing self', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-probe-'));
+    try {
+      const self = path.join(dir, 'guard-probe.js');
+      fs.writeFileSync(self, '');
+      expect(isEntry(self, self)).toBe(true);
+      expect(isEntry(path.join(dir, 'guard-probe'), self)).toBe(true);
+      if (process.platform !== 'win32') {
+        fs.symlinkSync(self, path.join(dir, 'qbo-check.js'));
+        expect(isEntry(path.join(dir, 'qbo-check.js'), self)).toBe(true);
+      }
+      fs.writeFileSync(path.join(dir, 'other.js'), '');
+      expect(isEntry(path.join(dir, 'other.js'), self)).toBe(false);
+      expect(isEntry(undefined, self)).toBe(false);
+      expect(isEntry('', self)).toBe(false);
+      expect(isEntry(self, path.join(dir, 'missing.js'))).toBe(false);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('with no argv[1] at all (node -e), the entry does not run', async () => {
