@@ -5,9 +5,10 @@ import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
 import { installStubNetwork, type StubCall, type StubAnswer } from '../../fakes/stub-network.js';
-import { ROOT } from '../../e2e/helpers.js';
+import { assertFreshBuild, ROOT } from '../../e2e/helpers.js';
 
 // Order matters: the trap, then the stub (so the backstop wraps the stub), then start.
+assertFreshBuild(); // the tools load from dist/ (npm run build first, as CI does)
 const trap = trapNetwork();
 const answerFor = (call: StubCall): StubAnswer => {
   const p = new URL(`https://x${call.path ?? '/'}`).pathname;
@@ -21,8 +22,8 @@ const net = installStubNetwork(answerFor);
 
 const REALM = '9990000000000002';
 const QuickBooks = createRequire(import.meta.url)('node-quickbooks');
-// 285's client seam: until 286, getInstance has no token source; here it gives a real client with a fake token.
-jest.unstable_mockModule('../../../src/clients/quickbooks-client.js', () => ({
+// 285's client seam (in the built dist/, which the tools below are loaded from): until 286, getInstance has no token source; here it gives a real client with a fake token.
+jest.unstable_mockModule('../../../dist/clients/quickbooks-client.js', () => ({
   QuickbooksClient: {
     getInstance: async () => new QuickBooks('id', 'secret', 'qbo-fake-' + 'token', false, REALM, false, false, null, '2.0', 'r'),
   },
@@ -35,12 +36,13 @@ const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
 const { InMemoryTransport } = await import('@modelcontextprotocol/sdk/inMemory.js');
 
-// The tool list as 285's src/index.ts builds it: every `./tools/*.tool.js` it imports, by the name it imports.
+// The tool list as 285's src/index.ts builds it, loaded from the build (dist/, what ships): the tools are upstream code this test
+// exercises but does not cover, so loading their sources would count them in the coverage report.
 const indexText = fs.readFileSync(path.join(ROOT, 'src', 'index.ts'), 'utf8');
 const toolImports = [...indexText.matchAll(/^import \{ (\w+) \} from "\.\/tools\/([\w-]+\.tool)\.js";$/gm)];
 const TOOLS: any[] = [];
 for (const [, name, file] of toolImports) {
-  const mod = await import(`../../../src/tools/${file}.js`);
+  const mod = await import(`../../../dist/tools/${file}.js`);
   TOOLS.push(mod[name]);
 }
 
