@@ -651,6 +651,44 @@ describe('task-2 pass 2: the guard transform, interceptor order, every instance 
     expect(net.calls).toHaveLength(0);
   });
 
+  it.each([
+    ['redefines', (self: any) => Object.defineProperty(self, 'adapter', { value: 'http', writable: true, configurable: true, enumerable: true })],
+    ['deletes', (self: any) => delete self.adapter],
+  ] as Array<[string, (self: any) => void]>)('TG5: a method getter that %s the pinned adapter sends nothing', async (_what, swap) => {
+    const t = function (this: any, d: unknown) {
+      Object.defineProperty(this, 'method', {
+        get: () => {
+          swap(this);
+          return 'post';
+        },
+        configurable: true,
+        enumerable: true,
+      });
+      return d;
+    };
+    await notSent(inCall(() => ax.request({ ...UPLOAD, transformRequest: [t] } as any)));
+  });
+
+  it.each([
+    ['method', 'qbo-guard: refused OTHER https://other.example.test/upload (transport)\n'],
+    ['url', 'qbo-guard: refused POST <unparsable url> (transport)\n'],
+  ] as Array<[string, string]>)('TG4: a swapped adapter with a %s getter that throws is still refused transport, not the raw error', async (key, line) => {
+    const t = function (this: any, d: unknown) {
+      this.adapter = 'http';
+      Object.defineProperty(this, key, {
+        get: () => {
+          throw new Error('boom-method');
+        },
+        configurable: true,
+        enumerable: true,
+      });
+      return d;
+    };
+    await refusedWith(inCall(() => ax.request({ ...UPLOAD, transformRequest: [t] } as any)), 'transport');
+    expect(net.calls).toHaveLength(0);
+    expect(stderr).toEqual([line]);
+  });
+
   it('TF1 (C): a method getter that swaps the adapter after the transforms sends nothing (the adapter is pinned)', async () => {
     const t = function (this: any, d: unknown) {
       Object.defineProperty(this, 'method', {
@@ -772,16 +810,16 @@ describe('task-2 pass 2: the guard transform, interceptor order, every instance 
 
   it('TF3 (mutants 10, 14): restore puts Axios.prototype.request back, and a stale reference to the guard request passes through', async () => {
     const proto = (ax as any).Axios.prototype;
-    const before = proto.request;
+    const before = proto._request;
     const own = jest.fn(async (c: any) => ({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: c }));
     const r = installGuard(createGuard(BASE));
-    const stale = proto.request;
+    const stale = proto._request;
     expect(stale).not.toBe(before);
     r();
-    expect(proto.request).toBe(before);
+    expect(proto._request).toBe(before);
     restoreGuard();
     try {
-      expect(proto.request.name).not.toMatch(/qboGuard/);
+      expect(proto._request.name).not.toMatch(/qboGuard/);
       const bare = new (ax as any).Axios({ adapter: own });
       await expect(stale.call(bare, { url: 'https://other.example.test/s' })).resolves.toMatchObject({ data: 'ok' });
     } finally {
@@ -789,6 +827,60 @@ describe('task-2 pass 2: the guard transform, interceptor order, every instance 
     }
     expect(own).toHaveBeenCalledTimes(1);
     expect(net.calls).toHaveLength(0);
+  });
+
+  it('TG1: an instance made before install, and a bare context calling _request, are refused transport', async () => {
+    restoreGuard();
+    const pre = ax.create();
+    restoreGuard = installGuard(guard);
+    await refusedWith(inCall(() => pre.request({ ...UPLOAD, adapter: 'http' } as any)), 'transport');
+    await refusedWith(inCall(() => (pre as any)({ ...UPLOAD, adapter: 'http' })), 'transport');
+    await refusedWith(inCall(() => new (ax as any).Axios({})._request({ ...UPLOAD, adapter: 'http' })), 'transport');
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it("TG6: after restore, create() on an instance made under the guard is axios' own again", async () => {
+    const own = jest.fn(async (c: any) => ({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: c }));
+    const made = ax.create();
+    restoreGuard();
+    try {
+      await expect(made.create({ adapter: own as any }).get('https://other.example.test/c')).resolves.toMatchObject({ data: 'ok' });
+    } finally {
+      restoreGuard = installGuard(guard);
+    }
+    expect(own).toHaveBeenCalledTimes(1);
+  });
+
+  it('TG7: a restore out of order throws and changes nothing; in order, each restores', async () => {
+    const g2 = createGuard(BASE);
+    const r2 = installGuard(g2);
+    expect(() => restoreGuard()).toThrow('qbo-guard: restore out of order');
+    expect(ax.defaults.adapter).toBe(g2.adapter);
+    await refusedWith(inCall(() => new (ax as any).Axios({}).request({ ...UPLOAD, adapter: 'http' })), 'transport');
+    r2();
+    expect(ax.defaults.adapter).toBe(guard.adapter);
+    createGuard(BASE);
+    await inCall(() => ax.get(P));
+    expect(net.calls).toHaveLength(1);
+  });
+
+  it('TG3: decide and the wire read one snapshot of the headers, whatever toJSON returns', async () => {
+    let lists = 0;
+    class Shifty extends (ax as any).AxiosHeaders {
+      toJSON() {
+        const all: Record<string, string> = { Accept: 'application/json', 'X-Api-Key': 'crossed' };
+        return new Proxy(all, {
+          ownKeys: (target) => (lists++ === 0 ? ['Accept'] : Reflect.ownKeys(target)),
+        });
+      }
+    }
+    const t = function (this: any, d: unknown) {
+      this.headers = new Shifty();
+      return d;
+    };
+    await inCall(() => ax.get(P, { transformRequest: [t] } as any));
+    expect(net.calls).toHaveLength(1);
+    expect(Object.keys(net.calls[0].headers ?? {}).map((k) => k.toLowerCase())).not.toContain('x-api-key');
   });
 
   it('TF4: the headers sent are the ones decide saw, read once', async () => {

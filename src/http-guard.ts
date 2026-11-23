@@ -130,7 +130,8 @@ const ownProp = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o
  * caller can no longer suppress an axios default that way (`User-Agent: false`); node-quickbooks sets none to false.
  */
 function headerObject(headers: unknown): Record<string, unknown> {
-  return guardedAxios().AxiosHeaders.from(headers as any).toJSON() as Record<string, unknown>;
+  // A fresh plain object of the entries, read once: decide and the wire see one snapshot, whatever toJSON returned.
+  return Object.fromEntries(Object.entries(guardedAxios().AxiosHeaders.from(headers as any).toJSON() as object));
 }
 
 export type Guard = { adapter: (config: any) => Promise<any> };
@@ -201,24 +202,27 @@ function named(args: unknown[]): { method: unknown; url: unknown } {
 }
 
 /**
- * Sets the guard as the CommonJS instance's adapter and guards that instance, every instance `create()` makes from a
- * guarded one, and any other Axios context (a bare `new axios.Axios()`, which has no guard, is refused). Idempotent;
- * returns restore.
+ * Sets the guard as the CommonJS instance's adapter and guards that instance and every instance `create()` makes from a
+ * guarded one; any other Axios context (a bare `new axios.Axios()`, an instance made before install) is refused, since
+ * every request path, bound or not, goes through `Axios.prototype._request`. Idempotent; returns restore, and restores
+ * must run in reverse order of install (an out-of-order restore throws and changes nothing).
  *
  * Guarding an instance adds the identity interceptor first, so under axios' (default) legacy order it runs last of
  * the request interceptors; a request asking for the other order is refused. The interceptor replaces the request's
  * transformRequest with one function of the guard's: it runs a private copy of the given transforms on the config
  * axios dispatches, then checks `adapter` there is a data property holding the guard and pins it (non-writable,
  * non-configurable), so nothing axios runs after it (a `method` getter, say) can change what adapter is read.
+ *
+ * This holds against request config. Code that holds the instance's interceptor manager (it could add an interceptor
+ * whose runWhen or accessors fool the order, or simply eject or clear the guard's) is past it: that is the backstop's.
  */
 export function installGuard(guard: Guard): () => void {
   const existing = installed.get(guard);
   if (existing !== undefined) return existing;
   const ax = guardedAxios();
   const previous = ax.defaults.adapter;
-  const previousCreate = ax.create;
-  const proto = (ax as any).Axios.prototype as { request: (...a: unknown[]) => Promise<unknown> };
-  const previousRequest = proto.request;
+  const proto = (ax as any).Axios.prototype as { _request: (...a: unknown[]) => Promise<unknown> };
+  const previousRequest = proto._request;
   let active = true;
   const managers = new WeakSet<object>();
   const ejects: Array<() => void> = [];
@@ -240,7 +244,20 @@ export function installGuard(guard: Guard): () => void {
         if (d === undefined || d.value !== guard.adapter) throw new Error("adapter");
         Object.defineProperty(this, "adapter", { value: guard.adapter, writable: false, configurable: false, enumerable: true });
       } catch {
-        throw refusal(this.method, this.url, "transport");
+        let method: unknown;
+        let url: unknown;
+        // Log what can be read: each field on its own, a throwing getter leaves only that one out.
+        try {
+          method = this.method;
+        } catch {
+          method = undefined;
+        }
+        try {
+          url = this.url;
+        } catch {
+          url = undefined;
+        }
+        throw refusal(method, url, "transport");
       }
       return out;
     };
@@ -265,24 +282,25 @@ export function installGuard(guard: Guard): () => void {
 
   ax.defaults.adapter = guard.adapter as any;
   guardInstance(ax);
-  // An Axios context nobody guarded (`new axios.Axios(config)`, or an instance made by a create() saved before start)
-  // has no identity interceptor: its requests are refused.
-  proto.request = function qboGuardRequest(this: any, ...args: unknown[]) {
+  // An Axios context nobody guarded (`new axios.Axios(config)`, or an instance made before install) has no identity
+  // interceptor: its requests are refused. `request` (also bound into each instance) and every alias call `_request`.
+  const wrapper = function qboGuardRequest(this: any, ...args: unknown[]) {
     if (active && !managers.has(this?.interceptors?.request)) {
       const n = named(args);
       return Promise.reject(refusal(n.method, n.url, "transport"));
     }
     return previousRequest.apply(this, args);
   };
+  proto._request = wrapper;
 
   const restore = () => {
     if (installed.get(guard) !== restore) return;
+    if (proto._request !== wrapper) throw new Error("qbo-guard: restore out of order");
     installed.delete(guard);
     active = false;
     for (const undo of ejects.reverse()) undo();
     ax.defaults.adapter = previous;
-    ax.create = previousCreate;
-    proto.request = previousRequest;
+    proto._request = previousRequest;
   };
   installed.set(guard, restore);
   return restore;
