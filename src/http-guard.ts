@@ -552,19 +552,55 @@ export function installBackstop(deps?: { modules?: { http: object; https: object
 const has = (env: NodeJS.ProcessEnv, key: string) => Object.prototype.hasOwnProperty.call(env, key);
 
 /** Node splits NODE_OPTIONS on whitespace and drops quotes around a token. */
+/**
+ * NODE_OPTIONS split as Node splits it: whitespace outside double quotes ends a token, quotes are dropped wherever they
+ * stand, and inside quotes a backslash takes the next character literally.
+ */
 function nodeOptionTokens(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(/\s+/)
-    .filter((t) => t !== "")
-    .map((t) => t.replace(/^"(.*)"$/, "$1"));
+  const tokens: string[] = [];
+  let token = "";
+  let open = false;
+  let quoted = false;
+  const text = value ?? "";
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted && c === "\\" && i + 1 < text.length) {
+      token += text[++i];
+      open = true;
+    } else if (c === '"') {
+      quoted = !quoted;
+      open = true;
+    } else if (!quoted && /\s/.test(c)) {
+      if (open) tokens.push(token);
+      token = "";
+      open = false;
+    } else {
+      token += c;
+      open = true;
+    }
+  }
+  if (open) tokens.push(token);
+  return tokens;
 }
+
+/** An option's name as Node matches it: the part before `=`, with `_` and `-` the same after the leading `--`. */
+function optionName(token: string): string | undefined {
+  if (!token.startsWith("--")) return undefined;
+  const eq = token.indexOf("=");
+  return "--" + (eq === -1 ? token.slice(2) : token.slice(2, eq)).replace(/_/g, "-");
+}
+
+/**
+ * Options that turn on Node's env proxy for https.globalAgent: the flag in any spelling or with any value, and the
+ * config-file flags, since a config file can set it (`nodeOptions: { "use-env-proxy": true }`).
+ */
+const PROXY_OPTIONS = ["--use-env-proxy", "--experimental-config-file", "--experimental-default-config-file"];
 
 /** Contract §3's transport refusals. Pure: reads only its arguments, and names a key, never a value. */
 export function checkStartEnv(env: NodeJS.ProcessEnv, execArgv: readonly string[]): { ok: true } | { ok: false; key: string } {
   if (has(env, "NODE_USE_ENV_PROXY")) return { ok: false, key: "NODE_USE_ENV_PROXY" };
-  if (execArgv.includes("--use-env-proxy") || nodeOptionTokens(env.NODE_OPTIONS).includes("--use-env-proxy")) {
-    return { ok: false, key: "--use-env-proxy" };
-  }
+  const names = [...execArgv, ...nodeOptionTokens(env.NODE_OPTIONS)].map(optionName);
+  for (const option of PROXY_OPTIONS) if (names.includes(option)) return { ok: false, key: option };
   if (env.NODE_TLS_REJECT_UNAUTHORIZED === "0") return { ok: false, key: "NODE_TLS_REJECT_UNAUTHORIZED" };
   if (has(env, "NODE_EXTRA_CA_CERTS")) return { ok: false, key: "NODE_EXTRA_CA_CERTS" };
   return { ok: true };

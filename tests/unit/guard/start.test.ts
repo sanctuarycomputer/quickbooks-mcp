@@ -56,6 +56,19 @@ describe('checkStartEnv (A1.10(a))', () => {
     [{}, ['--use-env-proxy'], '--use-env-proxy'],
     [{ NODE_OPTIONS: '--use-env-proxy' }, [], '--use-env-proxy'],
     [{ NODE_OPTIONS: '--max-old-space-size=100   "--use-env-proxy"' }, [], '--use-env-proxy'],
+    // TH1: every spelling Node 24 accepts
+    [{}, ['--use_env_proxy'], '--use-env-proxy'],
+    [{}, ['--use-env-proxy=1'], '--use-env-proxy'],
+    [{}, ['--use-env-proxy=true'], '--use-env-proxy'],
+    [{ NODE_OPTIONS: '--use_env_proxy' }, [], '--use-env-proxy'],
+    [{ NODE_OPTIONS: '--use-env-proxy=1' }, [], '--use-env-proxy'],
+    [{ NODE_OPTIONS: '--use-env"-proxy"' }, [], '--use-env-proxy'],
+    [{ NODE_OPTIONS: '"--use-env\\-proxy"' }, [], '--use-env-proxy'],
+    [{ NODE_OPTIONS: '--a "b c" --use-env-proxy' }, [], '--use-env-proxy'],
+    // TH3: a config file can turn it on
+    [{}, ['--experimental-config-file=node.config.json'], '--experimental-config-file'],
+    [{}, ['--experimental-config-file', 'x.json'], '--experimental-config-file'],
+    [{ NODE_OPTIONS: '--experimental_default_config_file' }, [], '--experimental-default-config-file'],
     [{ NODE_TLS_REJECT_UNAUTHORIZED: '0' }, [], 'NODE_TLS_REJECT_UNAUTHORIZED'],
     [{ NODE_EXTRA_CA_CERTS: '/nonexistent' }, [], 'NODE_EXTRA_CA_CERTS'],
     [{ NODE_EXTRA_CA_CERTS: '' }, [], 'NODE_EXTRA_CA_CERTS'],
@@ -68,7 +81,9 @@ describe('checkStartEnv (A1.10(a))', () => {
     [{ NODE_TLS_REJECT_UNAUTHORIZED: '1' }, []],
     [{ NODE_TLS_REJECT_UNAUTHORIZED: '' }, []],
     [{ NODE_OPTIONS: '--use-env-proxy-not --max-old-space-size=100' }, []],
-    [{}, ['--use-env-proxy=1', '--experimental-vm-modules']],
+    [{}, ['--experimental-vm-modules', '--no-use-env-proxy', '-use-env-proxy', 'use-env-proxy']],
+    [{ NODE_OPTIONS: '"--use-env-proxy-not" --title="--use-env-proxy"' }, []],
+    [{ NODE_OPTIONS: '"a b"  ""' }, []],
     [{ node_use_env_proxy: '1', PATH: '/bin' }, []],
   ] as Array<[NodeJS.ProcessEnv, string[]]>)('%j %j → ok', (env, argv) => {
     expect(checkStartEnv(env, argv)).toEqual({ ok: true });
@@ -104,12 +119,37 @@ describe('secureStart with an axios that cannot be resolved (A1.10(d), in proces
     }],
     ['returns nothing', () => undefined],
     ['returns an object without getAdapter', () => ({ getUri: () => '' })],
+    ['returns an object without getUri', () => ({ getAdapter: () => undefined })],
   ] as Array<[string, () => unknown]>)('resolveAxios %s: install failed, nothing replaced', (_what, resolveAxios) => {
     const before = [https.request, https.get, http.request, http.get, (globalThis as any).fetch, guardedAxios().defaults.adapter];
     expect(() => secureStart({}, [], { resolveAxios })).toThrow(new Error('qbo-guard: install failed'));
     expect([https.request, https.get, http.request, http.get, (globalThis as any).fetch, guardedAxios().defaults.adapter]).toEqual(before);
     expect(() => defaultCallScope()).toThrow('qbo-guard: not started');
     expect(() => configureGuard({})).toThrow('qbo-guard: not started');
+  });
+});
+
+describe('secureStart when the backstop fails after the guard is in (TH4, all or nothing in process)', () => {
+  it('install failed, and the guard, its context and the scope are all put back', () => {
+    const ax = guardedAxios();
+    const before = [ax.defaults.adapter, https.request, http.request];
+    const fetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      get() {
+        throw new Error('no fetch');
+      },
+    });
+    try {
+      expect(() => secureStart({}, [])).toThrow(new Error('qbo-guard: install failed'));
+    } finally {
+      if (fetchDescriptor) Object.defineProperty(globalThis, 'fetch', fetchDescriptor);
+      else delete (globalThis as any).fetch;
+    }
+    expect([ax.defaults.adapter, https.request, http.request]).toEqual(before);
+    expect((https.request as any)[BACKSTOP_MARK]).toBeUndefined();
+    expect(() => configureGuard({})).toThrow('qbo-guard: not started');
+    expect(() => defaultCallScope()).toThrow('qbo-guard: not started');
   });
 });
 
@@ -136,6 +176,15 @@ describe('after secureStart (P2)', () => {
       expect((ax.defaults.adapter as any).name).toBe('qboGuardAdapter');
       expect((https.request as any)[BACKSTOP_MARK]).toBe(true);
       expect((http.get as any)[BACKSTOP_MARK]).toBe(true);
+    });
+
+    it("TH2: the started guard holds QuickBooks to the call's realm: another realm, and no realm, are refused", async () => {
+      const other = P.replace(REALM, '9341450000000001');
+      expect(other).not.toBe(P);
+      await expect(inCall(() => ax.get(other))).rejects.toMatchObject({ name: 'GuardRefusedError', rule: 'quickbooks' });
+      const scope = defaultCallScope();
+      await expect(scope.run(() => ax.get(P))).rejects.toMatchObject({ name: 'GuardRefusedError', rule: 'quickbooks' });
+      expect(net.calls).toHaveLength(0);
     });
 
     it('a second start fails and changes nothing', () => {
@@ -261,6 +310,8 @@ describe('the built entry (A4.1, A1.10(c), A1.10(d))', () => {
     ['NODE_USE_ENV_PROXY=', [], { NODE_USE_ENV_PROXY: '' }, 'NODE_USE_ENV_PROXY', ''],
     ['node --use-env-proxy', ['--use-env-proxy'], {}, '--use-env-proxy', ''],
     ['NODE_OPTIONS=--use-env-proxy', [], { NODE_OPTIONS: '--use-env-proxy' }, '--use-env-proxy', ''],
+    ['node --use_env_proxy (TH1)', ['--use_env_proxy'], {}, '--use-env-proxy', ''],
+    ['NODE_OPTIONS=--use-env-proxy=1 (TH1)', [], { NODE_OPTIONS: '--use-env-proxy=1' }, '--use-env-proxy', ''],
     ['NODE_TLS_REJECT_UNAUTHORIZED=0', [], { NODE_TLS_REJECT_UNAUTHORIZED: '0' }, 'NODE_TLS_REJECT_UNAUTHORIZED', ''],
     ['NODE_EXTRA_CA_CERTS=/nonexistent', [], { NODE_EXTRA_CA_CERTS: `/nonexistent-${sentinel}` }, 'NODE_EXTRA_CA_CERTS', `/nonexistent-${sentinel}`],
   ] as Array<[string, string[], Record<string, string>, string, string]>)(
