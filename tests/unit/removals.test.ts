@@ -1,4 +1,5 @@
 // Sanctuary Computer (quickbooks-mcp-285): the removed sign-in flow, token store, upload and switches stay gone.
+// Changed by Sanctuary Computer (quickbooks-mcp-291): src/http-guard.ts may load http, https and http2 (it pins and wraps them), and nothing else on the network list.
 import { describe, it, expect } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
@@ -59,6 +60,16 @@ function moduleLoad(names: string): RegExp {
 }
 
 const NETWORK_IMPORT = moduleLoad('open|http|https|http2|net|tls|dns|dgram|child_process|worker_threads');
+// The guard (quickbooks-mcp-291) is the one file that loads network modules, and only these three, each by its node: name.
+const GUARD_FILE = 'src/http-guard.ts';
+const GUARD_LOADS = ['"node:http"', '"node:https"', '"node:http2"'];
+
+/** The network-module loads a file's text spells; for the guard file only, its own three and axios' adapter name (`getAdapter("http")`) are left out. */
+function networkLoads(f: string, text: string): string[] {
+  const t = f === GUARD_FILE ? text.split('getAdapter("http")').join('getAdapter()') : text;
+  const all = t.match(new RegExp(NETWORK_IMPORT.source, 'g')) ?? [];
+  return f === GUARD_FILE ? all.filter((m) => !GUARD_LOADS.includes(m)) : all;
+}
 
 const KEY_NAMES = ['CLIENT_ID', 'CLIENT_SECRET', 'REFRESH_TOKEN', 'REALM_ID'].map((k) => 'QUICKBOOKS_' + k);
 
@@ -93,7 +104,7 @@ describe('removals', () => {
     for (const f of files) {
       const text = read(f);
       for (const s of SWEPT_TEXT) if (text.includes(s)) hits.push(`${f}: ${s}`);
-      if (NETWORK_IMPORT.test(text)) hits.push(`${f}: network module import ${text.match(NETWORK_IMPORT)![0]}`);
+      for (const m of networkLoads(f, text)) hits.push(`${f}: network module import ${m}`);
       if (text.includes('writeFileSync') && f !== 'src/tools/get-invoice-pdf.tool.ts') hits.push(`${f}: writeFileSync`);
       text.split('\n').forEach((line, i) => {
         for (const k of KEY_NAMES) {
@@ -104,6 +115,18 @@ describe('removals', () => {
       });
     }
     expect(hits).toEqual([]);
+  });
+
+  it("R3: the guard's exemption covers its three modules in that file only", () => {
+    expect(networkLoads(GUARD_FILE, 'import a from "node:https"; import b from "node:http"; import c from "node:http2";')).toEqual([]);
+    expect(networkLoads(GUARD_FILE, 'import a from "node:net"; import b from "https"; import c from \'node:http\';')).toEqual([
+      '"node:net"',
+      '"https"',
+      "'node:http'",
+    ]);
+    expect(networkLoads(GUARD_FILE, 'ax.getAdapter("http"); require("http")')).toEqual(['"http"']);
+    expect(networkLoads('src/index.ts', 'import a from "node:https"; ax.getAdapter("http")')).toEqual(['"node:https"', '"http"']);
+    expect(read(GUARD_FILE)).toContain('"node:https"');
   });
 
   it('A7: no QUICKBOOKS_DISABLE text in src', () => {
