@@ -293,6 +293,18 @@ const isOptionsObject = (v: unknown): v is object =>
   typeof v === "object" && v !== null && !(v instanceof URL) && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null);
 
 /**
+ * What Node gets for a read call: the compared values, always the guard's agent, the lenient parser off, and every
+ * connection key set own and undefined (an own key shadows a polluted Object.prototype, as axios does for its keys).
+ */
+function nodeOptions(hostname: string, port: string, path: string, method: string): Record<string, unknown> {
+  const send: Record<string, unknown> = { protocol: "https:", hostname, port: port === "" ? 443 : Number(port), path, method };
+  for (const key of UNSET_KEYS) send[key] = undefined;
+  send.insecureHTTPParser = false;
+  send.agent = AGENT;
+  return send;
+}
+
+/**
  * Reads a call to https.request/get as one of two forms: `(url[, callback])` with an https URL and no userinfo, or
  * `(options[, callback])` with a plain object. `(url, options)` and anything else are not read (refused). The returned
  * `send` is a fresh object of exactly the compared values, which is all Node gets.
@@ -307,7 +319,7 @@ function requested(args: unknown[]): Reading {
     if (u.protocol !== "https:" || u.username !== "" || u.password !== "") throw new Unreadable("url");
     const hostname = u.hostname; // an IPv6 host keeps its brackets, as the guard's ticket does (it allows no IPv6 host)
     const path = u.pathname + u.search;
-    return { method: "GET", hostname, port: u.port, path, send: { protocol: "https:", hostname, port: u.port === "" ? 443 : Number(u.port), path, method: "GET" } };
+    return { method: "GET", hostname, port: u.port, path, send: nodeOptions(hostname, u.port, path, "GET") };
   }
   if (!isOptionsObject(a)) throw new Unreadable("options");
   const o = snapshot(a);
@@ -341,9 +353,8 @@ function requested(args: unknown[]): Reading {
       headers[k] = v;
     }
   }
-  const send: Record<string, unknown> = { protocol: "https:", hostname: hostValue, port: port === "" ? 443 : Number(port), path, method };
+  const send = nodeOptions(hostValue, port, path, method);
   if (headers !== undefined) send.headers = headers;
-  if (agent !== undefined) send.agent = agent;
   for (const key of SEND_KEYS) if (o.get(key) !== undefined) send[key] = o.get(key);
   return { method, hostname: hostValue, port, path, send };
 }
@@ -380,13 +391,16 @@ function backstopRefusal(protocol: string, args: unknown[], reading?: Reading): 
   try {
     if (reading !== undefined) {
       method = reading.method;
-      target = `https://${reading.hostname}${reading.port === "" ? "" : `:${reading.port}`}${reading.path}`;
+      const joined = `https://${reading.hostname}${reading.port === "" ? "" : `:${reading.port}`}${reading.path}`;
+      // Print it only if it parses back to the host that was read (an `@` in the port or host would move it).
+      target = new URL(joined).hostname === reading.hostname ? joined : "";
     } else {
       target = describeTarget(protocol, args);
       // The method a call names in its options object (first or second argument), else GET for a bare URL.
       const objects = args.slice(0, 2).filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null && !(x instanceof URL));
       const named = objects.map((x) => x.method).find((m) => typeof m === "string");
-      method = typeof named === "string" ? named : typeof args[0] === "string" || args[0] instanceof URL ? "GET" : "OTHER";
+      // Node's default method is GET, for a bare URL and for an options object that names none.
+      method = typeof named === "string" ? named : objects.length > 0 || typeof args[0] === "string" || args[0] instanceof URL ? "GET" : "OTHER";
     }
   } catch {
     // keep OTHER <unparsable url>

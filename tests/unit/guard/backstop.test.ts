@@ -69,6 +69,8 @@ const TICKET = { method: 'GET', hostname: 'quickbooks.api.intuit.com', port: '',
 const OPTIONS = { method: 'GET', hostname: 'quickbooks.api.intuit.com', port: '', path: PATH };
 /** https.request as the backstop sees it, typed loosely: the cases pass option objects Node's types reject. */
 const R = (...a: unknown[]) => (https.request as (...x: unknown[]) => any)(...a);
+/** The guard's own agent (not exported): an https.Agent with rejectUnauthorized true. */
+const GUARD_AGENT = expect.objectContaining({ options: expect.objectContaining({ rejectUnauthorized: true }) });
 const refusedBackstop = (fn: () => unknown) => {
   let err: unknown;
   try {
@@ -151,8 +153,8 @@ describe('the backstop in place (A1.8)', () => {
     runIssued(TICKET, () => (f.https.request as any)(P));
     restore();
     expect(seen).toEqual([
-      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', headers: Object.assign(Object.create(null), { Accept: 'application/json' }), family: 4 }, cb],
-      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET' }],
+      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', insecureHTTPParser: false, agent: GUARD_AGENT, headers: Object.assign(Object.create(null), { Accept: 'application/json' }), family: 4 }, cb],
+      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', insecureHTTPParser: false, agent: GUARD_AGENT }],
     ]);
     expect((seen[0] as unknown[])[0]).not.toBe(caller);
   });
@@ -353,7 +355,7 @@ describe('installBackstop on given modules (A1.10(d), its backstop arm)', () => 
     const out = runIssued(TICKET, () => (f.https.request as any).call(f.https, { ...OPTIONS }));
     restore();
     expect(out).toBe('sent');
-    expect(seen).toEqual([f.https, { protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET' }]);
+    expect(seen).toEqual([f.https, { protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', insecureHTTPParser: false, agent: GUARD_AGENT }]);
   });
 });
 
@@ -369,5 +371,75 @@ describe('ESM imports under plain Node (A1.8, syncBuiltinESMExports)', () => {
       status: 0,
       stdout: 'named: refused\nnamespace: refused\nafter restore, named: original\nafter restore, namespace: original\n',
     });
+  });
+});
+
+describe('task-3 pass 2: what Node gets, and cases only one condition decides (TE1-TE5)', () => {
+  /** Installs on fakes, runs fn under the ticket, returns what the replaced https.request got. */
+  const sent = (call: (req: (...a: unknown[]) => unknown) => unknown, ticket = TICKET) => {
+    const seen: unknown[][] = [];
+    const f = { https: { request: (...a: unknown[]) => (seen.push(a), 'sent') } as Record<string, unknown>, http: {}, http2: {}, global: {} };
+    const restore = installBackstop({ modules: { http: f.http, https: f.https, http2: f.http2 }, global: f.global });
+    try {
+      runIssued(ticket, () => call(f.https.request as (...a: unknown[]) => unknown));
+    } finally {
+      restore();
+    }
+    return seen;
+  };
+
+  it('TE1, TE5: Node always gets the guard agent, the strict parser, and every connection key as an own undefined', () => {
+    const [[viaUrl], [viaOptions]] = [...sent((req) => req(P)), ...sent((req) => req({ ...OPTIONS }))] as unknown as Array<[Record<string, unknown>]>;
+    for (const o of [viaUrl, viaOptions]) {
+      expect(o.agent).toBeInstanceOf(https.Agent);
+      expect(o.agent).not.toBe(https.globalAgent);
+      expect((o.agent as any).options.rejectUnauthorized).toBe(true);
+      expect(o.insecureHTTPParser).toBe(false);
+      for (const k of ['createConnection', 'lookup', 'socketPath', 'defaultPort', 'localAddress', 'servername', 'setHost', 'rejectUnauthorized', 'ca', 'checkServerIdentity']) {
+        expect({ k, own: Object.prototype.hasOwnProperty.call(o, k), value: o[k] }).toEqual({ k, own: true, value: undefined });
+      }
+    }
+  });
+
+  it("TE2: the headers Node gets are a copy, and timeout and signal pass through", () => {
+    const headers = { Accept: 'application/json' };
+    const signal = new AbortController().signal;
+    const [[o]] = sent((req) => req({ ...OPTIONS, headers, timeout: 5, signal })) as unknown as Array<[Record<string, unknown>]>;
+    expect(o.headers).not.toBe(headers);
+    expect(o.headers).toEqual(Object.assign(Object.create(null), headers));
+    expect(o.timeout).toBe(5);
+    expect(o.signal).toBe(signal);
+  });
+
+  it.each([
+    ['a URL with a username only', () => R(`https://u@quickbooks.api.intuit.com${PATH}`)],
+    ['a URL with a password only', () => R(`https://:p@quickbooks.api.intuit.com${PATH}`)],
+    ['localAddress', () => R({ ...OPTIONS, localAddress: '127.0.0.1' })],
+    ['setHost', () => R({ ...OPTIONS, setHost: false })],
+    ['hostname another host, host the ticket host (hostname wins)', () => R({ ...OPTIONS, hostname: 'evil.example.test', host: 'quickbooks.api.intuit.com' })],
+    ['a boolean port', () => R({ ...OPTIONS, port: true })],
+  ] as Array<[string, () => unknown]>)('TE3: under the ticket, %s is refused', (_what, call) => {
+    runIssued(TICKET, () => refusedBackstop(call));
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it.each([
+    ['an unknown key holding undefined', { localPort: undefined }],
+    ['auth null', { auth: null }],
+    ['hostname the ticket host, host another (hostname wins)', { host: 'evil.example.test' }],
+  ] as Array<[string, Record<string, unknown>]>)('TE3: under the ticket, %s goes through', (_what, extra) => {
+    runIssued(TICKET, () => R({ ...OPTIONS, ...extra }).end());
+    expect(net.calls.map((c) => c.hostname)).toEqual(['quickbooks.api.intuit.com']);
+  });
+
+  it('TE4: a refused call that names no method logs GET (Node\'s default), and a read host an @ would move is not printed', () => {
+    runIssued(TICKET, () => refusedBackstop(() => R({ hostname: 'quickbooks.api.intuit.com', path: '/other' })));
+    runIssued(TICKET, () => refusedBackstop(() => R({ hostname: 'quickbooks.api.intuit.com', port: 'x@evil.example.test', path: PATH })));
+    runIssued(TICKET, () => refusedBackstop(() => R(P, { path: '/x' })));
+    expect(stderr).toEqual([
+      'qbo-guard: refused GET https://quickbooks.api.intuit.com/other (backstop)\n',
+      'qbo-guard: refused GET <unparsable url> (backstop)\n',
+      'qbo-guard: refused GET https://quickbooks.api.intuit.com/x (backstop)\n',
+    ]);
   });
 });
