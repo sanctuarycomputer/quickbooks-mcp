@@ -15,18 +15,14 @@
         "watch": "tsc --watch",
         "lint:fix": "eslint --fix",
         "lint": "eslint .",
-        "auth": "node dist/auth-server.js",
         "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
         "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage"
     },
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.26.0",
-        "dotenv": "^16.4.7",
-        "intuit-oauth": "^4.2.5",
+        "@modelcontextprotocol/sdk": "1.32.2",
         "node-quickbooks": "^2.0.43",
-        "open": "^9.1.0",
-        "zod": "^3.24.2"
+        "zod": "4.6.7"
     },
     "devDependencies": {
         "@eslint/js": "^9.22.0",
@@ -48,6 +44,8 @@
             "fast-xml-parser": "^5.10.1",
             "underscore": "^1.13.8",
             "uuid": "11.1.1"
-        }
+        },
+        "axios": "1.21.1",
+        "follow-redirects": "1.16.3"
     }
 }

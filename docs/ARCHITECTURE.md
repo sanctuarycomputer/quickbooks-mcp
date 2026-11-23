@@ -1,3 +1,4 @@
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285): describes the read-only fork. -->
 # Architecture Documentation
 
 This document explains the architecture, design decisions, and code patterns used in the QuickBooks Online MCP Server.
@@ -6,6 +7,7 @@ This document explains the architecture, design decisions, and code patterns use
 
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
+- [Read-only fork](#read-only-fork)
 - [Directory Structure](#directory-structure)
 - [Core Components](#core-components)
 - [Handler Pattern](#handler-pattern)
@@ -18,17 +20,14 @@ This document explains the architecture, design decisions, and code patterns use
 
 ## Overview
 
-The QuickBooks Online MCP Server is a Model Context Protocol (MCP) server that exposes QuickBooks Online API functionality as tools that can be invoked by Claude Code and other MCP-compatible clients.
+This fork of the QuickBooks Online MCP Server is a read-only Model Context Protocol (MCP) server. It exposes a fixed list of QuickBooks Online read tools (reports and searches) to Claude Code and other MCP-compatible clients. See [Read-only fork](#read-only-fork).
 
 ### Key Metrics
 
 | Metric | Value |
 |--------|-------|
-| Total Tools | 143 |
-| Entity Types | 29 |
-| Financial Reports | 11 |
-| Handler Files | 87 |
-| Test Coverage | 100% |
+| Registered tools | 32 (31 allowlisted read tools + `qbo_companies`) |
+| Server mode | read only |
 
 ---
 
@@ -56,11 +55,8 @@ The QuickBooks Online MCP Server is a Model Context Protocol (MCP) server that e
 │  │                      Handlers                            │    │
 │  │            (src/handlers/*.handler.ts)                   │    │
 │  │                                                          │    │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │    │
-│  │  │    Create    │  │     Get      │  │    Update    │   │    │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘   │    │
 │  │  ┌──────────────┐  ┌──────────────┐                     │    │
-│  │  │    Delete    │  │    Search    │                     │    │
+│  │  │     Get      │  │    Search    │                     │    │
 │  │  └──────────────┘  └──────────────┘                     │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                │                                 │
@@ -70,9 +66,8 @@ The QuickBooks Online MCP Server is a Model Context Protocol (MCP) server that e
 │  │               QuickBooks Client                          │    │
 │  │           (src/clients/quickbooks-client.ts)             │    │
 │  │                                                          │    │
-│  │  • OAuth 2.0 Token Management                           │    │
-│  │  • Token Refresh                                         │    │
-│  │  • Environment Configuration                             │    │
+│  │  • No sign-in; getInstance() rejects                     │    │
+│  │  • Token source arrives in ticket 286                    │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                 │
@@ -86,26 +81,50 @@ The QuickBooks Online MCP Server is a Model Context Protocol (MCP) server that e
 
 ---
 
+## Read-only fork
+
+This fork registers read tools only.
+
+**The allowlist.** `READ_ALLOWLIST` in `src/allowlist.ts` lists 31 tool names (`get_*` reports and `search_*` queries). `COMPANIES_TOOL` is `qbo_companies`, a stub that answers a fork error until ticket 286. Together that is 32 registered tools.
+
+**`startReadServer(env, server, tools)`** does these steps in order; steps 1 and 2 finish before any tool registers:
+
+1. Refuse if any of the four refused keys is in the environment.
+2. Check the tool list against the allowlist: a duplicate name, a missing name or an unlisted name throws.
+3. Register the tools.
+
+Every failure is one error, `refused to start: <reason>`.
+
+**Refused keys.** `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_REFRESH_TOKEN` and `QUICKBOOKS_REALM_ID`. The start is refused when a key is present at all, even with an empty value. The value is never read or printed.
+
+**Removed.** The OAuth sign-in flow, the auth server, the token store with its refresh and rotation, the switches that disabled write, update and delete tools, the attachable upload (its tool and handler) and the attachable file source.
+
+**Unregistered, not removed.** The other create, update and delete tools and their handlers are still in `src/tools/` and `src/handlers/` as upstream wrote them, but nothing registers them: `src/index.ts` passes only the allowlisted tools to `startReadServer`, and an unlisted name refuses the start.
+
+**Still to come.**
+- Ticket 286 adds the Stacks token client: `getInstance` gets a token from Stacks, tools take a `company` argument, and `qbo_companies` gives a real answer. It documents its new configuration keys.
+- Ticket 291 adds the HTTP guard: every QuickBooks request goes through one guarded client, and the server refuses at start to run with proxy or TLS-weakening settings.
+
+---
+
 ## Directory Structure
 
 ```
 src/
 ├── index.ts                    # MCP server entry point
-│                               # - Registers all tools
+│                               # - Registers the 31 allowlisted tools and the stub, through startReadServer
 │                               # - Handles MCP protocol communication
 │
 ├── clients/
 │   └── quickbooks-client.ts    # QuickBooks API client wrapper
-│                               # - OAuth token management
-│                               # - Authentication flow
-│                               # - Environment switching (sandbox/production)
+│                               # - No sign-in; getInstance() rejects with
+│                               #   "no QuickBooks token source" until 286
 │
-├── handlers/                   # Business logic layer (87 files)
-│   ├── create-quickbooks-*.ts  # Create operations (14 files)
-│   ├── get-quickbooks-*.ts     # Get/Read operations (25 files)
-│   ├── update-quickbooks-*.ts  # Update operations (14 files)
-│   ├── delete-quickbooks-*.ts  # Delete operations (14 files)
-│   └── search-quickbooks-*.ts  # Search operations (20 files)
+├── allowlist.ts                # Read allowlist, refused keys, start check
+│
+├── handlers/                   # Business logic layer
+│   └── *.handler.ts            # Only handlers behind an allowlisted tool
+│                               # are reachable
 │
 ├── tools/                      # MCP tool definitions
 │   └── *.tool.ts               # Zod schemas + tool metadata
@@ -128,54 +147,19 @@ src/
 
 The main server file:
 - Initializes the MCP server
-- Registers all 143 tools with their schemas
-- Routes tool invocations to appropriate handlers
+- Calls `startReadServer` with the process environment, the server and the tool list
+- Registers the 31 allowlisted read tools and the `qbo_companies` stub, and nothing else
 - Manages the MCP stdio transport
-
-```typescript
-// Simplified structure
-const server = new McpServer({ name: 'quickbooks-online', version: '0.0.1' });
-
-// Tool registration pattern
-server.tool(
-  'create_payment',
-  'Create a new payment',
-  createPaymentSchema,
-  async (args) => createQuickbooksPayment(args)
-);
-
-// Start server
-await server.start();
-```
 
 ### 2. QuickBooks Client (`src/clients/quickbooks-client.ts`)
 
-Wraps the `node-quickbooks` library:
-
-```typescript
-class QuickBooksClient {
-  private quickbooks: QuickBooks | null = null;
-
-  async authenticate(): Promise<void> {
-    // 1. Check if already authenticated
-    // 2. Initialize QuickBooks instance with OAuth tokens
-    // 3. Handle token refresh if needed
-  }
-
-  getQuickbooks(): QuickBooks {
-    if (!this.quickbooks) throw new Error('Not authenticated');
-    return this.quickbooks;
-  }
-}
-
-export const quickbooksClient = new QuickBooksClient();
-```
+Wraps the `node-quickbooks` library, but has no sign-in. `QuickbooksClient.getInstance()` rejects with "no QuickBooks token source". The OAuth flow, the auth server, the token store and token refresh are removed. Ticket 286 adds the Stacks token client, so `getInstance` gets a token from Stacks.
 
 ### 3. Handlers (`src/handlers/*.handler.ts`)
 
 Each handler:
 - Defines a typed input interface
-- Authenticates with QuickBooks
+- Gets the QuickBooks client (`QuickbooksClient.getInstance()`)
 - Maps input to QuickBooks API format
 - Executes the API call
 - Returns standardized response
@@ -193,9 +177,13 @@ Standardizes error messages:
 
 ```typescript
 export function formatError(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'string') return error;
-  return JSON.stringify(error);
+  if (error instanceof Error) {
+    return `Error: ${error.message}`;
+  } else if (typeof error === 'string') {
+    return `Error: ${error}`;
+  } else {
+    return `Unknown error: ${JSON.stringify(error)}`;
+  }
 }
 ```
 
@@ -209,53 +197,34 @@ All handlers follow a consistent pattern for maintainability:
 
 ```typescript
 // 1. Imports
-import { quickbooksClient } from "../clients/quickbooks-client.js";
+import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
 
-// 2. Input Interface (typed, documented)
-export interface CreatePaymentInput {
-  customer_ref: string;              // Required: Customer ID
-  total_amt: number;                 // Required: Payment amount
-  payment_method_ref?: string;       // Optional: Payment method
-  txn_date?: string;                 // Optional: Transaction date (YYYY-MM-DD)
-  private_note?: string;             // Optional: Internal note
-}
-
-// 3. Handler Function
-export async function createQuickbooksPayment(
-  data: CreatePaymentInput
-): Promise<ToolResponse<any>> {
+// 2. Handler function (src/handlers/search-quickbooks-customers.handler.ts)
+export async function searchQuickbooksCustomers(
+  criteria: object | Array<Record<string, any>> = {}
+): Promise<ToolResponse<any[]>> {
   try {
-    // 3a. Authenticate
-    await quickbooksClient.authenticate();
-    const quickbooks = quickbooksClient.getQuickbooks();
+    // 2a. Get the client (rejects until the token source exists)
+    const quickbooks = await QuickbooksClient.getInstance();
 
-    // 3b. Build API payload with field mapping
-    const payload: any = {
-      CustomerRef: { value: data.customer_ref },
-      TotalAmt: data.total_amt,
-    };
-
-    // 3c. Add optional fields conditionally
-    if (data.payment_method_ref) {
-      payload.PaymentMethodRef = { value: data.payment_method_ref };
-    }
-    if (data.txn_date) payload.TxnDate = data.txn_date;
-    if (data.private_note) payload.PrivateNote = data.private_note;
-
-    // 3d. Execute API call with Promise wrapper
+    // 2b. Execute the API call with a Promise wrapper
     return new Promise((resolve) => {
-      (quickbooks as any).createPayment(payload, (err: any, result: any) => {
+      (quickbooks as any).findCustomers(criteria as any, (err: any, customers: any) => {
         if (err) {
           resolve({ result: null, isError: true, error: formatError(err) });
         } else {
-          resolve({ result, isError: false, error: null });
+          resolve({
+            result: customers?.QueryResponse?.Customer ?? customers?.QueryResponse?.totalCount ?? [],
+            isError: false,
+            error: null,
+          });
         }
       });
     });
   } catch (error) {
-    // 3e. Handle authentication/setup errors
+    // 2c. Handle client/setup errors
     return { result: null, isError: true, error: formatError(error) };
   }
 }
@@ -264,74 +233,43 @@ export async function createQuickbooksPayment(
 ### Why This Pattern?
 
 1. **Type Safety**: TypeScript interfaces ensure compile-time validation
-2. **Consistency**: Same structure across 87 handlers makes codebase predictable
-3. **Error Handling**: Three-level error handling (auth, API, general)
+2. **Consistency**: Same structure across the handlers makes codebase predictable
+3. **Error Handling**: two levels: the API callback's error, and a failure getting the client (today, always: no token source)
 4. **Field Mapping**: Clean separation between snake_case inputs and PascalCase API
 
 ---
 
 ## Tool Registration
 
-Tools are registered in `src/index.ts`:
+Tools are registered only through `startReadServer` in `src/allowlist.ts`, called from `src/index.ts` (see [Read-only fork](#read-only-fork)). Each tool definition connects:
 
-```typescript
-// Tool registration connects:
-// 1. Tool name (MCP protocol identifier)
-// 2. Description (shown to users)
-// 3. Schema (Zod validation)
-// 4. Handler (business logic)
-
-server.tool(
-  'create_payment',
-  'Create a new customer payment in QuickBooks',
-  z.object({
-    customer_ref: z.string().describe('Customer ID'),
-    total_amt: z.number().describe('Payment amount'),
-    payment_method_ref: z.string().optional(),
-    txn_date: z.string().optional(),
-    private_note: z.string().optional(),
-  }),
-  async (args) => {
-    const result = await createQuickbooksPayment(args);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-    };
-  }
-);
-```
+1. Tool name (MCP protocol identifier, must be on the allowlist)
+2. Description (shown to users)
+3. Schema (Zod validation)
+4. Handler (business logic)
 
 ---
 
 ## Error Handling
 
-### Three Layers of Error Handling
+### Two Kinds of Error
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Layer 1: Authentication Errors                  │
-│  • OAuth token expired                          │
-│  • Invalid credentials                          │
-│  • Network issues during auth                   │
-│  Handled by: try/catch in handler               │
+│  Getting the client fails                        │
+│  • No token source (until ticket 286)           │
+│  • Token request failures (from ticket 286)     │
+│  Handled by: the handler's try/catch            │
 └─────────────────────────────────────────────────┘
-                      │
-                      ▼
 ┌─────────────────────────────────────────────────┐
-│  Layer 2: QuickBooks API Errors                  │
-│  • Validation errors (invalid data)             │
-│  • Not found errors                             │
-│  • Permission errors                            │
-│  Handled by: Callback err parameter             │
-└─────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│  Layer 3: General Errors                         │
-│  • Unexpected exceptions                        │
-│  • Serialization errors                         │
-│  Handled by: outer try/catch                    │
+│  The QuickBooks call fails                       │
+│  • Validation, not found, permission errors     │
+│  • Network errors                               │
+│  Handled by: the callback's err parameter       │
 └─────────────────────────────────────────────────┘
 ```
+
+Both become `{ result: null, isError: true, error: formatError(...) }`.
 
 ### Response Format
 
@@ -348,7 +286,7 @@ interface ToolResponse<T> {
 { result: { Id: '123', ... }, isError: false, error: null }
 
 // Error response
-{ result: null, isError: true, error: 'Customer not found' }
+{ result: null, isError: true, error: 'Error: Customer not found' }
 ```
 
 ---
@@ -363,17 +301,10 @@ Each handler defines its input interface:
 // Required fields have no optional modifier
 // Optional fields use TypeScript's optional property syntax
 
-export interface UpdateCompanyInfoInput {
-  id: string;                          // Required
-  sync_token: string;                  // Required
-  company_name?: string;               // Optional
-  company_addr?: {                     // Optional nested object
-    line1?: string;
-    city?: string;
-    country_sub_division_code?: string;
-    postal_code?: string;
-    country?: string;
-  };
+export interface ExampleSearchInput {
+  limit?: number;                      // Optional
+  offset?: number;                     // Optional
+  fetch_all?: boolean;                 // Optional
 }
 ```
 
@@ -392,7 +323,7 @@ export interface UpdateCompanyInfoInput {
 ### Why Separate Handlers and Tools?
 
 **Handlers** contain business logic:
-- Authentication
+- Client setup
 - Data transformation
 - API interaction
 - Error handling
@@ -412,7 +343,7 @@ This separation allows:
 The `node-quickbooks` library uses callback patterns:
 
 ```typescript
-quickbooks.createPayment(payload, (err, result) => { ... });
+quickbooks.findCustomers(criteria, (err, result) => { ... });
 ```
 
 We wrap these in Promises for:
@@ -438,93 +369,36 @@ We wrap these in Promises for:
 
 ## Data Flow Example
 
-**Creating a Payment:**
+**Searching customers (`search_customers`):**
 
 ```
-User Request
-    │
-    ▼
-┌─────────────────────────────────────────────────┐
-│ MCP Client sends tool invocation                │
-│ { tool: 'create_payment', args: {...} }         │
-└─────────────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────────────┐
-│ MCP Server receives request                      │
-│ - Validates args against Zod schema             │
-│ - Routes to createQuickbooksPayment handler     │
-└─────────────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────────────┐
-│ Handler executes                                 │
-│ 1. quickbooksClient.authenticate()              │
-│ 2. Build payload (snake_case → PascalCase)      │
-│ 3. quickbooks.createPayment(payload, callback)  │
-└─────────────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────────────┐
-│ QuickBooks API                                   │
-│ - Validates request                             │
-│ - Creates payment record                        │
-│ - Returns created entity                        │
-└─────────────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────────────┐
-│ Handler processes response                       │
-│ - Wraps in ToolResponse                         │
-│ - Returns { result, isError, error }            │
-└─────────────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────────────┐
-│ MCP Server sends response                        │
-│ - Formats as MCP content                        │
-│ - Returns to client                             │
-└─────────────────────────────────────────────────┘
-    │
-    ▼
-User sees result
+MCP client sends a tool invocation
+    -> MCP server validates args against the Zod schema
+    -> the search handler calls QuickbooksClient.getInstance()
+       (rejects with "no QuickBooks token source" until ticket 286)
+    -> the handler runs the QuickBooks query
+    -> the handler wraps the result in { result, isError, error }
+    -> the MCP server formats it as MCP content and returns it
 ```
 
 ---
 
 ## Performance Considerations
 
-1. **Connection Reuse**: `quickbooksClient` maintains a singleton connection
-2. **Token Caching**: OAuth tokens are cached until expiry
-3. **Minimal Payloads**: Only requested fields are sent to API
-4. **No Polling**: Direct request/response pattern
+1. **Minimal Payloads**: Only requested fields are sent to API
+2. **No Polling**: Direct request/response pattern
 
 ---
 
 ## Security
 
-1. **No Hardcoded Credentials**: All secrets via environment variables
-2. **OAuth 2.0**: Industry-standard authentication
-3. **Token Refresh**: Automatic token refresh on expiry
-4. **Sandbox Support**: Testing without production data
-5. **Input Validation**: Zod schemas validate all inputs
+1. **No credentials in this server**: it holds no QuickBooks secret; ticket 286's token client gets tokens from Stacks
+2. **No sign-in material**: the server refuses to start if any of the four sign-in keys is present
+3. **Read only**: only the allowlisted read tools are registered
+4. **Input Validation**: Zod schemas validate all inputs
 
 ---
 
 ## Extending the Server
 
-### Adding a New Entity Handler
-
-1. Create handler file: `src/handlers/create-quickbooks-newentity.handler.ts`
-2. Define input interface
-3. Implement handler function
-4. Add to mock in `tests/mocks/quickbooks.mock.ts`
-5. Register tool in `src/index.ts`
-6. Write tests with 100% coverage
-
-### Adding a New Report
-
-1. Create handler: `src/handlers/get-quickbooks-newreport.handler.ts`
-2. Check QuickBooks API for report parameters
-3. Implement with date range and filter support
-4. Register tool and write tests
+A new tool is exposed only if it is added to `READ_ALLOWLIST` in `src/allowlist.ts`, listed in `src/index.ts`, and covered by tests. That is a change to what the server exposes, so it is a deliberate change. The write, update and delete tools in `src/tools/` stay unregistered.
