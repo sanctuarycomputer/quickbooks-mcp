@@ -709,6 +709,8 @@ describe('fail closed (A1.11)', () => {
     ['a param key with a leading space', () => d('GET', `${Q}/preferences`, ctx(), { params: { ' minorversion': 75 } })],
     ['a param key with a trailing space', () => d('GET', `${Q}/preferences`, ctx(), { params: { 'minorversion ': 75 } })],
     ['an own __proto__ param key', () => d('GET', `${Q}/preferences`, ctx(), { params: JSON.parse('{"__proto__":"x","minorversion":75}') })],
+    ['an own constructor param key (task-1 pass 2 TD1)', () => d('GET', `${Q}/preferences`, ctx(), { params: { constructor: 'x', minorversion: 75 } })],
+    ['an own prototype param key (TD1)', () => d('GET', `${Q}/preferences`, ctx(), { params: { prototype: 'x', minorversion: 75 } })],
   ])('%s is guard-error', (_what, run) => {
     expect(name(run())).toBe('guard-error');
   });

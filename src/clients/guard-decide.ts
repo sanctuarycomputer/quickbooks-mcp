@@ -85,8 +85,8 @@ function compose(url: string, params: unknown): string {
   if (!isPlainObject(params)) throw new GuardError("params");
   const pairs: string[] = [];
   for (const key of Object.keys(params)) {
-    // axios trims each key and drops an own `__proto__` (axios.cjs:2002): such a key would not compose as getUri does.
-    if (key !== key.trim() || key === "__proto__") throw new GuardError("param key");
+    // axios trims each key and drops an own `__proto__`, `constructor` or `prototype` (axios.cjs:48, 2002): such a key would not compose as getUri does.
+    if (key !== key.trim() || key === "__proto__" || key === "constructor" || key === "prototype") throw new GuardError("param key");
     const value = params[key];
     if (typeof value !== "string" && typeof value !== "number" && typeof value !== "boolean") throw new GuardError("param value");
     pairs.push(axiosEncode(key) + "=" + axiosEncode(String(value)));
@@ -230,7 +230,7 @@ function decideQuickbooks(req: GuardRequest, method: string, t: string, w: URL, 
   if (!isGet(method)) return refuse("quickbooks");
   const record = ctx.callRecord();
   if (record === undefined) return refuse("quickbooks"); // outside a call
-  if (typeof record !== "object" || record === null || !Array.isArray(record.queries)) throw new GuardError("call record");
+  if (!Array.isArray((record as { queries?: unknown } | null)?.queries)) throw new GuardError("call record"); // null, 0, or no queries array
 
   // Which form's keys apply: the path's first word after the realm, and for reports the report's own keys.
   const realmMatch = REALM_PATH.exec(w.pathname);
