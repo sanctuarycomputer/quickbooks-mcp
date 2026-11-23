@@ -215,71 +215,152 @@ function mark<F extends object>(fn: F): F {
   return fn;
 }
 
-/** A best-effort URL for the refusal line (its query and userinfo never print). */
+/**
+ * A best-effort URL for the refusal line of a call the backstop could not read (only its host and path print), read as
+ * Node would: options over the URL, `hostname` then `host` by truthiness.
+ */
 function describeTarget(protocol: string, args: unknown[]): string {
-  const first = args[0];
-  if (typeof first === "string" || first instanceof URL) return String(first);
-  const o = (first ?? {}) as Record<string, unknown>;
-  const host = (o.hostname ?? o.host ?? "") as string;
-  const port = o.port === undefined || o.port === "" ? "" : `:${String(o.port)}`;
-  return `${protocol}//${host}${port}${(o.path as string | undefined) ?? "/"}`;
+  const [first, second] = args;
+  const isUrl = typeof first === "string" || first instanceof URL;
+  const u = isUrl ? new URL(String(first)) : undefined;
+  const raw = isUrl ? second : first;
+  const o = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+  const host = String(o.hostname || o.host || u?.hostname || "");
+  const portValue = o.port ?? u?.port;
+  const port = portValue === undefined || portValue === "" ? "" : `:${String(portValue)}`;
+  const path = typeof o.path === "string" ? o.path : u !== undefined ? u.pathname : "/";
+  return `${u?.protocol ?? protocol}//${host}${port}${path}`;
 }
 
-/** What a call to https.request/get asks for, read the way Node reads its arguments (URL, then options over it). */
-function requested(args: unknown[]): Ticket {
-  let url: URL | undefined;
-  let options: Record<string, unknown> = {};
-  const [a, b] = args;
-  if (typeof a === "string" || a instanceof URL) {
-    url = new URL(String(a));
-    if (b !== null && typeof b === "object") options = b as Record<string, unknown>;
-  } else if (a !== null && typeof a === "object") {
-    options = a as Record<string, unknown>;
+/** What the wrapped https.request/get sends: the ticket fields, plus the few transport keys axios sets that Node reads. */
+type Reading = Ticket & { send: Record<string, unknown> };
+
+/**
+ * Option keys a call may carry. `send`: copied to what Node gets. `unset`: allowed only while undefined (each would
+ * change where or how the socket connects). Any other own key with a value refuses the call.
+ */
+const SEND_KEYS = ["family", "maxBodyLength", "timeout", "signal"] as const;
+const READ_KEYS = ["protocol", "hostname", "host", "port", "path", "method", "headers", "agent", "insecureHTTPParser", "auth"] as const;
+const UNSET_KEYS = ["createConnection", "lookup", "socketPath", "defaultPort", "localAddress", "servername", "setHost", "rejectUnauthorized", "ca", "checkServerIdentity"] as const;
+const IGNORED_KEYS = ["agents", "beforeRedirect", "beforeRedirects", "http2Options"] as const; // axios' own; Node's https.request never reads them
+const KNOWN = new Set<string>([...SEND_KEYS, ...READ_KEYS, ...UNSET_KEYS, ...IGNORED_KEYS]);
+
+class Unreadable extends Error {}
+
+/** Each own key read exactly once, as a data property (a getter could answer differently when Node reads it). */
+function snapshot(o: object): Map<string, unknown> {
+  const out = new Map<string, unknown>();
+  for (const key of Reflect.ownKeys(o)) {
+    if (typeof key !== "string") throw new Unreadable("symbol key");
+    const desc = Object.getOwnPropertyDescriptor(o, key);
+    if (desc === undefined) throw new Unreadable("no descriptor"); // a Proxy listing a key it does not hold
+    if (!("value" in desc)) throw new Unreadable("accessor");
+    out.set(key, desc.value);
   }
-  const pick = (k: string) => (Object.prototype.hasOwnProperty.call(options, k) ? options[k] : undefined);
-  const method = pick("method") ?? "GET";
-  const hostname = pick("hostname") ?? pick("host") ?? url?.hostname;
-  const port = pick("port") ?? url?.port ?? "";
-  const path = pick("path") ?? (url ? url.pathname + url.search : "/");
-  return { method: String(method).toUpperCase(), hostname: String(hostname), port: String(port), path: String(path) };
+  return out;
 }
 
-/** https.request/get: only under an unused ticket whose every field equals the call's. */
+const isOptionsObject = (v: unknown): v is object =>
+  typeof v === "object" && v !== null && !(v instanceof URL) && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null);
+
+/**
+ * Reads a call to https.request/get as one of two forms: `(url[, callback])` with an https URL and no userinfo, or
+ * `(options[, callback])` with a plain object. `(url, options)` and anything else are not read (refused). The returned
+ * `send` is a fresh object of exactly the compared values, which is all Node gets.
+ */
+function requested(args: unknown[]): Reading {
+  const callback = typeof args[args.length - 1] === "function" ? args[args.length - 1] : undefined;
+  const rest = callback === undefined ? args : args.slice(0, -1);
+  if (rest.length !== 1) throw new Unreadable("form");
+  const [a] = rest;
+  if (typeof a === "string" || a instanceof URL) {
+    const u = new URL(String(a));
+    if (u.protocol !== "https:" || u.username !== "" || u.password !== "") throw new Unreadable("url");
+    const hostname = u.hostname; // an IPv6 host keeps its brackets, as the guard's ticket does (it allows no IPv6 host)
+    const path = u.pathname + u.search;
+    return { method: "GET", hostname, port: u.port, path, send: { protocol: "https:", hostname, port: u.port === "" ? 443 : Number(u.port), path, method: "GET" } };
+  }
+  if (!isOptionsObject(a)) throw new Unreadable("options");
+  const o = snapshot(a);
+  for (const [key, value] of o) {
+    if (!KNOWN.has(key) && value !== undefined) throw new Unreadable(`key ${key}`);
+  }
+  for (const key of UNSET_KEYS) if (o.get(key) !== undefined) throw new Unreadable(`key ${key}`);
+  const protocol = o.get("protocol");
+  if (protocol !== undefined && protocol !== "https:") throw new Unreadable("protocol");
+  if (o.get("auth") !== undefined && o.get("auth") !== null) throw new Unreadable("auth");
+  if (o.get("insecureHTTPParser") !== undefined && o.get("insecureHTTPParser") !== false) throw new Unreadable("parser");
+  const agent = o.get("agent");
+  if (agent !== undefined && agent !== AGENT) throw new Unreadable("agent");
+  const hostValue = o.get("hostname") ?? o.get("host");
+  if (typeof hostValue !== "string" || hostValue === "") throw new Unreadable("hostname");
+  const portValue = o.get("port");
+  if (portValue !== undefined && portValue !== "" && typeof portValue !== "number" && typeof portValue !== "string") throw new Unreadable("port");
+  const port = portValue === undefined || portValue === "" ? "" : String(portValue);
+  const path = o.get("path") ?? "/";
+  if (typeof path !== "string") throw new Unreadable("path");
+  const methodValue = o.get("method") ?? "GET";
+  if (typeof methodValue !== "string") throw new Unreadable("method");
+  const method = methodValue.toUpperCase();
+  const headersValue = o.get("headers");
+  let headers: Record<string, unknown> | undefined;
+  if (headersValue !== undefined) {
+    if (!isOptionsObject(headersValue)) throw new Unreadable("headers");
+    headers = Object.create(null) as Record<string, unknown>;
+    for (const [k, v] of snapshot(headersValue)) {
+      if (k.toLowerCase() === "host") throw new Unreadable("host header"); // the Host Node sends is the ticket's hostname
+      headers[k] = v;
+    }
+  }
+  const send: Record<string, unknown> = { protocol: "https:", hostname: hostValue, port: port === "" ? 443 : Number(port), path, method };
+  if (headers !== undefined) send.headers = headers;
+  if (agent !== undefined) send.agent = agent;
+  for (const key of SEND_KEYS) if (o.get(key) !== undefined) send[key] = o.get(key);
+  return { method, hostname: hostValue, port, path, send };
+}
+
+/** https.request/get: only under an unused ticket whose every field equals the call's; Node gets the compared reading. */
 function wrapHttps(original: (...args: any[]) => any): (...args: any[]) => any {
   return mark(function qboGuardHttps(this: unknown, ...args: any[]) {
+    let reading: Reading | undefined;
     let allowed = false;
     try {
       const ticket = currentTicket();
-      const asked = requested(args);
+      reading = requested(args);
       allowed =
         ticket !== undefined &&
         !ticket.used &&
-        ticket.method === asked.method &&
-        ticket.hostname === asked.hostname &&
-        ticket.port === asked.port &&
-        ticket.path === asked.path;
+        ticket.method === reading.method &&
+        ticket.hostname === reading.hostname &&
+        ticket.port === reading.port &&
+        ticket.path === reading.path;
       if (allowed) ticket!.used = true;
     } catch {
       allowed = false;
     }
-    if (!allowed) throw backstopRefusal("https:", args);
-    return original.apply(this, args);
+    if (!allowed || reading === undefined) throw backstopRefusal("https:", args, reading);
+    const callback = typeof args[args.length - 1] === "function" ? [args[args.length - 1]] : [];
+    return original.call(this, reading.send, ...callback);
   });
 }
 
 /** Logs and returns the backstop's refusal; describing the call never throws past here. */
-function backstopRefusal(protocol: string, args: unknown[]): GuardRefusedError {
+function backstopRefusal(protocol: string, args: unknown[], reading?: Reading): GuardRefusedError {
   let method = "OTHER";
   let target = "";
   try {
-    method = requested(args).method;
+    if (reading !== undefined) {
+      method = reading.method;
+      target = `https://${reading.hostname}${reading.port === "" ? "" : `:${reading.port}`}${reading.path}`;
+    } else {
+      target = describeTarget(protocol, args);
+      // The method a call names in its options object (first or second argument), else GET for a bare URL.
+      const objects = args.slice(0, 2).filter((x): x is Record<string, unknown> => typeof x === "object" && x !== null && !(x instanceof URL));
+      const named = objects.map((x) => x.method).find((m) => typeof m === "string");
+      method = typeof named === "string" ? named : typeof args[0] === "string" || args[0] instanceof URL ? "GET" : "OTHER";
+    }
   } catch {
-    // keep OTHER
-  }
-  try {
-    target = describeTarget(protocol, args);
-  } catch {
-    // keep <unparsable url>
+    // keep OTHER <unparsable url>
   }
   return refusal(method, target, "backstop");
 }
@@ -338,7 +419,7 @@ export function installBackstop(deps?: { modules?: { http: object; https: object
     syncBuiltinESMExports();
   } catch {
     undo();
-    syncBuiltinESMExports();
+    // No sync here: every replacement is undone before the one sync at the end of the try ever ran.
     throw new Error("qbo-guard: install failed");
   }
   const restore = () => {

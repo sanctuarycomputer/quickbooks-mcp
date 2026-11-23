@@ -67,6 +67,8 @@ afterAll(() => {
 
 const TICKET = { method: 'GET', hostname: 'quickbooks.api.intuit.com', port: '', path: PATH };
 const OPTIONS = { method: 'GET', hostname: 'quickbooks.api.intuit.com', port: '', path: PATH };
+/** https.request as the backstop sees it, typed loosely: the cases pass option objects Node's types reject. */
+const R = (...a: unknown[]) => (https.request as (...x: unknown[]) => any)(...a);
 const refusedBackstop = (fn: () => unknown) => {
   let err: unknown;
   try {
@@ -121,22 +123,100 @@ describe('the backstop in place (A1.8)', () => {
     ['only its port', { port: '8443' }],
     ['only its path-with-query', { path: `${PATH}&x=1` }],
   ])('a call differing from the ticket in %s is refused', (_what, change) => {
-    runIssued(TICKET, () => refusedBackstop(() => https.request({ ...OPTIONS, ...change })));
+    runIssued(TICKET, () => refusedBackstop(() => R({ ...OPTIONS, ...change })));
     expect(net.calls).toHaveLength(0);
   });
 
-  it('the call is read as Node reads it: a URL string, a URL object, a URL with options over it, host for hostname', () => {
+  it('the two forms it reads go through under their ticket: a URL (string or URL object) and a plain or null-prototype options object', () => {
     runIssued(TICKET, () => https.request(P).end());
     runIssued(TICKET, () => https.request(new URL(P)).end());
-    runIssued(TICKET, () => https.request(`https://quickbooks.api.intuit.com/v3/company/${REALM}/x`, { path: PATH }).end());
     runIssued(TICKET, () => https.request({ host: 'quickbooks.api.intuit.com', path: PATH, method: 'get' }).end());
+    runIssued(TICKET, () => https.request(Object.assign(Object.create(null), OPTIONS)).end());
+    runIssued(TICKET, () => https.request({ ...OPTIONS }, () => {}).end());
     runIssued(TICKET, () => https.get(P));
     runIssued({ ...TICKET, path: '/' }, () => https.request({ hostname: 'quickbooks.api.intuit.com' }).end());
-    expect(net.calls).toHaveLength(6);
-    runIssued(TICKET, () => refusedBackstop(() => https.request({ ...OPTIONS, port: 443 })));
-    runIssued(TICKET, () => refusedBackstop(() => https.request(P, { method: 'POST' })));
+    expect(net.calls).toHaveLength(7);
+    runIssued(TICKET, () => refusedBackstop(() => R({ ...OPTIONS, port: 443 })));
     runIssued(TICKET, () => refusedBackstop(() => https.request(undefined as any)));
-    expect(net.calls).toHaveLength(6);
+    expect(net.calls).toHaveLength(7);
+  });
+
+  it('what Node gets is the compared reading, not the caller object', () => {
+    const seen: unknown[] = [];
+    const f = { https: { request: (...a: unknown[]) => (seen.push(a), 'sent') } as Record<string, unknown>, http: {}, http2: {}, global: {} };
+    const restore = installBackstop({ modules: { http: f.http, https: f.https, http2: f.http2 }, global: f.global });
+    const cb = () => {};
+    const caller = { ...OPTIONS, headers: { Accept: 'application/json' }, agents: { http: 1 }, beforeRedirects: {}, family: 4 };
+    runIssued(TICKET, () => (f.https.request as any)(caller, cb));
+    runIssued(TICKET, () => (f.https.request as any)(P));
+    restore();
+    expect(seen).toEqual([
+      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', headers: Object.assign(Object.create(null), { Accept: 'application/json' }), family: 4 }, cb],
+      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET' }],
+    ]);
+    expect((seen[0] as unknown[])[0]).not.toBe(caller);
+  });
+
+  // task-3 TC1-TC4: calls Node would send somewhere else than the ticket says, each refused with nothing at the stub.
+  const getter = (value: unknown) => {
+    let reads = 0;
+    return { enumerable: true, get: () => (reads++ === 0 ? value : 'evil.example.test') };
+  };
+  it.each([
+    ['TC1a a URL with options over it (another host in the URL, host in options)', () => https.request(`https://evil.example.test${PATH}`, { host: 'quickbooks.api.intuit.com' })],
+    ['TC1b a URL with hostname undefined over it', () => https.request(P, { hostname: undefined })],
+    ['TC1b options with hostname null and no host', () => R({ ...OPTIONS, hostname: null })],
+    ['TC1b options with no hostname or host', () => https.request({ path: PATH })],
+    ['TC1c defaultPort', () => R({ ...OPTIONS, defaultPort: 8443 })],
+    ['TC1c an agent with its own defaultPort', () => R({ ...OPTIONS, agent: new https.Agent({ defaultPort: 8443 } as any) })],
+    ['TC1d path null', () => R({ ...OPTIONS, path: null })],
+    ['TC2 a getter hostname', () => https.request(Object.defineProperty({ ...OPTIONS }, 'hostname', getter('quickbooks.api.intuit.com')))],
+    ['TC2 a getter header', () => R({ ...OPTIONS, headers: Object.defineProperty({}, 'accept', getter('x')) })],
+    ['a Proxy listing a key it does not hold', () => https.request(new Proxy({ ...OPTIONS }, { ownKeys: (t) => [...Reflect.ownKeys(t), 'extra'], getOwnPropertyDescriptor: (t, k) => Reflect.getOwnPropertyDescriptor(t, k) }) as any)],
+    ['TC2 a class instance', () => https.request(Object.assign(new (class Opts {})(), OPTIONS))],
+    ['TC3 socketPath', () => R({ ...OPTIONS, socketPath: '/tmp/x.sock' })],
+    ['TC3 lookup', () => R({ ...OPTIONS, lookup: () => {} })],
+    ['TC3 createConnection', () => R({ ...OPTIONS, createConnection: () => {} })],
+    ['TC3 servername', () => R({ ...OPTIONS, servername: 'evil.example.test' })],
+    ['TC3 rejectUnauthorized false', () => R({ ...OPTIONS, rejectUnauthorized: false })],
+    ['TC3 checkServerIdentity', () => R({ ...OPTIONS, checkServerIdentity: () => undefined })],
+    ['TC3 ca', () => R({ ...OPTIONS, ca: 'x' })],
+    ['TC3 a foreign agent', () => R({ ...OPTIONS, agent: new https.Agent() })],
+    ['TC3 a Host header', () => R({ ...OPTIONS, headers: { Host: 'evil.example.test' } })],
+    ['an unknown option key', () => R({ ...OPTIONS, localPort: 1 })],
+    ['a symbol option key', () => R({ ...OPTIONS, [Symbol('x')]: 1 })],
+    ['auth', () => R({ ...OPTIONS, auth: 'a:b' })],
+    ['insecureHTTPParser true', () => R({ ...OPTIONS, insecureHTTPParser: true })],
+    ['protocol http:', () => R({ ...OPTIONS, protocol: 'http:' })],
+    ['a URL with userinfo', () => https.request(`https://u:p@quickbooks.api.intuit.com${PATH}`)],
+    ['an http URL', () => https.request(`http://quickbooks.api.intuit.com${PATH}`)],
+    ['TC4 the port only in the URL', () => https.request(`https://quickbooks.api.intuit.com:8443${PATH}`)],
+    ['TC4 another host only in the URL', () => https.request(`https://evil.example.test${PATH}`)],
+    ['TC4 hostname and path inherited, not own', () => https.request(Object.create({ hostname: 'quickbooks.api.intuit.com', path: PATH }))],
+    ['a second non-function argument', () => https.request({ ...OPTIONS }, 'x' as any)],
+    ['a non-string method', () => R({ ...OPTIONS, method: 1 as any })],
+    ['a non-string path', () => R({ ...OPTIONS, path: 1 as any })],
+    ['an object port', () => R({ ...OPTIONS, port: {} as any })],
+    ['headers that are an array', () => R({ ...OPTIONS, headers: [['accept', 'x']] as any })],
+  ] as Array<[string, () => unknown]>)('under the ticket: %s is refused', (_what, call) => {
+    runIssued(TICKET, () => refusedBackstop(call));
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('a port given as the default and the keys axios adds that Node never reads pass', () => {
+    runIssued({ ...TICKET, port: '443' }, () => R({ ...OPTIONS, port: 443, agents: {}, beforeRedirect: () => {}, http2Options: {}, maxBodyLength: Infinity, insecureHTTPParser: false, createConnection: undefined, auth: undefined }).end());
+    expect(net.calls).toHaveLength(1);
+  });
+
+  it('TC6: a refused call is logged with the host Node would use (options over the URL)', () => {
+    runIssued(TICKET, () => refusedBackstop(() => https.request(P, { hostname: 'other.example.test' })));
+    expect(stderr).toEqual([`qbo-guard: refused GET https://other.example.test/v3/company/${REALM}/preferences (backstop)\n`]);
+  });
+
+  it('TC2: a Proxy whose get trap lies sends what its own properties hold (the snapshot), not what the trap says', () => {
+    const lying = new Proxy({ ...OPTIONS }, { get: (t, k) => (k === 'hostname' ? 'evil.example.test' : (t as any)[k]) });
+    runIssued(TICKET, () => https.request(lying).end());
+    expect(net.calls.map((c) => c.hostname)).toEqual(['quickbooks.api.intuit.com']);
   });
 
   it('a ticket store that throws on read refuses', () => {
@@ -240,6 +320,16 @@ describe('installBackstop on given modules (A1.10(d), its backstop arm)', () => 
     expect(f.https.request).toBe(original);
   });
 
+  it('TC5: a function carrying a forged marker is still replaced (idempotence is by its own wraps, not the marker)', () => {
+    const f = fakes();
+    for (const [m, k] of KEYS) Object.defineProperty(f[m][k] as object, BACKSTOP_MARK, { value: true });
+    const before = snapshot(f);
+    const restore = install(f);
+    for (const [m, k] of KEYS) expect(f[m][k]).not.toBe(before.find(([bm, bk]) => bm === m && bk === k)![2]);
+    restore();
+    expect(snapshot(f)).toEqual(before);
+  });
+
   it('a missing property is added, and restore removes it; the rest come back as they were', () => {
     const f = fakes();
     delete f.global.WebSocket;
@@ -252,7 +342,7 @@ describe('installBackstop on given modules (A1.10(d), its backstop arm)', () => 
     expect('WebSocket' in f.global).toBe(false);
   });
 
-  it('a wrapped https.request calls the function it replaced, with its arguments and receiver', () => {
+  it('a wrapped https.request calls the function it replaced, with its receiver and the compared reading (not the caller object)', () => {
     const f = fakes();
     const seen: unknown[] = [];
     f.https.request = function (this: unknown, ...args: unknown[]) {
@@ -263,18 +353,21 @@ describe('installBackstop on given modules (A1.10(d), its backstop arm)', () => 
     const out = runIssued(TICKET, () => (f.https.request as any).call(f.https, { ...OPTIONS }));
     restore();
     expect(out).toBe('sent');
-    expect(seen).toEqual([f.https, { ...OPTIONS }]);
+    expect(seen).toEqual([f.https, { protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET' }]);
   });
 });
 
 describe('ESM imports under plain Node (A1.8, syncBuiltinESMExports)', () => {
-  it('a named and a namespace import of node:https see the backstop', () => {
+  it('a named and a namespace import of node:https see the backstop, and the originals again after restore (TC5)', () => {
     assertFreshBuild();
     const r = spawnSync(
       process.execPath,
       ['--import', pathToFileURL(path.join(ROOT, 'tests', 'fixtures', 'no-network.mjs')).href, path.join(HERE, '..', '..', 'fixtures', 'esm-backstop.mjs')],
       { cwd: ROOT, encoding: 'utf8', env: { PATH: process.env.PATH ?? '', ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}) }, timeout: 20000 },
     );
-    expect({ status: r.status, stdout: r.stdout }).toEqual({ status: 0, stdout: 'named: refused\nnamespace: refused\n' });
+    expect({ status: r.status, stdout: r.stdout }).toEqual({
+      status: 0,
+      stdout: 'named: refused\nnamespace: refused\nafter restore, named: original\nafter restore, namespace: original\n',
+    });
   });
 });
