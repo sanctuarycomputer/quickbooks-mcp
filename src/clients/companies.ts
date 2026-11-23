@@ -2,7 +2,7 @@
 // Pure: it reads text, never a path. Each refusal is `QBO_COMPANIES <reason>`, never a value from the file; the config turns it into a start refusal.
 import { fold } from "../helpers/name-fold.js";
 
-export type Company = { key: string; name: string; acceptedNames: string[] };
+export type Company = { readonly key: string; readonly name: string; readonly acceptedNames: readonly string[] };
 
 const VERSION = /^1\.0(\.[0-9]+)?$/;
 
@@ -22,11 +22,11 @@ function readEntry(raw: unknown): Company {
     return refuse("has a company with no valid accepted_names");
   }
   if (accepted[0] !== name) return refuse("has a company whose accepted_names[0] is not its name");
-  return Object.freeze({ key, name, acceptedNames: Object.freeze([...accepted]) as string[] });
+  return Object.freeze({ key, name, acceptedNames: Object.freeze([...accepted]) });
 }
 
 /** Parse a QBO_COMPANIES file's text (entities.json's shape) into its companies, in file order; throws per A2.8. */
-export function parseCompanies(text: string): Company[] {
+export function parseCompanies(text: string): readonly Company[] {
   let doc: unknown;
   try {
     doc = JSON.parse(text);
@@ -51,5 +51,5 @@ export function parseCompanies(text: string): Company[] {
       owner.set(k, c.key);
     }
   }
-  return Object.freeze(companies) as Company[];
+  return Object.freeze(companies);
 }

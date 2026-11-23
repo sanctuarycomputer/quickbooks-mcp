@@ -49,7 +49,6 @@ const SWEPT_TEXT = [
   'QUICKBOOKS_TOKEN_STORE_PATH',
   'QUICKBOOKS_REDIRECT_URI',
   'QUICKBOOKS_ATTACHABLE',
-  'QUICKBOOKS_ENVIRONMENT',
 ];
 
 // The module's name as a string literal anywhere: every way to load it (from, a side-effect import,
