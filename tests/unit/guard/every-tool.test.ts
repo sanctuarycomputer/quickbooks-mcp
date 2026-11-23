@@ -109,6 +109,17 @@ describe('every allowlisted tool through the guard (A1.9)', () => {
     expect(stderr.filter((l) => l.includes('qbo-guard'))).toEqual([]);
     expect(textOf(result)).not.toContain('qbo-guard');
     expect(trap.reached).toEqual([]);
+    // TL1: the args reach the request, so a thinned args file fails
+    const url = new URL(sent[0].slice('GET '.length));
+    const keys = [...url.searchParams.keys()].filter((k) => k !== 'minorversion' && k !== 'format').sort();
+    const params = ARGS[name].params as Record<string, unknown>;
+    if (url.pathname.includes('/reports/')) {
+      expect(keys).toEqual(Object.keys(params).sort());
+    } else if (name.startsWith('search_')) {
+      const statement = url.searchParams.get('query') ?? '';
+      expect(statement).toMatch(/ where /i);
+      expect(statement).toMatch(/maxresults 10$/i);
+    }
   });
 
   it(`${COMPANIES_TOOL} makes no request`, async () => {
