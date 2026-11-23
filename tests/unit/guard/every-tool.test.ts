@@ -1,5 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-291): every allowlisted tool, called through the registered server, sends only what the guard allowed (A1.9).
 import { describe, it, expect, beforeEach, afterAll, jest } from '@jest/globals';
+import { REPORT_KEYS } from '../../../src/clients/guard-decide.js';
 import { trapNetwork } from '../../fakes/no-network.js';
 import fs from 'fs';
 import path from 'path';
@@ -114,7 +115,10 @@ describe('every allowlisted tool through the guard (A1.9)', () => {
     const keys = [...url.searchParams.keys()].filter((k) => k !== 'minorversion' && k !== 'format').sort();
     const params = ARGS[name].params as Record<string, unknown>;
     if (url.pathname.includes('/reports/')) {
-      expect(keys).toEqual(Object.keys(params).sort());
+      // every key the contract allows for that report, so a thinned args file sends fewer and fails
+      const report = url.pathname.slice(url.pathname.lastIndexOf('/') + 1);
+      expect(keys).toEqual([...REPORT_KEYS[report]].filter((k) => k !== 'minorversion' && k !== 'format').sort());
+      expect(Object.keys(params).length).toBeGreaterThan(0);
     } else if (name.startsWith('search_')) {
       const statement = url.searchParams.get('query') ?? '';
       expect(statement).toMatch(/ where /i);
