@@ -84,6 +84,8 @@ describe('checkStartEnv (A1.10(a))', () => {
     [{}, ['--experimental-vm-modules', '--no-use-env-proxy', '-use-env-proxy', 'use-env-proxy']],
     [{ NODE_OPTIONS: '"--use-env-proxy-not" --title="--use-env-proxy"' }, []],
     [{ NODE_OPTIONS: '"a b"  ""' }, []],
+    [{ NODE_OPTIONS: '--title="a --use-env-proxy"' }, []],
+    [{ NODE_OPTIONS: 'xxuse-env-proxy' }, ['xxuse-env-proxy']],
     [{ node_use_env_proxy: '1', PATH: '/bin' }, []],
   ] as Array<[NodeJS.ProcessEnv, string[]]>)('%j %j → ok', (env, argv) => {
     expect(checkStartEnv(env, argv)).toEqual({ ok: true });
