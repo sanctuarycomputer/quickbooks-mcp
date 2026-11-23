@@ -1,0 +1,438 @@
+{
+  "contract": "docs/contracts/quickbooks.md@1.0",
+  "source": "contract 1.0 §6 Guard examples and Guard call examples, home main (§6 last changed c995db63; bound text 66cd209c, merged 56f2221d)",
+  "context": {
+    "company": "garden3d",
+    "realm": "9990000000000002",
+    "stacksUrl": "https://stacks.example.test",
+    "keys": [
+      "sanctuary-computer",
+      "garden3d",
+      "index-space",
+      "usb-club"
+    ]
+  },
+  "requestIds": {
+    "P1": {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query?query=select%20*%20from%20purchase%20maxresults%201000&minorversion=75&format=json"
+    },
+    "P2": {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query?query=select%20*%20from%20purchase%20startposition%201001%20maxresults%201000&minorversion=75&format=json"
+    },
+    "B1": {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query?query=select%20*%20from%20bill%20maxresults%201000&minorversion=75&format=json"
+    }
+  },
+  "examples": [
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/companyinfo/9990000000000002?minorversion=75&format=json",
+      "decision": "allow",
+      "case": "the `companyinfo` form"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75&format=json",
+      "decision": "allow",
+      "case": "the `preferences` form"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75",
+      "decision": "allow",
+      "case": "`format` is allowed, not required"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query?query=select%20*%20from%20purchase%20where%20TxnDate%20%3E%3D%20%272026-10-01%27%20startposition%201%20maxresults%201000&minorversion=75&format=json",
+      "decision": "allow",
+      "case": "the `query` form, at the 1,000 cap"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/reports/ProfitAndLoss?start_date=2026-10-01&end_date=2026-10-31&accounting_method=Accrual&minorversion=75&format=json",
+      "decision": "allow",
+      "case": "the `reports/<Name>` form with its own keys"
+    },
+    {
+      "method": "GET",
+      "url": "https://stacks.example.test/api/qbo/access_token?enterprise=garden3d",
+      "decision": "allow",
+      "case": "the Stacks form"
+    },
+    {
+      "method": "GET",
+      "url": "https://stacks.example.test/api/qbo/access_token?enterprise=usb-club",
+      "decision": "allow",
+      "case": "the Stacks form, another configured key"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/purchase/5?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`<entity>/<id>` (`purchase/5`)"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/invoice/5/pdf?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`invoice/5/pdf`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/batch?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`/batch`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?operation=update&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`?operation=update`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?include=allowduplicatedocnum&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`include`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?requestid=fake-req-0001&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`requestid`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/cdc?entities=Purchase&changedSince=2026-11-01&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`cdc`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/upload?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`upload`"
+    },
+    {
+      "method": "GET",
+      "url": "https://sandbox-quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a sandbox host"
+    },
+    {
+      "method": "GET",
+      "url": "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+      "decision": "refuse",
+      "case": "`oauth.platform.intuit.com`"
+    },
+    {
+      "method": "GET",
+      "url": "data:application/json,%7B%7D",
+      "decision": "refuse",
+      "case": "a `data:` URL"
+    },
+    {
+      "method": "PUT",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a PUT"
+    },
+    {
+      "method": "DELETE",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a DELETE"
+    },
+    {
+      "method": "POST",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a POST"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com:8443/v3/company/9990000000000002/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a port"
+    },
+    {
+      "method": "GET",
+      "url": "https://user@quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "userinfo on QuickBooks"
+    },
+    {
+      "method": "GET",
+      "url": "https://user@stacks.example.test/api/qbo/access_token?enterprise=garden3d",
+      "decision": "refuse",
+      "case": "userinfo on Stacks"
+    },
+    {
+      "method": "GET",
+      "url": "http://stacks.example.test/api/qbo/access_token?enterprise=garden3d",
+      "decision": "refuse",
+      "case": "an `http:` Stacks URL"
+    },
+    {
+      "method": "GET",
+      "url": "https://stacks.example.test:8443/api/qbo/access_token?enterprise=garden3d",
+      "decision": "refuse",
+      "case": "a Stacks origin with another port"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query?query=select%20*%20from%20purchase%20startposition%201%20maxresults%201001&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`maxresults 1001`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=74&format=json",
+      "decision": "refuse",
+      "case": "`minorversion=74`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?format=json",
+      "decision": "refuse",
+      "case": "no `minorversion`"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/preferences?minorversion=75&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a query key twice"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/reports/TransactionList?start_date=2026-10-01&end_date=2026-10-31&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "an unknown report name"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/reports/TrialBalance?vendor=5&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a key that isn't the report's own"
+    },
+    {
+      "method": "GET",
+      "url": "https://stacks.example.test/api/qbo/access_token?enterprise=family-intelligence",
+      "decision": "refuse",
+      "case": "a Stacks request for an unconfigured key"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000001/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "another realm in the path"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/companyinfo/9990000000000001?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "`companyinfo/<another realm>`"
+    },
+    {
+      "method": "GET",
+      "url": "https://stacks.example.test/api/qbo/access_token?enterprise=garden3d&format=json",
+      "decision": "refuse",
+      "case": "a second Stacks query key"
+    },
+    {
+      "method": "GET",
+      "url": "https://stacks.example.test/api/qbo/access_token?enterprise=garden3d&enterprise=usb-club",
+      "decision": "refuse",
+      "case": "`enterprise` twice"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query?query=delete%20from%20purchase%20maxresults%201000&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a query not starting `select `"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query?query=select%20*%20from%20purchase%20maxresults%20100&query=select%20*%20from%20bill%20maxresults%20100&minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "two `query` keys"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query/../preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a dot segment, `/../` (it would resolve to `preferences`)"
+    },
+    {
+      "method": "GET",
+      "url": "https://quickbooks.api.intuit.com/v3/company/9990000000000002/query/%2e%2e/preferences?minorversion=75&format=json",
+      "decision": "refuse",
+      "case": "a dot segment, `%2e%2e` (it would resolve to `preferences`)"
+    }
+  ],
+  "callExamples": [
+    {
+      "requests": [
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "allow",
+      "case": "the first query for `purchase`"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 401
+        },
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "allow",
+      "case": "an identical resend after a `401`"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 429
+        },
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "allow",
+      "case": "an identical resend after a `429`"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 401
+        },
+        {
+          "id": "P1",
+          "status": 429
+        },
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "allow",
+      "case": "one resend after each, two in all"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 401
+        },
+        {
+          "id": "P1",
+          "status": 401
+        },
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "refuse",
+      "case": "a second resend after a `401`"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 401
+        },
+        {
+          "id": "P1",
+          "status": 429
+        },
+        {
+          "id": "P1",
+          "status": 429
+        },
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "refuse",
+      "case": "a third resend"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 500
+        },
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "refuse",
+      "case": "a resend after an answer that isn't `401` or `429`"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 200
+        },
+        {
+          "id": "P2"
+        }
+      ],
+      "decision": "refuse",
+      "case": "a second distinct query for `purchase`"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 401
+        },
+        {
+          "id": "P2"
+        }
+      ],
+      "decision": "refuse",
+      "case": "a different query after a `401`"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 200
+        },
+        {
+          "id": "B1"
+        }
+      ],
+      "decision": "allow",
+      "case": "the first query for another entity"
+    },
+    {
+      "requests": [
+        {
+          "id": "P1",
+          "status": 401
+        },
+        {
+          "id": "B1",
+          "status": 200
+        },
+        {
+          "id": "P1"
+        }
+      ],
+      "decision": "allow",
+      "case": "a resend for `purchase` after another entity's query: the previous query for the same entity is what is compared"
+    }
+  ]
+}
