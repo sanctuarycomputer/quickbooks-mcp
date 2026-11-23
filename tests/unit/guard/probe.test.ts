@@ -135,6 +135,12 @@ describe('runProbe in process (A2.2)', () => {
     expect(probe(['GET', url, '--realm', realm])).toEqual({ code: 1, out: ['refuse quickbooks'], err: [] });
   });
 
+  it('TK3: an empty --key is a usage error', () => {
+    const r = probe(['GET', S, '--realm', '1', '--key', '']);
+    expect(r.code).toBe(2);
+    expect(r.err[0]).toMatch(/\(--key needs a value\)$/);
+  });
+
   it('TJ3: a single-dash word is a positional, not a flag', () => {
     const r = probe(['GET', COMPANYINFO, '-realm', '123']);
     expect(r.code).toBe(2);
@@ -176,6 +182,13 @@ describe('one decide (A2.3)', () => {
 
   it('guard-probe.ts imports only node:fs and node:url (to find its own path) and ./clients/guard-decide.js', () => {
     expect(importsOf('src/guard-probe.ts')).toEqual(['node:fs', 'node:url', './clients/guard-decide.js']);
+    // TK5: and only the one name the ruling allows from each builtin
+    const text = fs.readFileSync(path.join(ROOT, 'src', 'guard-probe.ts'), 'utf8');
+    expect(text.match(/^import .*$/gm)).toEqual([
+      'import { realpathSync } from "node:fs";',
+      'import { fileURLToPath } from "node:url";',
+      'import { decide, newCallRecord } from "./clients/guard-decide.js";',
+    ]);
   });
 
   it('guard-decide.ts imports nothing, so no network module', () => {
@@ -295,6 +308,14 @@ describe('the process entry line (T0 pattern)', () => {
       expect(isEntry(undefined, self)).toBe(false);
       expect(isEntry('', self)).toBe(false);
       expect(isEntry(self, path.join(dir, 'missing.js'))).toBe(false);
+      // TK2: an existing extensionless file is itself argv[1]; its `.js` twin is not tried
+      fs.writeFileSync(path.join(dir, 'guard-probe'), '');
+      expect(isEntry(path.join(dir, 'guard-probe'), self)).toBe(false);
+      // TK4: self is real-pathed too (node --preserve-symlinks-main keeps the symlink as the module's path)
+      if (process.platform !== 'win32') {
+        expect(isEntry(path.join(dir, 'qbo-check.js'), path.join(dir, 'qbo-check.js'))).toBe(true);
+        expect(isEntry(self, path.join(dir, 'qbo-check.js'))).toBe(true);
+      }
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

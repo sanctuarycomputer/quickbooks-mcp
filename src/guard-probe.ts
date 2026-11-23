@@ -74,14 +74,18 @@ export function isEntry(argv1: string | undefined, self: string): boolean {
   } catch {
     return false;
   }
-  for (const candidate of [argv1, `${argv1}.js`]) {
-    try {
-      if (realpathSync(candidate) === me) return true;
-    } catch {
-      // not this candidate
-    }
+  // argv[1] itself when it exists; only when it doesn't, argv[1] plus `.js` (as Node resolves `dist/guard-probe`), so a
+  // main named like this file without its extension that merely imports it does not run it.
+  try {
+    return realpathSync(argv1) === me;
+  } catch {
+    // no such path: try the name Node would have loaded
   }
-  return false;
+  try {
+    return realpathSync(`${argv1}.js`) === me;
+  } catch {
+    return false;
+  }
 }
 
 // The process entry (T0's pattern: tests import this file with argv[1] set to cover it).
