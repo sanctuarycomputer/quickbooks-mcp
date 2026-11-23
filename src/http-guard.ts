@@ -236,7 +236,8 @@ export function installGuard(guard: Guard): () => void {
       for (const fn of list) out = fn.call(this, out, ...rest);
       try {
         const d = Object.getOwnPropertyDescriptor(this, "adapter");
-        if (d === undefined || !("value" in d) || d.value !== guard.adapter) throw new Error("adapter");
+        // An accessor has no value, so it fails this too.
+        if (d === undefined || d.value !== guard.adapter) throw new Error("adapter");
         Object.defineProperty(this, "adapter", { value: guard.adapter, writable: false, configurable: false, enumerable: true });
       } catch {
         throw refusal(this.method, this.url, "transport");

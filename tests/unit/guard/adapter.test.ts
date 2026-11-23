@@ -760,6 +760,37 @@ describe('task-2 pass 2: the guard transform, interceptor order, every instance 
     expect(net.calls).toHaveLength(0);
   });
 
+  it("TF3 (mutant 8): a per-request adapter is refused before any of the request's transforms runs", async () => {
+    const t = jest.fn(function (this: any, d: unknown) {
+      this.adapter = guard.adapter;
+      return d;
+    });
+    await refusedWith(inCall(() => ax.request({ url: P, adapter: 'http', transformRequest: [t] } as any)), 'transport');
+    expect(t).not.toHaveBeenCalled();
+    expect(net.calls).toHaveLength(0);
+  });
+
+  it('TF3 (mutants 10, 14): restore puts Axios.prototype.request back, and a stale reference to the guard request passes through', async () => {
+    const proto = (ax as any).Axios.prototype;
+    const before = proto.request;
+    const own = jest.fn(async (c: any) => ({ data: 'ok', status: 200, statusText: 'OK', headers: {}, config: c }));
+    const r = installGuard(createGuard(BASE));
+    const stale = proto.request;
+    expect(stale).not.toBe(before);
+    r();
+    expect(proto.request).toBe(before);
+    restoreGuard();
+    try {
+      expect(proto.request.name).not.toMatch(/qboGuard/);
+      const bare = new (ax as any).Axios({ adapter: own });
+      await expect(stale.call(bare, { url: 'https://other.example.test/s' })).resolves.toMatchObject({ data: 'ok' });
+    } finally {
+      restoreGuard = installGuard(guard);
+    }
+    expect(own).toHaveBeenCalledTimes(1);
+    expect(net.calls).toHaveLength(0);
+  });
+
   it('TF4: the headers sent are the ones decide saw, read once', async () => {
     let reads = 0;
     const cfg = Object.defineProperty({ ...ax.defaults, method: 'get', url: P }, 'headers', {
