@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:type\n\nThe transaction is a credit card credit, which can't be recategorized."
+    }
+  ],
+  "isError": true
+}

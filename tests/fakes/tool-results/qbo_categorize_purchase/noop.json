@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:noop\n\nNo named line would change."
+    }
+  ],
+  "isError": true
+}

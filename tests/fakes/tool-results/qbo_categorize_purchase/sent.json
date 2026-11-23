@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"result\":\"sent\",\"receipt\":\"quickbooks-write:garden3d:purchase:1001:3:1\",\"company\":\"garden3d\",\"type\":\"purchase\",\"id\":\"1001\",\"sync_token\":\"3\",\"sync_token_after\":\"4\",\"lines\":[{\"line_id\":\"1\",\"before\":{\"account_id\":\"77\",\"class_id\":null},\"after\":{\"account_id\":\"84\",\"class_id\":\"12\"}}],\"undo_of\":null,\"diff\":null,\"note\":null,\"writes_off\":false,\"recorded\":\"notion\"}"
+    }
+  ]
+}

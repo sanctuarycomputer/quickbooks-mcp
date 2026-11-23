@@ -1,0 +1,72 @@
+// Sanctuary Computer (quickbooks-mcp-286): a fake Stacks token endpoint for 291's stub network; serves the copied stacks-token/ fixtures.
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import type { StubAnswer, StubCall, StubTable } from './stub-network.js';
+
+const DIR = fileURLToPath(new URL('./stacks-token/', import.meta.url));
+
+/** Each copied stacks-token/ file and the check that serves it (A1.8; usb-club is also A3.4). */
+export const SERVED_STACKS_FIXTURES: Record<string, string> = {
+  '200-garden3d.json': 'A1.1',
+  '200-sanctuary-computer.json': 'A4.9',
+  '200-index-space.json': 'A4.9',
+  '200-usb-club.json': 'A4.9',
+  '403.json': 'A1.5',
+  '404.json': 'A1.5',
+  '409.json': 'A1.5',
+  '502-invalid_grant.json': 'A1.5',
+  '502-proxy.json': 'A1.5',
+  '502-unavailable.json': 'A1.5',
+};
+
+export type StacksStep = string | { status: number; headers?: Record<string, string>; body?: unknown };
+export type StacksFakeOpts = {
+  /** enterprise key -> fixture file name; a key not listed gets 200-<key>.json when that file exists, else 404.json */
+  byKey?: Record<string, string>;
+  /** answers in order (a fixture file name, or a status/headers/body object); the last one repeats */
+  sequence?: StacksStep[];
+  /** never answer */
+  hang?: boolean;
+  /** fail the connection instead of answering */
+  refuse?: 'reset' | 'refused';
+  /** overrides the status of every answer */
+  status?: number;
+  /** replaces the headers of every answer */
+  headers?: Record<string, string>;
+};
+
+export function stacksFixture(file: string): { status: number; headers: Record<string, string>; body: unknown } {
+  return JSON.parse(readFileSync(DIR + file, 'utf8'));
+}
+
+function answerOf(step: StacksStep, opts: StacksFakeOpts): StubAnswer {
+  const f = typeof step === 'string' ? stacksFixture(step) : { headers: {}, ...step };
+  const body = f.body;
+  return {
+    status: opts.status ?? f.status,
+    headers: opts.headers ?? f.headers,
+    // A string body is sent as-is, an object as JSON.
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  };
+}
+
+export function enterpriseOf(call: StubCall): string {
+  return new URL(call.path ?? '/', 'https://stacks.invalid').searchParams.get('enterprise') ?? '';
+}
+
+export function stacksFake(opts: StacksFakeOpts = {}): { handler: StubTable; requests: StubCall[] } {
+  const requests: StubCall[] = [];
+  const handler: StubTable = (call) => {
+    requests.push(call);
+    if (opts.hang) return new Promise<StubAnswer>(() => {});
+    if (opts.refuse) {
+      const code = opts.refuse === 'reset' ? 'ECONNRESET' : 'ECONNREFUSED';
+      return Promise.reject(Object.assign(new Error(`connect ${code}`), { code }));
+    }
+    if (opts.sequence) return answerOf(opts.sequence[Math.min(requests.length - 1, opts.sequence.length - 1)], opts);
+    const key = enterpriseOf(call);
+    const own = `200-${key}.json`;
+    return answerOf(opts.byKey?.[key] ?? (own in SERVED_STACKS_FIXTURES ? own : '404.json'), opts);
+  };
+  return { handler, requests };
+}

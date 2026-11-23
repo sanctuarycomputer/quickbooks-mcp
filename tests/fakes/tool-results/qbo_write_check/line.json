@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:line\n\nThe newest expense has a line without an Id."
+    }
+  ],
+  "isError": true
+}

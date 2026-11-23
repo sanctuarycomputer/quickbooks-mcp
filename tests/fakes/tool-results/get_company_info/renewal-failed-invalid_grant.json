@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: renewal-failed:invalid_grant\n\nStacks couldn't renew the QuickBooks sign-in; Intuit answered invalid_grant (502)."
+    }
+  ],
+  "isError": true
+}

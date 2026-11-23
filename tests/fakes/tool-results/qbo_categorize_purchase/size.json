@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:size\n\nAt most 20 lines can be changed in one call."
+    }
+  ],
+  "isError": true
+}

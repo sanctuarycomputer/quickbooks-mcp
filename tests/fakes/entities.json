@@ -1,0 +1,33 @@
+{
+  "v": "1.0",
+  "companies": [
+    {
+      "stacks_key": "sanctuary-computer",
+      "name": "Sanctuary Computer Inc",
+      "accepted_names": [
+        "Sanctuary Computer Inc"
+      ]
+    },
+    {
+      "stacks_key": "garden3d",
+      "name": "garden3d, LLC",
+      "accepted_names": [
+        "garden3d, LLC"
+      ]
+    },
+    {
+      "stacks_key": "index-space",
+      "name": "Index Space, LLC",
+      "accepted_names": [
+        "Index Space, LLC"
+      ]
+    },
+    {
+      "stacks_key": "usb-club",
+      "name": "USB Club, LLC",
+      "accepted_names": [
+        "USB Club, LLC"
+      ]
+    }
+  ]
+}

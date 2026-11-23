@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:account\n\nAccount 77 no longer exists."
+    }
+  ],
+  "isError": true
+}

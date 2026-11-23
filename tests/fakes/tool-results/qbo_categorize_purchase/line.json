@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:line\n\nLine 3 isn't an account-based expense line."
+    }
+  ],
+  "isError": true
+}

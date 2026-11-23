@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: stacks-auth\n\nStacks refused the server's key (403)."
+    }
+  ],
+  "isError": true
+}

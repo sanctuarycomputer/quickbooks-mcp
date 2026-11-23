@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:receipt-failed\n\nThe write ledger couldn't be read; nothing was sent."
+    }
+  ],
+  "isError": true
+}

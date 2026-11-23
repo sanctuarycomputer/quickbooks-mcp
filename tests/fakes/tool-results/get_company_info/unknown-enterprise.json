@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: unknown-enterprise\n\nStacks doesn't know this company's key (404)."
+    }
+  ],
+  "isError": true
+}

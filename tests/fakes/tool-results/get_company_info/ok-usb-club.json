@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"Id\":\"9990000000000004\",\"CompanyName\":\"USB Club, LLC\",\"LegalName\":\"USB Club, LLC\",\"CompanyAddr\":{\"Line1\":\"1 Example Street\",\"City\":\"Exampleton\",\"CountrySubDivisionCode\":\"NY\",\"PostalCode\":\"00000\"},\"Country\":\"US\"}"
+    }
+  ]
+}

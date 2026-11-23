@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:stacks-bill\n\nThis is an intercompany bill Stacks made."
+    }
+  ],
+  "isError": true
+}

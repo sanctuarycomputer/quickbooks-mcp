@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:sweep\n\nThe job guard hasn't run clean in the last 20 minutes; writes are held."
+    }
+  ],
+  "isError": true
+}

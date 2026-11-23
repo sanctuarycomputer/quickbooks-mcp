@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:unknown\n\nA change's result is still unknown after its refetch failed."
+    }
+  ],
+  "isError": true
+}

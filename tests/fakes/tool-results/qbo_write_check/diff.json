@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:diff\n\nThe built request differs from the expense."
+    }
+  ],
+  "isError": true
+}

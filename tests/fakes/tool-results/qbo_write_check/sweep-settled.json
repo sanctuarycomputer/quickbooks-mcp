@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:sweep\nsettled: quickbooks-write:garden3d:purchase:1001:3:1 sent\nsettled: quickbooks-write:garden3d:bill:2002:7:1 unsettled deleted\n\nThe job guard's stamp is stale."
+    }
+  ],
+  "isError": true
+}
