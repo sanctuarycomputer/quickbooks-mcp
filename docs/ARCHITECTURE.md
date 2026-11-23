@@ -8,6 +8,7 @@ This document explains the architecture, design decisions, and code patterns use
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
 - [Read-only fork](#read-only-fork)
+- [HTTP guard](#http-guard)
 - [Directory Structure](#directory-structure)
 - [Core Components](#core-components)
 - [Handler Pattern](#handler-pattern)
@@ -103,7 +104,59 @@ Every failure is one error, `refused to start: <reason>`.
 
 **Still to come.**
 - Ticket 286 adds the Stacks token client: `getInstance` gets a token from Stacks, tools take a `company` argument, and `qbo_companies` gives a real answer. It documents its new configuration keys.
-- Ticket 291 adds the HTTP guard: every QuickBooks request goes through one guarded client, and the server refuses at start to run with proxy or TLS-weakening settings.
+- The HTTP guard (ticket 291) is in place: see [HTTP guard](#http-guard) below.
+
+---
+
+## HTTP guard
+
+Every request that leaves the server goes through one guard. It decides each request, sends only what it decided, and refuses the rest with a rule name.
+
+**Where it hooks.** `node-quickbooks` requires the CommonJS `axios` instance, which is a different object from the fork's ESM `import axios`. `guardedAxios()` returns that CommonJS instance. `installGuard` sets the guard as its `defaults.adapter` and adds a request interceptor that refuses (`transport`) any request whose config names another adapter. `secureStart(process.env, process.execArgv)` installs it as the first statement of `main()` in `src/index.ts`, before any tool registers.
+
+**What it allows.** Contract 1.0 §6 in Stacksbot's `docs/contracts/quickbooks.md` is the rule set; this document does not restate it. The allow rules are `companyinfo`, `preferences`, `query`, `reports` and `stacks`. Every other request is refused with a rule name. The guard's own rule names are:
+
+- `raw-text`: the URL spelling is one `new URL` would rewrite, or its head is not the exact allowed head.
+- `dot-segments`: the raw path holds a `\`, a `%2e`, or a `.` or `..` segment.
+- `stacks-config`: the configured Stacks URL breaks the contract's form, or has no usable hostname.
+- `body`: the request has a body.
+- `credential-crossing`: a QuickBooks request carries `X-Api-Key`, or a Stacks request carries `Authorization`.
+- `guard-error`: an exception inside the guard, or the decided URL differs from the instance's own `getUri`.
+- `transport`: the interceptor above.
+- `backstop`: the backstop below.
+
+`decide` lives in `src/clients/guard-decide.ts`. It loads no network module and sends nothing. The adapter and the probe both call it.
+
+**Transport pins.** The guard sends only the decided URL, with no `params`. It sets `maxRedirects: 0`, `proxy: false` and its own `https.Agent({ rejectUnauthorized: true })`. From the request config it keeps `method`, `headers`, `responseType`, `timeout`, `transformRequest`, `transformResponse` and `validateStatus` (the `KEPT` list), and only as own properties. Every other key is dropped. QuickBooks requests carry no timeout until the Stacks token client (ticket 286) sets one; the guard passes the request's `timeout` through unchanged.
+
+**The backstop.** `installBackstop()` replaces these on the module and global objects:
+
+- `https.request` and `https.get` are wrapped. A call goes on only inside a single-use ticket whose method, hostname, port and path match the call's. The adapter issues the ticket for the one request it decided.
+- `http.request`, `http.get`, `http2.connect`, `globalThis.fetch` and `globalThis.WebSocket` always refuse (`backstop`).
+
+It then calls `syncBuiltinESMExports()`, so ESM imports of `node:http`, `node:https` and `node:http2` see the replacements. Each replacement carries the `Symbol.for('qbo-guard.backstop')` marker. If one cannot be replaced, it puts back the others and throws `qbo-guard: install failed`.
+
+The backstop covers the HTTP paths above and nothing else. It is not a sandbox. It does not cover native addons, child processes, sockets opened directly with `net`, `tls` or `dgram`, or worker threads (a worker loads its own copies of these modules). It does not cover code that took a reference to an original function before the backstop was installed, or an HTTP client library that opens its own sockets.
+
+**Start refusals.** `secureStart` refuses to start when any of these holds:
+
+- `NODE_USE_ENV_PROXY` is set, with any value.
+- `--use-env-proxy` is in `process.execArgv` or in `NODE_OPTIONS`.
+- `NODE_TLS_REJECT_UNAUTHORIZED` is `0`.
+- `NODE_EXTRA_CA_CERTS` is set, with any value.
+
+The refusal is one stderr line, `qbo-guard: start refused: <key>`, naming the key and never the value, and exit code 1. A failed install writes `qbo-guard: install failed` and exits 1. In both cases no tool is registered.
+
+**Call scope.** `defaultCallScope()` returns the scope `secureStart` made. `defaultCallScope().run(fn)` starts one tool call with a fresh call record and no realm. `setRealm(r)` sets the realm for the current call. Outside a call, or before `setRealm`, every QuickBooks request is refused. `configureGuard({ keys, allowedRealm, callRecord })` replaces any of those three callbacks. It never replaces `stacksUrl`, which is `STACKS_QBO_URL` read once at start.
+
+**The probe.** `node dist/guard-probe.js <METHOD> <URL> --realm <R> [--stacks-url <u>] [--key <k>]...` asks `decide` about one request. It prints `allow <rule>` and exits 0, or prints `refuse <rule>` and exits 1. A usage error prints a line starting `usage:` to stderr and exits 2. Read the stdout line, not the exit code alone: Node also exits 1 when it crashes (a closed stdout, a missing file), so a refusal is the line `refuse <rule>` with exit 1, and anything else (an empty stdout included, as when Node is pointed at a directory rather than the file) is a failed probe, never an allow. The probe sends nothing and imports only `guard-decide`, plus `node:fs` and `node:url` to find its own path. It has no headers or body, so its answer covers method and URL only. Without `--stacks-url`, a Stacks request is refused (`refused`); `--stacks-url ''` stands for a `STACKS_QBO_URL` set but empty (`stacks-config`).
+
+```
+$ node dist/guard-probe.js GET 'https://quickbooks.api.intuit.com/v3/company/123/companyinfo/123?minorversion=75' --realm 123
+allow companyinfo
+$ node dist/guard-probe.js GET 'https://quickbooks.api.intuit.com/v3/company/123/customer/5?minorversion=75' --realm 123
+refuse entity-by-id
+```
 
 ---
 
@@ -116,11 +169,14 @@ src/
 │                               # - Handles MCP protocol communication
 │
 ├── clients/
+│   ├── guard-decide.ts         # The guard's pure decision; loads no network module
 │   └── quickbooks-client.ts    # QuickBooks API client wrapper
 │                               # - No sign-in; getInstance() rejects with
 │                               #   "no QuickBooks token source" until 286
 │
 ├── allowlist.ts                # Read allowlist, refused keys, start check
+├── http-guard.ts               # HTTP guard, backstop and secureStart
+├── guard-probe.ts              # Probe: asks decide about one request, sends nothing
 │
 ├── handlers/                   # Business logic layer
 │   └── *.handler.ts            # Only handlers behind an allowlisted tool

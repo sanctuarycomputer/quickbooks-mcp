@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Changed by Sanctuary Computer (quickbooks-mcp-285): registers only the read allowlist and the qbo_companies stub, through startReadServer.
+// Changed by Sanctuary Computer (quickbooks-mcp-291): secureStart (start refusals, the HTTP guard, the backstop) runs first in main().
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { secureStart } from "./http-guard.js";
 import { QuickbooksMCPServer } from "./server/qbo-mcp-server.js";
 import { startReadServer, type ReadTool } from "./allowlist.js";
 import { QboCompaniesTool } from "./tools/qbo-companies.tool.js";
@@ -73,6 +75,13 @@ const TOOLS: readonly ReadTool[] = [
 ];
 
 const main = async () => {
+  // The guard and the backstop go in before any tool registers; a refusal or a failed install stops start here.
+  try {
+    secureStart(process.env, process.execArgv);
+  } catch (e) {
+    process.stderr.write((e as Error).message + "\n");
+    process.exit(1);
+  }
   const server = QuickbooksMCPServer.GetServer();
   startReadServer(process.env, server, TOOLS);
   await server.connect(new StdioServerTransport());
