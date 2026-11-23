@@ -1,5 +1,5 @@
 // Sanctuary Computer (quickbooks-mcp-286): bindPromiseContext keeps node-quickbooks' bluebird handlers in the call they were attached in (A3.4, A3.5).
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeAll, jest } from '@jest/globals';
 import { spawnSync } from 'child_process';
 import { bindPromiseContext, quickbooksBluebird } from '../../../src/clients/bluebird-context.js';
 import { currentCall, runInCall } from '../../../src/clients/call-context.js';
@@ -43,10 +43,15 @@ describe('without bindPromiseContext (a separate process, node-quickbooks bluebi
 });
 
 describe('after bindPromiseContext', () => {
-  it('binds once: a second call is a no-op and _then keeps its identity', () => {
-    const before = Bluebird.prototype._then;
+  let before: unknown;
+  let bound: unknown;
+  beforeAll(() => {
+    before = Bluebird.prototype._then;
     bindPromiseContext();
-    const bound = Bluebird.prototype._then;
+    bound = Bluebird.prototype._then;
+  });
+
+  it('binds once: a second call is a no-op and _then keeps its identity', () => {
     expect(bound).not.toBe(before);
     bindPromiseContext();
     expect(Bluebird.prototype._then).toBe(bound);
@@ -70,5 +75,30 @@ describe('after bindPromiseContext', () => {
     const ctx = { tag: 't' };
     await expect(Bluebird.resolve(5).bind(ctx).then(function (this: typeof ctx, v: number) { return `${this.tag}${v}`; })).resolves.toBe('t5');
     await expect(Bluebird.resolve(6).then(null, null)).resolves.toBe(6);
+  });
+
+  // _then(didFulfill, didReject, _, receiver, internalData): the third slot is unused by bluebird 3.3.4; these cases decide
+  // that receiver and internalData pass through (finally and spread put their state in receiver; bind-to-a-promise and
+  // reduce put theirs in internalData).
+  it('receiver passes through: finally resolves the value and calls fn once; spread applies the array', async () => {
+    const fn = jest.fn();
+    await expect(Bluebird.resolve(7).finally(fn)).resolves.toBe(7);
+    expect(fn).toHaveBeenCalledTimes(1);
+    await expect(Bluebird.resolve([1, 2]).spread((x: number, y: number) => x + y)).resolves.toBe(3);
+  });
+
+  it('internalData passes through: bind to a promise of a receiver, and reduce', async () => {
+    const ctx = { tag: 'p' };
+    await expect(Bluebird.resolve(8).bind(Bluebird.resolve(ctx)).then(function (this: typeof ctx, v: number) { return `${this.tag}${v}`; })).resolves.toBe('p8');
+    await expect(Bluebird.reduce([1, 2, 3], (a: number, b: number) => a + b, 0)).resolves.toBe(6);
+  });
+});
+
+describe('bindPromiseContext on a bluebird without _then', () => {
+  it('throws by name at bind time and sets no marker', () => {
+    const fake = { prototype: {} as Record<string | symbol, unknown> };
+    expect(() => bindPromiseContext({ bluebird: () => fake })).toThrow(new Error('bluebird-context: bluebird has no _then'));
+    expect(Object.getOwnPropertySymbols(fake.prototype)).toEqual([]);
+    expect(fake.prototype._then).toBeUndefined();
   });
 });

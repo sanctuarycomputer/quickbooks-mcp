@@ -84,6 +84,15 @@ describe('inside a call', () => {
       expect(currentCall()).toMatchObject({ token: TOKEN(1), realm: REALM_A });
       expect(currentRealmAllows(REALM_A)).toBe(true);
       expect(currentRealmAllows(REALM_B)).toBe(false);
+      expect(currentRealmAllows('')).toBe(false);
+    });
+  });
+
+  it('an empty realm is never allowed, even when it is the one set (A3.5)', async () => {
+    await runInCall('garden3d', async () => {
+      setCallToken(TOKEN(1), '');
+      expect(currentRealmAllows('')).toBe(false);
+      expect(currentRealmAllows(REALM_A)).toBe(false);
     });
   });
 

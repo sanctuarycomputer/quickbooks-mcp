@@ -6,22 +6,29 @@ import { createRequire } from "node:module";
 
 const BOUND = Symbol.for("qbo-mcp.bluebird-context");
 
-type ThenFn = (didFulfill: unknown, didReject: unknown, ...rest: unknown[]) => unknown;
+/** bluebird 3.3.4's `_then(didFulfill, didReject, _, receiver, internalData)` (promise.js:217): `_` is unused there,
+ * `receiver` carries finally's and spread's state, `internalData` bind-to-a-promise's and reduce's. */
+type ThenFn = (didFulfill: unknown, didReject: unknown, _: unknown, receiver: unknown, internalData: unknown) => unknown;
+type Bluebird = { prototype: Record<string | symbol, unknown> };
 
 const bindIfFunction = (h: unknown): unknown => (typeof h === "function" ? AsyncResource.bind(h as (...a: unknown[]) => unknown) : h);
 
 /** The bluebird node-quickbooks loads (resolved from its own path, as guardedAxios resolves axios). */
-export function quickbooksBluebird(): { prototype: Record<string | symbol, unknown> } {
+export function quickbooksBluebird(): Bluebird {
   return createRequire(createRequire(import.meta.url).resolve("node-quickbooks"))("bluebird");
 }
 
-/** Wraps bluebird's `_then` once so its two handler slots run in the context they were attached in; a second call is a no-op. */
-export function bindPromiseContext(): void {
-  const proto = quickbooksBluebird().prototype;
+/**
+ * Wraps bluebird's `_then` once so its two handler slots run in the context they were attached in; the other three slots
+ * pass through as given. A second call is a no-op. Throws at bind time if the bluebird has no `_then`.
+ */
+export function bindPromiseContext(deps?: { bluebird?: () => Bluebird }): void {
+  const proto = (deps?.bluebird ?? quickbooksBluebird)().prototype;
   if (proto[BOUND] === true) return;
-  const original = proto._then as ThenFn;
-  proto._then = function (this: unknown, didFulfill: unknown, didReject: unknown, ...rest: unknown[]) {
-    return original.call(this, bindIfFunction(didFulfill), bindIfFunction(didReject), ...rest);
+  const original = proto._then;
+  if (typeof original !== "function") throw new Error("bluebird-context: bluebird has no _then");
+  proto._then = function (this: unknown, didFulfill: unknown, didReject: unknown, _: unknown, receiver: unknown, internalData: unknown) {
+    return (original as ThenFn).call(this, bindIfFunction(didFulfill), bindIfFunction(didReject), _, receiver, internalData);
   };
   proto[BOUND] = true;
 }

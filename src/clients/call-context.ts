@@ -48,10 +48,10 @@ export function setCallToken(token: string, realm: string): void {
   s.realm = realm;
 }
 
-/** The guard's realm callback (A3.5): true only for the current call's realm; false outside a call or before a realm is set. */
+/** The guard's realm callback (A3.5): true only for the current call's realm; false outside a call, before a realm is set, and for "" always. */
 export function currentRealmAllows(realm: string): boolean {
   const kept = calls.getStore()?.realm;
-  return kept !== undefined && kept === realm;
+  return kept !== undefined && realm !== "" && kept === realm;
 }
 
 /** The guard's call-record callback: the current call's record; undefined outside a call. */
