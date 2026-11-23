@@ -557,7 +557,7 @@ const has = (env: NodeJS.ProcessEnv, key: string) => Object.prototype.hasOwnProp
  * stand, and inside quotes a backslash takes the next character literally.
  */
 function nodeOptionTokens(value: string | undefined): string[] {
-  // An empty token (`""`) names no option, so it is dropped.
+  // An empty token (`""`) names no option (optionName gives undefined), so it needs no filtering.
   const tokens: string[] = [];
   let token = "";
   let quoted = false;
@@ -576,7 +576,7 @@ function nodeOptionTokens(value: string | undefined): string[] {
     }
   }
   tokens.push(token);
-  return tokens.filter((t) => t !== "");
+  return tokens;
 }
 
 /** An option's name as Node matches it: the part before `=`, with `_` and `-` the same after the leading `--`. */
