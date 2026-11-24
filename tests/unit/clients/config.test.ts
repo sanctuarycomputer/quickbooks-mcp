@@ -223,7 +223,7 @@ describe('A6.1: reads only the five, decided by behaviour', () => {
     const tool = jest.fn();
     const restore = secureStart(env as NodeJS.ProcessEnv, []);
     try {
-      startReadServer(env, { tool } as unknown as McpServer, fakeTools());
+      startReadServer(env, { tool } as unknown as McpServer, fakeTools()).close();
       loadConfig(env);
     } finally {
       restore();

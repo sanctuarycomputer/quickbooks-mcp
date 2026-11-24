@@ -1,7 +1,14 @@
 // Changed by Sanctuary Computer (quickbooks-mcp-285): the removed switches are gone; every definition passed here registers.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): every tool takes a required `company` from the loaded keys and runs
+// as one tool call: the company's call is prepared, then the handler's answer is shaped into contract §5's result.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
+import { currentCall, runInCall, type CallStore, type Failure } from "../clients/call-context.js";
+import type { Runtime } from "../clients/runtime.js";
+import { errorResult, shapeResult } from "./tool-result.js";
+
+const FORK_ERROR: Failure = Object.freeze({ reason: "fork-error" });
 
 /**
  * Unsupported-parameter reporting.
@@ -53,48 +60,52 @@ export function unsupportedParamsWarning(
 
 export function RegisterTool<T extends z.ZodType<any, any>>(
   server: McpServer,
-  toolDefinition: ToolDefinition<T>
+  toolDefinition: ToolDefinition<T>,
+  runtime: Runtime
 ) {
   const known = knownParamKeys(toolDefinition.schema);
   const paramsSchema = permissiveParamsSchema(toolDefinition.schema);
-  const baseHandler = toolDefinition.handler as unknown as (...a: any[]) => Promise<any>;
+  // The handler receives `({ params }, runtime)`; upstream's handlers read only their first argument.
+  const baseHandler = toolDefinition.handler as unknown as (args: { params: unknown }, runtime: Runtime) => Promise<unknown>;
+  // The loaded keys, in file order (A2.7, A3.1); loadConfig refuses an empty list, so the enum is never empty.
+  const keys = runtime.cfg.companies.map((c) => c.key) as [string, ...string[]];
 
-  const handler = (async (...a: any[]) => {
-    let callArgs = a;
-    let warning: string | null = null;
-    try {
-      const params = (a[0] as any)?.params;
-      warning = unsupportedParamsWarning(toolDefinition.name, known, params);
-      if (warning && known && params && typeof params === "object" && !Array.isArray(params)) {
-        // Strip unknown keys before the handler runs. The permissive schema
-        // exists only so they can be SEEN; it must not change what reaches
-        // QuickBooks. Several search tools destructure their params with a rest
-        // element and pass the rest on as query criteria (search-bills,
-        // search-customers, search-estimates, search-vendors), so an unknown key
-        // left in place would become a real SQL filter - quietly changing which
-        // records the search returns while this warning claimed it was ignored.
-        const cleaned: Record<string, unknown> = {};
-        for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
-          if (known.has(k)) cleaned[k] = v;
+  // The SDK has checked `company` against the enum and `params` against the schema before this runs (A3.2).
+  const handler = (async (args: { company: string; params: unknown }) =>
+    runInCall(args.company, async () => {
+      const call = currentCall() as CallStore;
+      let params = args.params;
+      try {
+        const warning = unsupportedParamsWarning(toolDefinition.name, known, params);
+        if (warning && known && params && typeof params === "object" && !Array.isArray(params)) {
+          // Strip unknown keys before the handler runs. The permissive schema
+          // exists only so they can be SEEN; it must not change what reaches
+          // QuickBooks. Several search tools destructure their params with a rest
+          // element and pass the rest on as query criteria (search-bills,
+          // search-customers, search-estimates, search-vendors), so an unknown key
+          // left in place would become a real SQL filter - quietly changing which
+          // records the search returns while this warning claimed it was ignored.
+          const cleaned: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
+            if (known.has(k)) cleaned[k] = v;
+          }
+          params = cleaned;
+          // The call's warnings go after the result's first item, on errors too (contract §5).
+          call.warnings.push(warning);
         }
-        callArgs = [{ ...(a[0] as any), params: cleaned }, ...a.slice(1)];
+      } catch {
+        /* diagnostics must never break a working call */
       }
-    } catch {
-      /* diagnostics must never break a working call */
-    }
-
-    const result = await baseHandler(...callArgs);
-
-    try {
-      if (warning && result && Array.isArray(result.content)) {
-        // Prepended so it cannot be missed, and added even on error responses.
-        result.content.unshift({ type: "text" as const, text: warning });
+      try {
+        // A prepare failure (a token failure, a name mismatch, a failed first-use read) comes only from this return (T7-4).
+        const failure = await runtime.companies.prepareCall(args.company);
+        if (failure !== null) return errorResult(failure, call.warnings);
+        return shapeResult(await baseHandler({ params }, runtime), call, toolDefinition.name);
+      } catch {
+        // The thrown value is never read: an error rethrown by the interceptors carries the bearer in its config (TB6).
+        return errorResult(currentCall()?.failure ?? FORK_ERROR, call.warnings);
       }
-    } catch {
-      /* diagnostics must never break a working call */
-    }
-    return result;
-  }) as typeof toolDefinition.handler;
+    })) as unknown as Parameters<McpServer["tool"]>[3];
 
-  server.tool(toolDefinition.name, toolDefinition.description, { params: paramsSchema }, handler);
+  server.tool(toolDefinition.name, toolDefinition.description, { company: z.enum(keys), params: paramsSchema }, handler as any);
 }

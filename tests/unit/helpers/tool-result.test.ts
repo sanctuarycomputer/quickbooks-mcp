@@ -349,7 +349,7 @@ describe('D9 and A4.7: classify', () => {
   it('a count is never cut', () => {
     const big = 'WARNING: ' + 'x'.repeat(1991);
     const warnings = Array.from({ length: 16 }, () => big); // 32,000 of warnings
-    expect(cut('count', ['{"count":3}'], warnings, 1, false).lines).toEqual(['{"count":3}']);
+    expect(cut('count', ['{"count":3}'], warnings, 1, false, null).lines).toEqual(['{"count":3}']);
   });
 
   it('A4.7: a label-only get_preferences, two JSON items on a non-search tool, and no text item are fork-error', () => {
@@ -568,9 +568,9 @@ describe('A5.10: the bound', () => {
     const fill = RESULT_MAX - at.join('\n').length;
     const exact = render('report', report(990 + fill));
     expect(exact.join('\n').length).toBe(RESULT_MAX);
-    expect(cut('report', exact, [], 1, false).lines).toBe(exact);
+    expect(cut('report', exact, [], 1, false, null).lines).toBe(exact);
     const past = render('report', report(991 + fill));
-    const c = cut('report', past, [], 1, false);
+    const c = cut('report', past, [], 1, false, null);
     expect(c.lines[0]).toBe(REPORT(1, 30));
     expect(c.lines).toEqual([REPORT(1, 30), ...past.slice(0, 31)]);
     expect(c.lines.join('\n').length).toBeLessThanOrEqual(RESULT_MAX);
@@ -582,11 +582,11 @@ describe('A5.10: the bound', () => {
     expect(lines[2].length).toBe(700);
     const fixed = lines[0].length + 1 + lines[1].length;
     const room = REPORT(19, 40).length + 1 + fixed + 21 * 701;
-    const fits = cut('report', lines, padding(RESULT_MAX - room), 1, false);
+    const fits = cut('report', lines, padding(RESULT_MAX - room), 1, false, null);
     expect(fits.lines[0]).toBe(REPORT(19, 40));
     expect(fits.lines).toHaveLength(24);
     expect(fits.lines.join('\n').length).toBe(room);
-    expect(cut('report', lines, padding(RESULT_MAX - room + 1), 1, false).lines[0]).toBe(REPORT(20, 40));
+    expect(cut('report', lines, padding(RESULT_MAX - room + 1), 1, false, null).lines[0]).toBe(REPORT(20, 40));
   });
 });
 
@@ -739,25 +739,24 @@ describe('T9-2: an empty data item, or no room at all, is never cut and never th
   const over = Array.from({ length: 16 }, () => 'WARNING: ' + 'w'.repeat(1991));
 
   it('a search with no rows under warnings over 30,000: the empty data item, no marker', () => {
-    expect(cut('rows', [], over, 1, false)).toEqual({ lines: [], warnings: over });
     expect(cut('rows', [], over, 1, false, [])).toEqual({ lines: [], warnings: over });
     const r = shapeResult(raw('Found 0 bills:', ...over), call(), 'search_bills');
     expect(r.content).toStrictEqual([item(''), ...over.map(item)]);
   });
 
   it('a report, an object and a count with no lines are returned as they are', () => {
-    for (const kind of ['report', 'object', 'count'] as const) expect(cut(kind, [], over, 1, false).lines).toEqual([]);
+    for (const kind of ['report', 'object', 'count'] as const) expect(cut(kind, [], over, 1, false, null).lines).toEqual([]);
   });
 
   it('a report of Header and Columns only, or fewer lines, under no room: no marker', () => {
-    expect(cut('report', ['{"R":"P"}', '{"Column":[]}'], over, 1, false).lines).toEqual(['{"R":"P"}', '{"Column":[]}']);
-    expect(cut('report', ['{"R":"P"}'], over, 1, false).lines).toEqual(['{"R":"P"}']);
+    expect(cut('report', ['{"R":"P"}', '{"Column":[]}'], over, 1, false, null).lines).toEqual(['{"R":"P"}', '{"Column":[]}']);
+    expect(cut('report', ['{"R":"P"}'], over, 1, false, null).lines).toEqual(['{"R":"P"}']);
   });
 
   it('with no room, a report keeps Header and Columns and drops every row; an object is its marker', () => {
-    expect(cut('report', ['{"R":"P"}', '{"Column":[]}', '{"depth":0}'], over, 1, false).lines).toEqual([REPORT(1, 1), '{"R":"P"}', '{"Column":[]}']);
-    expect(cut('object', ['{}'], over, 1, false).lines).toEqual([OBJECT]);
-    expect(cut('count', ['{"count":1}'], over, 1, false).lines).toEqual(['{"count":1}']);
+    expect(cut('report', ['{"R":"P"}', '{"Column":[]}', '{"depth":0}'], over, 1, false, null).lines).toEqual([REPORT(1, 1), '{"R":"P"}', '{"Column":[]}']);
+    expect(cut('object', ['{}'], over, 1, false, null).lines).toEqual([OBJECT]);
+    expect(cut('count', ['{"count":1}'], over, 1, false, null).lines).toEqual(['{"count":1}']);
   });
 
   it('with no room, a search keeps its first header line: Lines dropped, or later rows dropped, or one row uncut', () => {
@@ -770,17 +769,29 @@ describe('T9-2: an empty data item, or no room at all, is never cut and never th
     expect(dataOf(r)).toBe(`${LINES(2, 2, 1, 2, 2)}\n{"Id":"1","depth":0}`);
   });
 
-  it('row sizes that do not describe the lines make each line its own row, without throwing', () => {
+  it('TB9-1, TB9-2: row sizes that do not describe the lines are refused, whatever the length; given sizes group the rows', () => {
     const lines = ['a', 'b', 'c'].map((k) => JSON.stringify({ [k]: 'x'.repeat(100) }));
     const L = lines[0].length;
     const ROOM = (n: number) => padding(RESULT_MAX - n);
-    // Room for the marker and two lines, less than the three: as three one-line rows, two are kept.
+    // Room for the marker and two lines, less than the three.
     const room = ROWS(1, 3, 3).length + 2 * (L + 1);
     expect(3 * L + 2).toBeGreaterThan(room);
-    for (const sizes of [undefined, [1, 1], [2, 2], [0, 3], [1.5, 1.5], [-1, 4]]) {
-      expect(cut('rows', lines, ROOM(room), 1, false, sizes).lines).toEqual([ROWS(1, 3, 3), lines[0], lines[1]]);
+    // eslint-disable-next-line no-sparse-arrays
+    const sparse = [, 3] as unknown as number[];
+    const refused: unknown[] = [undefined, null, 3, 'abc', {}, sparse, [1, 1], [2, 2], [4], [0, 3], [1.5, 1.5], [-1, 4], [NaN, 3], ['1', 2]];
+    for (const sizes of refused) {
+      // Over the cut and under it alike: the check comes first.
+      for (const w of [ROOM(room), []]) {
+        expect(() => cut('rows', lines, w, 1, false, sizes as number[])).toThrow(new TypeError("cut: rowSizes doesn't describe the lines"));
+      }
     }
-    // The same lines as one row of a header and two Lines, or as a row and a row of two: grouped by those sizes.
+    // Each kind but a search takes null; sizes there are refused too.
+    for (const kind of ['report', 'object', 'count'] as const) {
+      expect(() => cut(kind, lines, [], 1, false, [1, 1, 1])).toThrow(TypeError);
+      expect(() => cut(kind, lines, [], 1, false, undefined as unknown as null)).toThrow(TypeError);
+    }
+    // The same lines as three one-line rows, one row of a header and two Lines, or a row and a row of two.
+    expect(cut('rows', lines, ROOM(room), 1, false, [1, 1, 1]).lines).toEqual([ROWS(1, 3, 3), lines[0], lines[1]]);
     expect(cut('rows', lines, ROOM(room), 1, false, [3]).lines).toEqual([LINES(2, 2, 0, 1, 2), lines[0]]);
     expect(cut('rows', lines, ROOM(room), 1, false, [1, 2]).lines).toEqual([ROWS(1, 2, 2), lines[0]]);
   });

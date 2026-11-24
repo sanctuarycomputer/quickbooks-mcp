@@ -4,7 +4,7 @@
 // header block and D6's free text. The marker sentences are the Result grammar's; the free texts are the error fixtures'.
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { CallStore, Failure } from "../clients/call-context.js";
-import { READ_ALLOWLIST } from "../allowlist.js";
+import { READ_ALLOWLIST } from "../tool-lists.js";
 import { cleanName } from "./name-fold.js";
 import { CRITERIA_ONLY_TOOLS, REPORT_TOOLS } from "./validate-input.js";
 
@@ -213,23 +213,33 @@ const sum = (ns: number[]): number => ns.reduce((a, b) => a + b, 0);
 /** The length of lines joined by LF. */
 const joined = (lines: string[]): number => sum(lines.map((l) => l.length)) + Math.max(0, lines.length - 1);
 
-/**
- * A search's lines grouped into search rows by `rowSizes` (render's structure, never the lines' text). Sizes that don't
- * describe the lines (one under 1, or a sum other than the line count) make each line its own row, so a cut never throws.
- */
-function searchRows(lines: string[], rowSizes: number[] | undefined): string[][] {
-  const valid = rowSizes !== undefined && rowSizes.every((n) => Number.isInteger(n) && n >= 1) && sum(rowSizes) === lines.length;
-  const sizes = valid ? rowSizes : lines.map(() => 1);
+/** A search's lines grouped into search rows by `rowSizes` (render's structure, never the lines' text); `cut` checked them. */
+function searchRows(lines: string[], rowSizes: readonly number[]): string[][] {
   const rows: string[][] = [];
   let at = 0;
-  for (const n of sizes) {
+  for (const n of rowSizes) {
     rows.push(lines.slice(at, at + n));
     at += n;
   }
   return rows;
 }
 
-function cutSearch(lines: string[], rowSizes: number[] | undefined, room: number, usedOffset: number, criteriaOffset: boolean): string[] {
+/**
+ * True when `rowSizes` describes `lines` as search rows: an array (no holes) of positive integers summing to the line
+ * count. Every element is read by index, so a hole is read as undefined and refused.
+ */
+function describesRows(rowSizes: unknown, lines: string[]): rowSizes is number[] {
+  if (!Array.isArray(rowSizes)) return false;
+  let total = 0;
+  for (let i = 0; i < rowSizes.length; i++) {
+    const n: unknown = rowSizes[i];
+    if (!Number.isInteger(n) || (n as number) < 1) return false;
+    total += n as number;
+  }
+  return total === lines.length;
+}
+
+function cutSearch(lines: string[], rowSizes: readonly number[], room: number, usedOffset: number, criteriaOffset: boolean): string[] {
   const rows = searchRows(lines, rowSizes);
   const t = rows.length;
   const next = (kept: number) => `Next page: pass offset ${usedOffset + kept}${criteriaOffset ? " inside criteria" : ""}.`;
@@ -272,8 +282,11 @@ function cutReport(lines: string[], room: number): string[] {
  * Cuts: the warnings cut at 2,000 first; a result of at most 30,000, every item counted, is untouched. A longer one keeps
  * the most whole rows that fit with the marker as line 1, never going below a report's Header and Columns or a search's
  * first header line; any other data item becomes its marker alone, and a count is never cut. An empty data item has
- * nothing to leave out, so it is never cut, whatever the warnings (T9-2). For a search, `rowSizes` is render's row
- * structure (`searchRowSizes`); it never throws, whatever it is given.
+ * nothing to leave out, so it is never cut, whatever the warnings (T9-2). `rowSizes` is required: for a search it is
+ * render's row structure (`searchRowSizes`), for every other kind null. Sizes that don't describe the lines (not an
+ * array, a hole, an element that isn't a positive integer, a sum other than the line count), or sizes given for another
+ * kind, are refused: cut throws a TypeError, before any cut and whatever the length (TB9-1, TB9-2). `shapeResult` is its
+ * only caller and always passes its own sizes; were one refused, the tool's handler answers fork-error.
  */
 export function cut(
   kind: DataKind,
@@ -281,12 +294,13 @@ export function cut(
   warnings: string[],
   usedOffset: number,
   criteriaOffset: boolean,
-  rowSizes?: number[],
+  rowSizes: readonly number[] | null,
 ): { lines: string[]; warnings: string[] } {
+  if (kind === "rows" ? !describesRows(rowSizes, lines) : rowSizes !== null) throw new TypeError("cut: rowSizes doesn't describe the lines");
   const kept = warnings.map(cutWarning);
   const room = RESULT_MAX - sum(kept.map((w) => w.length));
   if (kind === "count" || lines.length === 0 || joined(lines) <= room) return { lines, warnings: kept };
-  if (kind === "rows") return { lines: cutSearch(lines, rowSizes, room, usedOffset, criteriaOffset), warnings: kept };
+  if (kind === "rows") return { lines: cutSearch(lines, rowSizes as readonly number[], room, usedOffset, criteriaOffset), warnings: kept };
   if (kind === "report") return { lines: cutReport(lines, room), warnings: kept };
   return { lines: [OBJECT_MARKER], warnings: kept };
 }
@@ -301,7 +315,7 @@ export function shapeResult(raw: unknown, call: CallStore, tool: string): CallTo
   if (call.failure !== null) return errorResult(call.failure, warnings);
   if (!classified.ok) return errorResult(FORK_ERROR, warnings);
   const lines = render(classified.kind, classified.value);
-  const sizes = classified.kind === "rows" ? searchRowSizes(classified.value) : undefined;
+  const sizes = classified.kind === "rows" ? searchRowSizes(classified.value) : null;
   const out = cut(classified.kind, lines, warnings, call.usedOffset ?? 1, CRITERIA_ONLY_TOOLS.includes(tool), sizes);
   return { content: [text(out.lines.join("\n")), ...out.warnings.map(text)] };
 }
