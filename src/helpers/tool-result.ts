@@ -161,10 +161,21 @@ export function classify(raw: unknown, kind: ToolKind): Classified {
   return report ? { ok: true, kind: "report", value, warnings } : fail;
 }
 
+/**
+ * `value` with the contract's `depth` written after its other keys. An own `depth` key is replaced (the contract's line
+ * form has room for one `depth`, and it must be last); no QuickBooks entity, Line or report row has one.
+ */
+function withDepth(value: Record<string, unknown>, depth: number): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...value };
+  delete out.depth;
+  out.depth = depth;
+  return out;
+}
+
 function reportRowLines(rows: Record<string, unknown>[], depth: number, out: string[]): void {
   for (const row of rows) {
     const { Rows: inner, ...rest } = row;
-    out.push(JSON.stringify({ ...rest, depth }));
+    out.push(JSON.stringify(withDepth(rest, depth)));
     const children = (inner as { Row?: Record<string, unknown>[] } | undefined)?.Row;
     if (children !== undefined) reportRowLines(children, depth + 1, out);
   }
@@ -181,36 +192,45 @@ export function render(kind: DataKind, value: unknown): string[] {
     if (rows !== undefined) reportRowLines(rows, 0, out);
     return out;
   }
-  const out: string[] = [];
-  for (const entity of value as Record<string, unknown>[]) {
+  return searchRowLines(value).flat();
+}
+
+/** Each search row's lines: its header line, then its Line lines. Only a Line array of objects is spread into Line lines. */
+function searchRowLines(value: unknown): string[][] {
+  return (value as Record<string, unknown>[]).map((entity) => {
     const { Line: lines, ...rest } = entity;
-    // Only a Line array of objects is spread into Line lines; any other Line value stays in its header.
-    if (Array.isArray(lines) && lines.every(isRecord)) {
-      out.push(JSON.stringify({ ...rest, depth: 0 }));
-      for (const line of lines) out.push(JSON.stringify({ ...line, depth: 1 }));
-    } else {
-      out.push(JSON.stringify({ ...entity, depth: 0 }));
-    }
-  }
-  return out;
+    if (!Array.isArray(lines) || !lines.every(isRecord)) return [JSON.stringify(withDepth(entity, 0))];
+    return [JSON.stringify(withDepth(rest, 0)), ...lines.map((line) => JSON.stringify(withDepth(line, 1)))];
+  });
+}
+
+/** How many lines each search row of `value` renders to (its header and its Lines): `cut`'s row structure (T9-3). */
+export function searchRowSizes(value: unknown): number[] {
+  return searchRowLines(value).map((r) => r.length);
 }
 
 const sum = (ns: number[]): number => ns.reduce((a, b) => a + b, 0);
 /** The length of lines joined by LF. */
 const joined = (lines: string[]): number => sum(lines.map((l) => l.length)) + Math.max(0, lines.length - 1);
 
-/** A search's lines, grouped into search rows: each header line (`depth` 0, written last by render) starts one. */
-function searchRows(lines: string[]): string[][] {
+/**
+ * A search's lines grouped into search rows by `rowSizes` (render's structure, never the lines' text). Sizes that don't
+ * describe the lines (one under 1, or a sum other than the line count) make each line its own row, so a cut never throws.
+ */
+function searchRows(lines: string[], rowSizes: number[] | undefined): string[][] {
+  const valid = rowSizes !== undefined && rowSizes.every((n) => Number.isInteger(n) && n >= 1) && sum(rowSizes) === lines.length;
+  const sizes = valid ? rowSizes : lines.map(() => 1);
   const rows: string[][] = [];
-  for (const line of lines) {
-    if (line.endsWith('"depth":0}')) rows.push([line]);
-    else rows[rows.length - 1].push(line);
+  let at = 0;
+  for (const n of sizes) {
+    rows.push(lines.slice(at, at + n));
+    at += n;
   }
   return rows;
 }
 
-function cutSearch(lines: string[], room: number, usedOffset: number, criteriaOffset: boolean): string[] {
-  const rows = searchRows(lines);
+function cutSearch(lines: string[], rowSizes: number[] | undefined, room: number, usedOffset: number, criteriaOffset: boolean): string[] {
+  const rows = searchRows(lines, rowSizes);
   const t = rows.length;
   const next = (kept: number) => `Next page: pass offset ${usedOffset + kept}${criteriaOffset ? " inside criteria" : ""}.`;
   const rowsMarker = (k: number) => `truncated: ${t - k} of ${t} rows left out. ${next(k)}`;
@@ -236,9 +256,10 @@ function cutSearch(lines: string[], room: number, usedOffset: number, criteriaOf
 }
 
 function cutReport(lines: string[], room: number): string[] {
+  // Header and Columns with no row (or fewer lines): nothing is left out, so no marker.
+  if (lines.length <= 2) return lines;
   const [header, columns, ...rows] = lines;
   const t = rows.length;
-  if (t === 0) return lines;
   const marker = (k: number) => `truncated: ${t - k} of ${t} report rows left out. Narrow the report: a shorter date range, or fewer columns.`;
   const prefix = [header.length + 1 + columns.length + 1];
   for (const r of rows) prefix.push(prefix[prefix.length - 1] + r.length + 1);
@@ -250,13 +271,22 @@ function cutReport(lines: string[], room: number): string[] {
 /**
  * Cuts: the warnings cut at 2,000 first; a result of at most 30,000, every item counted, is untouched. A longer one keeps
  * the most whole rows that fit with the marker as line 1, never going below a report's Header and Columns or a search's
- * first header line; any other data item becomes its marker alone, and a count is never cut.
+ * first header line; any other data item becomes its marker alone, and a count is never cut. An empty data item has
+ * nothing to leave out, so it is never cut, whatever the warnings (T9-2). For a search, `rowSizes` is render's row
+ * structure (`searchRowSizes`); it never throws, whatever it is given.
  */
-export function cut(kind: DataKind, lines: string[], warnings: string[], usedOffset: number, criteriaOffset: boolean): { lines: string[]; warnings: string[] } {
+export function cut(
+  kind: DataKind,
+  lines: string[],
+  warnings: string[],
+  usedOffset: number,
+  criteriaOffset: boolean,
+  rowSizes?: number[],
+): { lines: string[]; warnings: string[] } {
   const kept = warnings.map(cutWarning);
   const room = RESULT_MAX - sum(kept.map((w) => w.length));
-  if (kind === "count" || joined(lines) <= room) return { lines, warnings: kept };
-  if (kind === "rows") return { lines: cutSearch(lines, room, usedOffset, criteriaOffset), warnings: kept };
+  if (kind === "count" || lines.length === 0 || joined(lines) <= room) return { lines, warnings: kept };
+  if (kind === "rows") return { lines: cutSearch(lines, rowSizes, room, usedOffset, criteriaOffset), warnings: kept };
   if (kind === "report") return { lines: cutReport(lines, room), warnings: kept };
   return { lines: [OBJECT_MARKER], warnings: kept };
 }
@@ -271,6 +301,7 @@ export function shapeResult(raw: unknown, call: CallStore, tool: string): CallTo
   if (call.failure !== null) return errorResult(call.failure, warnings);
   if (!classified.ok) return errorResult(FORK_ERROR, warnings);
   const lines = render(classified.kind, classified.value);
-  const out = cut(classified.kind, lines, warnings, call.usedOffset ?? 1, CRITERIA_ONLY_TOOLS.includes(tool));
+  const sizes = classified.kind === "rows" ? searchRowSizes(classified.value) : undefined;
+  const out = cut(classified.kind, lines, warnings, call.usedOffset ?? 1, CRITERIA_ONLY_TOOLS.includes(tool), sizes);
   return { content: [text(out.lines.join("\n")), ...out.warnings.map(text)] };
 }

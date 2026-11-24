@@ -15,6 +15,7 @@ import {
   RESULT_MAX,
   shapeResult,
   toolKind,
+  searchRowSizes,
   WARNING_MAX,
 } from '../../../src/helpers/tool-result.js';
 import { currentCall, runInCall, setUsedOffset, type CallStore, type Failure } from '../../../src/clients/call-context.js';
@@ -129,6 +130,12 @@ describe('D6: errorResult equals each get_company_info error fixture', () => {
     );
     expect(dataOf(errorResult({ reason: 'http-404' }, []))).toBe('reason: http-404\n\nQuickBooks answered 404.');
     expect(REASON_TEXT['http-<status>']).toBe('QuickBooks answered <status>.');
+    for (const code of ['AZ', 'az', '09', '_', '-', 'invalid_grant']) {
+      expect(dataOf(errorResult({ reason: `renewal-failed:${code}` }, [])).split('\n')[0]).toBe(`reason: renewal-failed:${code}`);
+    }
+    for (const status of ['109', '900', '400']) {
+      expect(dataOf(errorResult({ reason: `http-${status}` }, [])).split('\n')[0]).toBe(`reason: http-${status}`);
+    }
     const code64 = 'a'.repeat(63) + '_';
     expect(dataOf(errorResult({ reason: `renewal-failed:${code64}` }, [])).split('\n')[0]).toBe(`reason: renewal-failed:${code64}`);
   });
@@ -150,7 +157,10 @@ describe('D6: errorResult equals each get_company_info error fixture', () => {
     expect(dataOf(errorResult({ reason: 'timeout', intuitTid: 'abc-1' }, []))).toBe("reason: timeout\nintuit_tid: abc-1\n\nQuickBooks didn't answer within the server's limit.");
     expect(dataOf(errorResult({ reason: 'fork-error', intuitTid: 'abc-1' }, []))).toBe('reason: fork-error\n\nThe server failed before it could read QuickBooks.');
     expect(dataOf(errorResult({ reason: 'http-500', intuitTid: 'a'.repeat(64) }, [])).split('\n')[1]).toBe(`intuit_tid: ${'a'.repeat(64)}`);
-    for (const bad of ['a'.repeat(65), '', 'a b', 'a\nreason: ok', 'a_b']) {
+    for (const good of ['AZ', 'az', '09', '-', 'Z-9a']) {
+      expect(dataOf(errorResult({ reason: 'http-500', intuitTid: good }, [])).split('\n')[1]).toBe(`intuit_tid: ${good}`);
+    }
+    for (const bad of ['a'.repeat(65), '', 'a b', 'a\nreason: ok', 'a_b', 'x.y', 'a/b']) {
       expect(dataOf(errorResult({ reason: 'http-500', intuitTid: bad }, []))).toBe('reason: http-500\n\nQuickBooks answered 500.');
     }
   });
@@ -168,6 +178,18 @@ describe('D6: errorResult equals each get_company_info error fixture', () => {
       { reason: 'http-5x0' },
       { reason: `renewal-failed:${'a'.repeat(65)}` },
       { reason: 'renewal-failed:a b' },
+      { reason: 'renewal-failed:a.b' },
+      { reason: 'renewal-failed:a/b' },
+      { reason: 'xname-mismatch', source: 'stacks', reported: 'Garden Three LLC' },
+      { reason: 'name-mismatchx', source: 'stacks', reported: 'Garden Three LLC' },
+      { reason: 'not-connected ' },
+      { reason: ' unknown-enterprise' },
+      { reason: 'stacks-authx' },
+      { reason: 'xstacks-unreachable' },
+      { reason: 'xhttp-500' },
+      { reason: 'http-500x' },
+      { reason: 'xrenewal-failed:a' },
+      { reason: 'http-5a0' },
       { reason: 'xfork-error' },
       { reason: 'timeoutx' },
       { reason: 'reason: ok\nx' },
@@ -258,6 +280,14 @@ describe('D9 and A4.7: classify', () => {
     ['a label holding a bracket', raw('Found [3]:', '[]')],
     ['Found with a capital thing', raw('Found 2 Invoices', '[]')],
     ['Found with something after the thing', raw('Found 2 invoices.', '[]')],
+    ['Found with no digits (T9-1)', raw('Found  invoices', '[]')],
+    ['Found with no thing (T9-1)', raw('Found 2 ', '[]')],
+    ['Found not at the start (T9-1)', raw('Not Found 2 invoices', '[]')],
+    ['Found with no space before the digits', raw('Found2 invoices', '[]')],
+    ['Found with no space before the thing', raw('Found 2invoices', '[]')],
+    ['Found with a letter for a digit', raw('Found x invoices', '[]')],
+    ['Found with a digit in the thing', raw('Found 2 invoice5', '[]')],
+    ['Found with two words', raw('Found 2 bill payments', '[]')],
     ['an array of arrays', raw('Purchases found:', '[[{"Id":"1"}]]')],
     ['any other text', raw('Purchases found', '[]')],
     ['a JSON item that is not a row', raw('Purchases found:', '5')],
@@ -267,6 +297,7 @@ describe('D9 and A4.7: classify', () => {
     ['no content', {}],
     ['not an object', null],
     ['only WARNING items', raw('WARNING: a')],
+    ['a WARNING-like text without the colon (not set aside)', raw('[]', 'WARNINGS: not a warning item')],
     ['empty content', { content: [] }],
   ])('search: %s is an error', (_label, r) => failsOn(r, 'search'));
 
@@ -277,7 +308,7 @@ describe('D9 and A4.7: classify', () => {
 
   it('labels: ending : or Found <n> <things>, only before the JSON items, more than one allowed', () => {
     const row = { Id: '1' };
-    for (const label of ['Purchases found:', 'Found 3 bills:', 'Profit and Loss Report:', 'Found 2 invoices', 'Found 0 items']) {
+    for (const label of ['Purchases found:', 'Found 3 bills:', 'Profit and Loss Report:', 'Found 2 invoices', 'Found 0 items', 'Found 90 zebras', 'Found 1 a']) {
       expect(classify(raw(label, JSON.stringify([row])), 'search')).toEqual({ ok: true, kind: 'rows', value: [row], warnings: [] });
     }
     expect(classify(raw('Found 1 bills:', 'Also:', JSON.stringify(row)), 'search')).toEqual({ ok: true, kind: 'rows', value: [row], warnings: [] });
@@ -308,6 +339,11 @@ describe('D9 and A4.7: classify', () => {
     failsOn(raw('Count: 3 '), 'search');
     failsOn(raw(' Count: 3'), 'search');
     failsOn(raw('Count: '), 'search');
+    failsOn(raw('Count: x3'), 'search');
+    failsOn(raw('xCount: 3'), 'search');
+    failsOn(raw('Count:3'), 'search');
+    failsOn(raw('Count 3'), 'search');
+    expect(classify(raw('Count: 90'), 'search')).toEqual({ ok: true, kind: 'count', value: 90, warnings: [] });
   });
 
   it('a count is never cut', () => {
@@ -514,11 +550,11 @@ describe('A5.10: the bound', () => {
     const rows = Array.from({ length: 40 }, (_, i) => entity(i + 1, 700));
     const marker = ROWS(19, 40, 22);
     const room = marker.length + 21 * 701;
-    const fits = cut('rows', render('rows', rows), padding(RESULT_MAX - room), 1, false);
+    const fits = cut('rows', render('rows', rows), padding(RESULT_MAX - room), 1, false, searchRowSizes(rows));
     expect(fits.lines[0]).toBe(marker);
     expect(fits.lines).toHaveLength(22);
     expect(fits.lines.join('\n').length).toBe(room);
-    const tight = cut('rows', render('rows', rows), padding(RESULT_MAX - room + 1), 1, false);
+    const tight = cut('rows', render('rows', rows), padding(RESULT_MAX - room + 1), 1, false, searchRowSizes(rows));
     expect(tight.lines[0]).toBe(ROWS(20, 40, 21));
   });
 
@@ -617,7 +653,7 @@ describe('A5.10 and A5.12: when nothing fits (contract §5 Cuts; one built case 
     const rows = [entity(1, 2000, 100, 200), entity(2, 100), entity(3, 100)]; // a Line longer than the two markers differ
     const header = render('rows', [rows[0]])[0];
     const room = (l: number) => LINES(l, 100, 2, 3, 2).length + 1 + header.length + (100 - l) * 201;
-    const at = (l: number, extra = 0) => cut('rows', render('rows', rows), padding(RESULT_MAX - room(l) + extra), 1, false).lines;
+    const at = (l: number, extra = 0) => cut('rows', render('rows', rows), padding(RESULT_MAX - room(l) + extra), 1, false, searchRowSizes(rows)).lines;
     expect(at(50)[0]).toBe(LINES(50, 100, 2, 3, 2));
     expect(at(50)).toHaveLength(52);
     expect(at(50).join('\n').length).toBe(room(50));
@@ -695,5 +731,117 @@ describe('A5.11: the next offset', () => {
     expect(dataOf(r).split('\n')[0]).toBe(ROWS(59, 80, 122, inside));
     const lines = searchOf(fake('render/search_purchases-long-row.json'), call(), tool);
     expect(dataOf(lines).split('\n')[0]).toBe(LINES(35, 120, 2, 3, 2, inside));
+  });
+});
+
+describe('T9-2: an empty data item, or no room at all, is never cut and never throws', () => {
+  // 16 warnings of 2,000: 32,000 of warnings alone, so the room for the data item is below zero.
+  const over = Array.from({ length: 16 }, () => 'WARNING: ' + 'w'.repeat(1991));
+
+  it('a search with no rows under warnings over 30,000: the empty data item, no marker', () => {
+    expect(cut('rows', [], over, 1, false)).toEqual({ lines: [], warnings: over });
+    expect(cut('rows', [], over, 1, false, [])).toEqual({ lines: [], warnings: over });
+    const r = shapeResult(raw('Found 0 bills:', ...over), call(), 'search_bills');
+    expect(r.content).toStrictEqual([item(''), ...over.map(item)]);
+  });
+
+  it('a report, an object and a count with no lines are returned as they are', () => {
+    for (const kind of ['report', 'object', 'count'] as const) expect(cut(kind, [], over, 1, false).lines).toEqual([]);
+  });
+
+  it('a report of Header and Columns only, or fewer lines, under no room: no marker', () => {
+    expect(cut('report', ['{"R":"P"}', '{"Column":[]}'], over, 1, false).lines).toEqual(['{"R":"P"}', '{"Column":[]}']);
+    expect(cut('report', ['{"R":"P"}'], over, 1, false).lines).toEqual(['{"R":"P"}']);
+  });
+
+  it('with no room, a report keeps Header and Columns and drops every row; an object is its marker', () => {
+    expect(cut('report', ['{"R":"P"}', '{"Column":[]}', '{"depth":0}'], over, 1, false).lines).toEqual([REPORT(1, 1), '{"R":"P"}', '{"Column":[]}']);
+    expect(cut('object', ['{}'], over, 1, false).lines).toEqual([OBJECT]);
+    expect(cut('count', ['{"count":1}'], over, 1, false).lines).toEqual(['{"count":1}']);
+  });
+
+  it('with no room, a search keeps its first header line: Lines dropped, or later rows dropped, or one row uncut', () => {
+    const withLines = [{ Id: '1', Line: [{ Id: '1' }, { Id: '2' }] }, { Id: '2' }];
+    expect(cut('rows', render('rows', withLines), over, 1, false, searchRowSizes(withLines)).lines).toEqual([LINES(2, 2, 1, 2, 2), '{"Id":"1","depth":0}']);
+    const bare = [{ Id: '1' }, { Id: '2' }];
+    expect(cut('rows', render('rows', bare), over, 1, false, searchRowSizes(bare)).lines).toEqual([ROWS(1, 2, 2), '{"Id":"1","depth":0}']);
+    expect(cut('rows', ['{"Id":"1","depth":0}'], over, 1, false, [1]).lines).toEqual(['{"Id":"1","depth":0}']);
+    const r = shapeResult(raw('Purchases found:', JSON.stringify(withLines), ...over), call(), 'search_purchases');
+    expect(dataOf(r)).toBe(`${LINES(2, 2, 1, 2, 2)}\n{"Id":"1","depth":0}`);
+  });
+
+  it('row sizes that do not describe the lines make each line its own row, without throwing', () => {
+    const lines = ['a', 'b', 'c'].map((k) => JSON.stringify({ [k]: 'x'.repeat(100) }));
+    const L = lines[0].length;
+    const ROOM = (n: number) => padding(RESULT_MAX - n);
+    // Room for the marker and two lines, less than the three: as three one-line rows, two are kept.
+    const room = ROWS(1, 3, 3).length + 2 * (L + 1);
+    expect(3 * L + 2).toBeGreaterThan(room);
+    for (const sizes of [undefined, [1, 1], [2, 2], [0, 3], [1.5, 1.5], [-1, 4]]) {
+      expect(cut('rows', lines, ROOM(room), 1, false, sizes).lines).toEqual([ROWS(1, 3, 3), lines[0], lines[1]]);
+    }
+    // The same lines as one row of a header and two Lines, or as a row and a row of two: grouped by those sizes.
+    expect(cut('rows', lines, ROOM(room), 1, false, [3]).lines).toEqual([LINES(2, 2, 0, 1, 2), lines[0]]);
+    expect(cut('rows', lines, ROOM(room), 1, false, [1, 2]).lines).toEqual([ROWS(1, 2, 2), lines[0]]);
+  });
+
+  it('shapeResult never throws: each data kind under warnings over 30,000', () => {
+    expect(() => shapeResult(raw('Count: 3', ...over), call(), 'search_bills')).not.toThrow();
+    expect(dataOf(shapeResult(raw('{"a":1}', ...over), call(), 'get_preferences'))).toBe(OBJECT);
+    expect(dataOf(shapeResult(raw('{"Header":{},"Columns":{}}', ...over), call(), 'get_profit_and_loss'))).toBe('{}\n{}');
+    expect(dataOf(shapeResult(raw('Found 0 invoices', ...over), call(), 'search_invoices'))).toBe('');
+  });
+});
+
+describe('T9-3: an own depth key is replaced by the contract depth, written last; rows are grouped by structure', () => {
+  const own = (id: string, lines = 0, pad = 0): Record<string, unknown> => {
+    const e: Record<string, unknown> = { Id: id, depth: 'own', Memo: 'm'.repeat(pad) };
+    if (lines > 0) e.Line = Array.from({ length: lines }, (_, i) => ({ depth: 7, Id: String(i + 1) }));
+    return e;
+  };
+
+  it('render: an entity, a Line and a report row with their own depth each end with the contract depth', () => {
+    expect(render('rows', [own('1', 1), { Id: '2', depth: 3, Line: 'x' }])).toEqual([
+      '{"Id":"1","Memo":"","depth":0}',
+      '{"Id":"1","depth":1}',
+      '{"Id":"2","Line":"x","depth":0}',
+    ]);
+    const report = { Header: {}, Columns: {}, Rows: { Row: [{ depth: 9, Rows: { Row: [{ depth: 9, ColData: [] }] }, type: 'Section' }] } };
+    expect(render('report', report).slice(2)).toEqual(['{"type":"Section","depth":0}', '{"ColData":[],"depth":1}']);
+    expect(searchRowSizes([own('1', 2), own('2'), { Id: '3', Line: [5] }])).toEqual([3, 1, 1]);
+  });
+
+  it.each([
+    ['the first row', 0],
+    ['a middle row', 1],
+    ['the last row', 2],
+  ])('%s with its own depth, under the cut: every row, uncut', (_label, at) => {
+    const rows: Record<string, unknown>[] = [{ Id: '1', Line: [{ Id: '1' }] }, { Id: '2' }, { Id: '3', Line: [{ Id: '1' }] }];
+    rows[at] = { ...rows[at], depth: 'own' };
+    const r = searchOf(rows);
+    expect(dataOf(r).split('\n').map((l) => JSON.parse(l).depth)).toEqual([0, 1, 0, 0, 1]);
+  });
+
+  it.each([
+    ['the first row', 0],
+    ['a middle row', 1],
+    ['the last row', 2],
+  ])('%s with its own depth, over the cut: whole rows by structure, the marker counting three rows', (_label, at) => {
+    // Three rows of 12,000 characters with 2 Lines each: two rows fit with the marker, the third doesn't.
+    const rows = [entity(1, 12000, 2), entity(2, 12000, 2), entity(3, 12000, 2)];
+    rows[at] = { depth: 'own', ...rows[at] };
+    const r = searchOf(rows);
+    const lines = dataOf(r).split('\n');
+    expect(lines[0]).toBe(ROWS(1, 3, 3));
+    expect(lines.slice(1)).toEqual(render('rows', rows.slice(0, 2)));
+    expect(lines.slice(1).map((l) => JSON.parse(l).depth)).toEqual([0, 1, 1, 0, 1, 1]);
+  });
+
+  it('the first row with its own depth over the cut alone: its Lines cut, no throw', () => {
+    const rows = [{ depth: 'own', ...entity(1, 20000, 200, 100) }, entity(2, 100)];
+    const r = searchOf(rows);
+    const first = dataOf(r).split('\n')[0];
+    expect(first).toMatch(/^truncated: \d+ of 200 Lines of the first row left out, and 1 of 2 rows\./);
+    expect(JSON.parse(dataOf(r).split('\n')[1]).depth).toBe(0);
   });
 });
