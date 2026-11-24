@@ -178,7 +178,8 @@ function read(answer: Answer, key: string, kept: string | undefined, now: number
   return UNREACHABLE;
 }
 
-type Flight = { forced: boolean; result: Promise<TokenResult> };
+/** A fetch in flight: forced or not, the mark it started at (from the same counter as `mark()`), and its result. */
+type Flight = { forced: boolean; startedAt: number; result: Promise<TokenResult> };
 
 export class StacksTokenClient {
   private readonly url: string;
@@ -189,6 +190,7 @@ export class StacksTokenClient {
   private readonly flights = new Map<string, Flight>();
   /** Per company, the sequence number of its latest forced fetch: a fetch started before it never writes the cache. */
   private readonly floors = new Map<string, number>();
+  /** One monotonic counter for fetch starts and send marks, so a request's mark orders it against every fetch. */
   private sequence = 0;
 
   constructor(
@@ -205,19 +207,26 @@ export class StacksTokenClient {
     this.now = deps.now ?? Date.now;
   }
 
+  /** The next send mark: a QuickBooks request takes one as it is sent, and hands it back as `sentAt` after its 401. */
+  mark(): number {
+    return ++this.sequence;
+  }
+
   /**
    * The company's token: its kept failure if refused (no request); the kept token while now < expires_at − 300 s;
    * else a fetch. Unforced gets join any fetch in flight; a forced get joins only a forced one, drops the kept token,
-   * and makes every fetch started before it unable to write the cache.
+   * and makes every fetch started before it unable to write the cache. With `sentAt` (the mark of the request that got
+   * the 401), a forced get joins a forced flight only if it started after that request was sent (spec A1.3b, §Edge
+   * cases): a flight started earlier may carry the very token that got the 401, so a new fetch is made instead.
    */
-  get(company: string, opts: { force?: boolean } = {}): Promise<TokenResult> {
+  get(company: string, opts: { force?: boolean; sentAt?: number } = {}): Promise<TokenResult> {
     const refusal = this.realms.refused(company);
     if (refusal !== undefined) return Promise.resolve({ ok: false, failure: refusal });
     const entry = this.companies.get(company);
     if (entry === undefined) return Promise.resolve(failed("fork-error"));
     const flight = this.flights.get(company);
     if (opts.force === true) {
-      if (flight?.forced === true) return flight.result;
+      if (flight?.forced === true && (opts.sentAt === undefined || flight.startedAt > opts.sentAt)) return flight.result;
       return this.start(entry, true);
     }
     const token = this.tokens.get(company);
@@ -227,12 +236,12 @@ export class StacksTokenClient {
   }
 
   private start(entry: Company, forced: boolean): Promise<TokenResult> {
-    const seq = ++this.sequence;
+    const seq = this.mark();
     if (forced) {
       this.tokens.delete(entry.key);
       this.floors.set(entry.key, seq);
     }
-    const flight: Flight = { forced, result: this.fetchToken(entry, seq) };
+    const flight: Flight = { forced, startedAt: seq, result: this.fetchToken(entry, seq) };
     this.flights.set(entry.key, flight);
     const done = () => {
       if (this.flights.get(entry.key) === flight) this.flights.delete(entry.key);

@@ -26,8 +26,13 @@ const SECONDS = /^[0-9]+$/;
 const LIMIT_CODES: ReadonlySet<string> = new Set(["ECONNABORTED", "ETIMEDOUT"]);
 
 export type QboTransportDeps = {
-  /** T5's forced get: a new token for the company, the realm rule applied. */
-  reacquire(company: string): Promise<TokenResult>;
+  /**
+   * T5's forced get: a new token for the company, the realm rule applied. `sentAt` is the send mark of the request that
+   * got the 401, so the get joins only a forced fetch that started after that request was sent (spec A1.3b).
+   */
+  reacquire(company: string, sentAt: number): Promise<TokenResult>;
+  /** The next send mark (T5's `mark()`): every QuickBooks GET takes one as it is sent. */
+  mark(): number;
   /** The call's access token and STACKS_QBO_TOKEN, replaced in a 400's fault text (D6). */
   secrets(): Array<string | undefined>;
   /** Waits before a 429's resend; a timer by default. */
@@ -38,6 +43,16 @@ type Budget = { readonly used401: boolean; readonly used429: boolean };
 const FRESH: Budget = Object.freeze({ used401: false, used429: false });
 /** The budget of the lineage a resend belongs to; a first request runs outside it and so has a fresh one. */
 const lineage = new AsyncLocalStorage<Budget>();
+
+/**
+ * Where a QuickBooks GET's send mark is kept: a symbol on the request's own copy of its `transformResponse` array. 291's
+ * guard sends a fresh config built from a few kept fields, so an error's config is that copy; `transformResponse` is one
+ * of the kept fields and passes through by reference, read by neither the guard's decision nor the wire. The headers
+ * never carry it.
+ */
+const SENT_AT: unique symbol = Symbol("qbo-transport.sent-at");
+/** A request's send mark, undefined if it has none. */
+const sentAtOf = (config: Record<string, unknown>): number | undefined => Object(config.transformResponse)[SENT_AT];
 
 const isObject = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
 
@@ -133,7 +148,11 @@ export function installQboInterceptors(ax: AxiosInstance, deps: QboTransportDeps
   const resend = (budget: Budget, config: Record<string, unknown>, headers: any) => lineage.run(budget, () => ax({ ...config, headers }));
 
   const onRequest = (config: any) => {
-    if (isQuickbooks(config) && isGet(config)) config.timeout = QBO_LIMIT_MS;
+    if (isQuickbooks(config) && isGet(config)) {
+      config.timeout = QBO_LIMIT_MS;
+      // A copy, so the mark never lands on axios' shared default array.
+      config.transformResponse = Object.assign([config.transformResponse].flat(), { [SENT_AT]: deps.mark() });
+    }
     return config;
   };
 
@@ -162,7 +181,7 @@ export function installQboInterceptors(ax: AxiosInstance, deps: QboTransportDeps
       if (call !== undefined) {
         let result: TokenResult;
         try {
-          result = await deps.reacquire(call.company);
+          result = await deps.reacquire(call.company, sentAtOf(config) as number);
         } catch {
           result = { ok: false, failure: Object.freeze({ reason: "fork-error" }) };
         }

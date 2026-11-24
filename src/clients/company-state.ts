@@ -53,21 +53,30 @@ export function createCompanyState(cfg: Config, client: StacksTokenClient, realm
     return f;
   }
 
+  /** The company's token from the Stacks client, set on the call; a refused company answers its kept failure, with no request (T5). */
+  async function takeToken(company: string): Promise<Failure | null> {
+    const got = await client.get(company);
+    if (!got.ok) return got.failure;
+    setCallToken(got.token.access_token, got.token.realm_id);
+    return null;
+  }
+
   return {
     async prepareCall(company) {
-      // A refused company answers its kept failure here, with no request (T5).
-      const got = await client.get(company);
-      if (!got.ok) return got.failure;
-      setCallToken(got.token.access_token, got.token.realm_id);
+      const failure = await takeToken(company);
+      if (failure !== null) return failure;
       if (checked.has(company)) return null;
-      let read = reads.get(company);
-      if (read === undefined) {
-        read = firstUse(company, got.token.realm_id);
+      const inFlight = reads.get(company);
+      if (inFlight === undefined) {
+        const read = firstUse(company, currentCall()!.realm as string);
         reads.set(company, read);
         const done = () => void reads.delete(company);
         read.then(done, done);
+        return read;
       }
-      return read;
+      // A joined read ran in another call: if it was resent after a 401, only that call holds the new token. Take the
+      // token again (the cache now holds the newest) so this call's first request doesn't spend a 401 on the old one (T7-2).
+      return (await inFlight) ?? takeToken(company);
     },
   };
 }

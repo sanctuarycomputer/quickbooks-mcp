@@ -282,6 +282,60 @@ describe('A1.3b: forced refetch and fetches in flight', () => {
     expect(fake.requests).toHaveLength(2);
   });
 
+  it('T7-1: a forced get with sentAt after a held forced flight began does not join it: a second fetch is made and its token used', async () => {
+    const held = gate();
+    const { fake, client } = rig({ sequence: [{ answer: ok200(body()), hold: held.wait }, ok200(body({ access_token: ACCESS_B }))] });
+    const first = client.get('garden3d', { force: true });
+    await settle();
+    // The request that got this 401 was sent after the held forced fetch began.
+    const sentAt = client.mark();
+    const fresh = await client.get('garden3d', { force: true, sentAt });
+    expect(fake.requests).toHaveLength(2);
+    expect(fresh.ok && fresh.token.access_token).toBe(ACCESS_B);
+    held.open();
+    const old = await first;
+    expect(old.ok && old.token.access_token).toBe(ACCESS);
+    // The older forced fetch never replaces the newer token in the cache.
+    const next = await client.get('garden3d');
+    expect(next.ok && next.token.access_token).toBe(ACCESS_B);
+    expect(fake.requests).toHaveLength(2);
+  });
+
+  it('T7-1: a forced get with sentAt before a held forced flight began joins it: no extra fetch', async () => {
+    const held = gate();
+    const { fake, client } = rig({ sequence: [{ answer: ok200(body()), hold: held.wait }, ok200(body({ access_token: ACCESS_B }))] });
+    // The request that got this 401 was sent before the forced fetch began.
+    const sentAt = client.mark();
+    const first = client.get('garden3d', { force: true });
+    const joined = client.get('garden3d', { force: true, sentAt });
+    await settle();
+    expect(fake.requests).toHaveLength(1);
+    held.open();
+    expect(await joined).toBe(await first);
+    expect(fake.requests).toHaveLength(1);
+  });
+
+  it('T7-1: marks only grow, and a mark sits between the fetches started before and after it', async () => {
+    const { client } = rig({ sequence: [ok200(body())] });
+    const m1 = client.mark();
+    const m2 = client.mark();
+    expect(m2).toBeGreaterThan(m1);
+    await client.get('garden3d', { force: true });
+    expect(client.mark()).toBe(m2 + 2);
+  });
+
+  it('T7-1: a forced get with sentAt never joins an unforced flight', async () => {
+    const held = gate();
+    const { fake, client } = rig({ sequence: [{ answer: ok200(body()), hold: held.wait }, ok200(body({ access_token: ACCESS_B }))] });
+    const sentAt = client.mark();
+    const stale = client.get('garden3d');
+    const fresh = await client.get('garden3d', { force: true, sentAt });
+    expect(fake.requests).toHaveLength(2);
+    expect(fresh.ok && fresh.token.access_token).toBe(ACCESS_B);
+    held.open();
+    await stale;
+  });
+
   it('forced gets join each other, and an unforced get joins a forced fetch in flight', async () => {
     const held = gate();
     const { fake, client } = rig({ sequence: [{ answer: ok200(body()), hold: held.wait }] });

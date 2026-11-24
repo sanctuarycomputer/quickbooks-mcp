@@ -45,8 +45,9 @@ const QBO = `https://${QBO_HOST}`;
 const KEY = ['fake', 'stacks', 'key'].join('-');
 const ACCESS_A = ['qbo', 'test', 'access', 'a'].join('-');
 const ACCESS_B = ['qbo', 'test', 'access', 'b'].join('-');
+const ACCESS_C = ['qbo', 'test', 'access', 'c'].join('-');
 const FIXTURE_TOKEN = (key: string) => ['qbo', 'fake', 'access', 'token', key].join('-');
-const SECRETS = [KEY, ACCESS_A, ACCESS_B, ...KEYS.map(FIXTURE_TOKEN)];
+const SECRETS = [KEY, ACCESS_A, ACCESS_B, ACCESS_C, ...KEYS.map(FIXTURE_TOKEN)];
 
 const REALM = '9990000000000002'; // garden3d's, in 200-garden3d.json
 const REALM_USB = '9990000000000004'; // usb-club's, in 200-usb-club.json
@@ -104,12 +105,12 @@ function rig(opts: { qbo?: QuickbooksFakeOpts; stacks?: StacksStep[]; cfg?: Conf
   const realms = createRealmStore();
   const client = new StacksTokenClient(cfg, realms, { now: () => NOW });
   const forced: string[] = [];
-  const reacquire = (company: string) => {
+  const reacquire = (company: string, sentAt: number) => {
     forced.push(company);
-    return client.get(company, { force: true });
+    return client.get(company, { force: true, sentAt });
   };
   const sleep = async () => {};
-  ejectors.push(installQboInterceptors(guardedAxios() as unknown as AxiosInstance, { reacquire, secrets: () => [currentCall()?.token, KEY], sleep }).eject);
+  ejectors.push(installQboInterceptors(guardedAxios() as unknown as AxiosInstance, { reacquire, mark: () => client.mark(), secrets: () => [currentCall()?.token, KEY], sleep }).eject);
   return { qbo, qboOpts, stacks, realms, client, state: createCompanyState(cfg, client, realms), forced };
 }
 
@@ -316,6 +317,29 @@ describe('A3.5: the guard allows only the current call\'s kept realm', () => {
     note(f);
     expect(f).toEqual({ reason: 'fork-error' });
     expect(r.qbo.requests).toHaveLength(0);
+  });
+
+  it("no token fetched yet (T7-3): a well-formed request to the company's own kept realm is refused by the realm callback", async () => {
+    const r = rig();
+    expect((await call(r, 'garden3d')).failure).toBeNull();
+    expect(r.realms.kept('garden3d')).toBe(REALM);
+    const sent = r.qbo.requests.length;
+    const f = await runInCall('garden3d', async () => {
+      expect(currentCall()!.realm).toBeUndefined();
+      await expect(
+        guardedAxios()({ method: 'get', url: `${QBO}/v3/company/${REALM}/companyinfo/${REALM}`, params: { minorversion: '75', format: 'json' }, headers: { Authorization: `Bearer ${ACCESS_A}` } }),
+      ).rejects.toThrow();
+      return currentCall()!.failure;
+    });
+    note(f);
+    expect(f).toEqual({ reason: 'fork-error' });
+    expect(r.qbo.requests).toHaveLength(sent);
+    // The same request, once the call holds the realm, is sent: the realm alone decided.
+    await runInCall('garden3d', async () => {
+      setCallToken(ACCESS_A, REALM);
+      await guardedAxios()({ method: 'get', url: `${QBO}/v3/company/${REALM}/companyinfo/${REALM}`, params: { minorversion: '75', format: 'json' }, headers: { Authorization: `Bearer ${ACCESS_A}` } });
+    });
+    expect(r.qbo.requests).toHaveLength(sent + 1);
   });
 });
 
@@ -533,6 +557,20 @@ describe('A2.9: concurrent first calls share one companyinfo read', () => {
     expect(r.qbo.requests).toHaveLength(1);
   });
 
+  it('T7-2: a shared read resent after a 401: the joining call takes the new token; no third Stacks request, no wasted 401', async () => {
+    let release!: () => void;
+    const r = rig({ qbo: { answers: [a(401)], holdUntil: new Promise<void>((res) => (release = res)) }, stacks: [tokenBody(ACCESS_A), tokenBody(ACCESS_B)] });
+    const one = call(r, 'garden3d', () => toolRead());
+    const two = call(r, 'garden3d', () => toolRead());
+    await ticks();
+    release();
+    const [o1, o2] = await Promise.all([one, two]);
+    expect([o1.failure, o2.failure, o1.out!.err, o2.out!.err]).toEqual([null, null, null, null]);
+    expect(r.stacks.requests).toHaveLength(2);
+    // The shared read (401, resent with B), then each call's own read with B.
+    expect(bearers(r.qbo.requests)).toEqual([`Bearer ${ACCESS_A}`, `Bearer ${ACCESS_B}`, `Bearer ${ACCESS_B}`, `Bearer ${ACCESS_B}`]);
+  });
+
   it('a shared read that fails fails both, and the next call reads again', async () => {
     let release!: () => void;
     const r = rig({ qbo: { answers: [a(500, { intuit_tid: 'fake-tid-0001' })], holdUntil: new Promise<void>((res) => (release = res)) } });
@@ -547,8 +585,8 @@ describe('A2.9: concurrent first calls share one companyinfo read', () => {
   });
 });
 
-describe("A1.3b (T5-3's ruling): a forced get joins a forced flight in progress", () => {
-  it('two requests of one call both get a 401: one forced Stacks fetch, both resent with its token, no third Stacks request', async () => {
+describe('A1.3b (T7-1, spec §Edge cases): a forced refetch joins a forced fetch only if it started after the 401\'s request was sent', () => {
+  it('both requests sent before the forced fetch began: both 401s join it; one forced Stacks fetch, both resent with its token, no third Stacks request', async () => {
     let release!: () => void;
     const held = new Promise<void>((res) => (release = res));
     const r = rig({ qbo: { answers: [a(200, undefined, { CompanyInfo: GARDEN_OK }), a(401), a(401)] }, stacks: [tokenBody(ACCESS_A), { answer: tokenBody(ACCESS_B), hold: held }] });
@@ -565,5 +603,32 @@ describe("A1.3b (T5-3's ruling): a forced get joins a forced flight in progress"
     expect(o).toEqual({ failure: null, out: [null, null] });
     expect(r.stacks.requests).toHaveLength(2);
     expect(bearers(r.qbo.requests)).toEqual([`Bearer ${ACCESS_A}`, `Bearer ${ACCESS_A}`, `Bearer ${ACCESS_A}`, `Bearer ${ACCESS_B}`, `Bearer ${ACCESS_B}`]);
+  });
+
+  it('a request sent after a forced fetch began (held) does not join it: its 401 makes a new fetch, and that token is used on its resend', async () => {
+    let release!: () => void;
+    const held = new Promise<void>((res) => (release = res));
+    const r = rig({
+      qbo: { answers: [a(200, undefined, { CompanyInfo: GARDEN_OK }), a(401), a(401)] },
+      stacks: [tokenBody(ACCESS_A), { answer: tokenBody(ACCESS_B), hold: held }, tokenBody(ACCESS_C)],
+    });
+    const o = await call(r, 'garden3d', async () => {
+      const qb: any = await QuickbooksClient.getInstance();
+      const read = () => new Promise<unknown>((res) => qb.getCompanyInfo(REALM, (err: unknown) => res(err)));
+      const first = read();
+      // The first request's 401 starts the forced fetch F, which Stacks holds.
+      for (let i = 0; i < 100 && r.stacks.requests.length < 2; i++) await ticks(1);
+      expect(r.forced).toEqual(['garden3d']);
+      // Sent now, still with A, after F began.
+      const second = read();
+      for (let i = 0; i < 100 && r.qbo.requests.length < 4; i++) await ticks(1);
+      release();
+      return Promise.all([first, second]);
+    });
+    expect(o).toEqual({ failure: null, out: [null, null] });
+    expect(r.forced).toEqual(['garden3d', 'garden3d']);
+    expect(r.stacks.requests).toHaveLength(3);
+    // first-use, first (401), second (401), second's resend with the new fetch's C, then first's resend with F's B.
+    expect(bearers(r.qbo.requests)).toEqual([`Bearer ${ACCESS_A}`, `Bearer ${ACCESS_A}`, `Bearer ${ACCESS_A}`, `Bearer ${ACCESS_C}`, `Bearer ${ACCESS_B}`]);
   });
 });

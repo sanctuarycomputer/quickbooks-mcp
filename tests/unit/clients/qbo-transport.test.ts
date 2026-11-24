@@ -91,10 +91,11 @@ function rig(
   const deps: QboTransportDeps = {
     reacquire:
       opts.reacquire ??
-      ((company) => {
+      ((company, sentAt) => {
         forced.push(company);
-        return client.get(company, { force: true });
+        return client.get(company, { force: true, sentAt });
       }),
+    mark: () => client.mark(),
     secrets: () => [currentCall()?.token, KEY],
   };
   if (!opts.realSleep) {
@@ -162,22 +163,26 @@ function scripted(steps: Step[]): { ax: AxiosInstance; seen: any[] } {
   });
   return { ax, seen };
 }
-function installOn(ax: AxiosInstance, more: Partial<QboTransportDeps> = {}): { waits: number[]; forced: string[] } {
+function installOn(ax: AxiosInstance, more: Partial<QboTransportDeps> = {}): { waits: number[]; forced: string[]; sentAts: number[] } {
   const waits: number[] = [];
   const forced: string[] = [];
+  const sentAts: number[] = [];
+  let marks = 100;
   const deps: QboTransportDeps = {
-    reacquire: async (company) => {
+    reacquire: async (company, sentAt) => {
       forced.push(company);
+      sentAts.push(sentAt);
       return { ok: true, token: { access_token: ACCESS_B, realm_id: REALM, expires_at: EXPIRES, company_name: 'garden3d, LLC' } };
     },
     secrets: () => [currentCall()?.token, KEY],
+    mark: () => ++marks,
     sleep: async (ms) => {
       waits.push(ms);
     },
     ...more,
   };
   ejectors.push(installQboInterceptors(ax, deps).eject);
-  return { waits, forced };
+  return { waits, forced, sentAts };
 }
 /** A call holding token A for REALM, with no Stacks request. */
 const plainCall = <T>(fn: () => Promise<T>): Promise<T> =>
@@ -869,11 +874,70 @@ describe('headers that aren’t text', () => {
   });
 });
 
+describe('T7-1: the send mark', () => {
+  it('each QuickBooks GET takes a mark as it is sent, and reacquire gets the mark of the request that got the 401', async () => {
+    const { ax, seen } = scripted([{ status: 200 }, { status: 401 }, { status: 200 }]);
+    const deps = installOn(ax);
+    // A non-QuickBooks request takes no mark.
+    await plainCall(() => settle(ax.get('https://stacks.example.test/x')));
+    const o = await plainCall(() => settle(ax.get(INFO_URL)));
+    expect(o.ok).toBe(true);
+    // The first QuickBooks GET took 101; its resend, sent after the reacquire, took 102.
+    expect(deps.sentAts).toEqual([101]);
+    const markOf = (c: any) => Object.getOwnPropertySymbols(Object(c.transformResponse)).map((k) => c.transformResponse[k]);
+    expect(seen.map(markOf)).toEqual([[], [101], [102]]);
+    // Each a copy: axios' shared default transformResponse holds no mark.
+    expect(Object.getOwnPropertySymbols(axios.defaults.transformResponse)).toEqual([]);
+    expect(Object.getOwnPropertySymbols((guardedAxios().defaults as any).transformResponse)).toEqual([]);
+    // Outside the headers.
+    for (const c of seen) expect(JSON.stringify(c.headers)).not.toMatch(/10[12]/);
+  });
+
+  it('through 291\'s guard (which sends a fresh config), reacquire still gets the mark the 401\'s request was sent with', async () => {
+    const sentAts: Array<number | undefined> = [];
+    const r = rig({
+      qbo: { answers: [a(401), OK] },
+      reacquire: (company, sentAt) => {
+        sentAts.push(sentAt);
+        return r.client.get(company, { force: true, sentAt });
+      },
+    });
+    const o = await inCall(r, async () => {
+      const before = r.client.mark();
+      const out = await settle(get());
+      return { out, before };
+    });
+    expect(o.out.failure).toBeNull();
+    // The request's mark was taken after `before` and before the forced fetch began.
+    expect(sentAts).toEqual([o.before + 1]);
+  });
+
+  it('a caller\'s own transformResponse function is never marked: the mark sits on a per-request copy', async () => {
+    const { ax, seen } = scripted([{ status: 200, data: '{}' }]);
+    installOn(ax);
+    const own = (data: unknown) => data;
+    await plainCall(() => settle(ax.get(INFO_URL, { transformResponse: own })));
+    expect(Object.getOwnPropertySymbols(own)).toEqual([]);
+    expect([Array.isArray(seen[0].transformResponse), seen[0].transformResponse.length, seen[0].transformResponse[0]]).toEqual([true, 1, own]);
+    expect(Object.getOwnPropertySymbols(seen[0].transformResponse)).toHaveLength(1);
+  });
+
+  it('a POST to QuickBooks takes no mark', async () => {
+    const { ax, seen } = scripted([{ status: 200 }]);
+    installOn(ax);
+    await plainCall(() => settle(ax.post(INFO_URL, {})));
+    expect(Object.getOwnPropertySymbols(Object(seen[0].transformResponse))).toEqual([]);
+  });
+});
+
 describe('eject', () => {
   it('after eject() a 401 is not resent, nothing is recorded and no limit is set', async () => {
     const { ax, seen } = scripted([{ status: 401 }, { status: 200 }]);
     const handle = installQboInterceptors(ax, {
       reacquire: async () => {
+        throw new Error('not called');
+      },
+      mark: () => {
         throw new Error('not called');
       },
       secrets: () => [],
@@ -888,7 +952,7 @@ describe('eject', () => {
 
   it('eject on the guarded instance removes both: the guard alone answers', async () => {
     const r = rig({ qbo: { answers: [a(401), OK] }, noInstall: true });
-    const handle = installQboInterceptors(guardedAxios() as unknown as AxiosInstance, { reacquire: (c) => r.client.get(c, { force: true }), secrets: () => [] });
+    const handle = installQboInterceptors(guardedAxios() as unknown as AxiosInstance, { reacquire: (c, sentAt) => r.client.get(c, { force: true, sentAt }), mark: () => r.client.mark(), secrets: () => [] });
     const before = [(guardedAxios().interceptors.request as any).handlers.filter(Boolean).length, (guardedAxios().interceptors.response as any).handlers.filter(Boolean).length];
     handle.eject();
     const after = [(guardedAxios().interceptors.request as any).handlers.filter(Boolean).length, (guardedAxios().interceptors.response as any).handlers.filter(Boolean).length];
