@@ -285,7 +285,7 @@ describe('the allowed update', () => {
   });
 
   it('the rules get the one request the adapter read, and the guard\'s context', async () => {
-    await inCall(() => send({ headers: { Accept: 'a/b' } }));
+    await inCall(() => send({ headers: { Accept: 'a/b', 'Content-Type': 'application/json' } }));
     const [[request, context]] = seen.slice(-1) as any;
     expect(request).toMatchObject({ method: 'post', url: UPDATE, params: undefined, data: B, headers: { Accept: 'a/b' } });
     expect(Object.getPrototypeOf(request.headers)).toBe(Object.prototype);
@@ -413,6 +413,144 @@ describe('A3.2 through the adapter: sends nothing, consumes nothing (A3.4)', () 
   });
 });
 
+// TD1, TD2: each would be framed, encoded or refused by axios or Node after the capability is consumed, so it is refused before the rules are asked.
+describe('what an update may carry', () => {
+  const JSON_TYPE = { 'Content-Type': 'application/json' };
+  const viaPost = (config: Record<string, unknown>): Promise<any> => ax.post(UPDATE, B, config as any);
+  const direct = (config: Record<string, unknown>): Promise<any> => (ax.defaults.adapter as any)({ method: 'post', url: UPDATE, data: B, ...config });
+  const WAYS = { 'axios.post': viaPost, 'the adapter': direct };
+  type Way = keyof typeof WAYS;
+  const bothWays = <T>(rows: T[]): Array<{ way: Way; row: T }> => rows.flatMap((row) => (Object.keys(WAYS) as Way[]).map((way) => ({ way, row })));
+
+  /** Refused before the rules are asked, nothing sent, nothing taken; then `good`, by the same way, is allowed on that same capability. */
+  async function refusedBeforeRules(way: Way, bad: Record<string, unknown>, good: Record<string, unknown> = { headers: JSON_TYPE }): Promise<void> {
+    net.calls.length = 0;
+    await inCallHeld(async () => {
+      await expect(WAYS[way](bad)).rejects.toMatchObject({ name: 'GuardRefusedError', rule: 'guard-error' });
+      expect([net.calls.length, seen.length, registry.takes.length, registry.size]).toEqual([0, 0, 0, 1]);
+      expect((await WAYS[way](good)).status).toBe(200);
+    });
+    expect(registry.takes.map((t) => t.taken)).toEqual([true]);
+    expect(net.calls.map((c) => c.body)).toEqual([B]);
+  }
+
+  const HEADERS: Array<[string, string]> = [
+    ['Content-Length', '5'],
+    ['Content-Length', '99999'],
+    ['content-length', '5'],
+    ['Transfer-Encoding', 'chunked'],
+    ['Transfer-Encoding', 'gzip'],
+    ['Expect', '100-continue'],
+    ['Connection', 'close'],
+    ['Connection', 'Upgrade'],
+    ['Upgrade', 'websocket'],
+    ['Keep-Alive', 'timeout=5'],
+    ['Trailer', 'X-T'],
+    ['TE', 'trailers'],
+    ['Content-Encoding', 'gzip'],
+    ['Content-MD5', 'x'],
+    ['X-HTTP-Method-Override', 'DELETE'],
+    ['bad name', 'x'],
+    ['x(y)', 'x'],
+    ['naïve', 'x'],
+    ['User-Agent', 'x'],
+    ['Cookie', 'x'],
+    ['Accept-Encoding', 'identity'],
+    ['Acceptx', 'x'],
+    ['X-Accept', 'x'],
+  ];
+  it.each(bothWays(HEADERS))('$row is refused through $way', async ({ way, row: [name, value] }) => {
+    await refusedBeforeRules(way, { headers: { ...JSON_TYPE, [name]: value } });
+  });
+
+  it.each([' Accept ', 'Accept '])('a name that only trimming makes one of the three is refused: %j', async (name) => {
+    await refusedBeforeRules('the adapter', { headers: { [name]: 'x' } });
+  });
+
+  const TYPES = ['application/x-www-form-urlencoded', 'application/json; charset=utf-8', 'application/json;charset=utf-8', 'Application/JSON', 'text/plain', ''];
+  it.each(bothWays(TYPES))('Content-Type $row is refused through $way', async ({ way, row }) => {
+    await refusedBeforeRules(way, { headers: { 'content-type': row } });
+  });
+
+  it('a string body with no Content-Type goes as a form by axios.post, so it is refused there; straight to the adapter there is none to check', async () => {
+    await refusedBeforeRules('axios.post', {});
+    registry.hold(COMPANY, 'purchase', B);
+    await inCallHeld(() => direct({ headers: {} }));
+    expect(net.calls.at(-1)?.body).toBe(B);
+  });
+
+  it.each(bothWays([['AUTHORIZATION', 'CONTENT-TYPE', 'ACCEPT'], ['authorization', 'content-type', 'accept'], ['Authorization', 'Content-Type', 'Accept']]))('$row are sent through $way', async ({ way, row }) => {
+    const values = ['Bearer x', 'application/json', 'application/json'];
+    await inCallHeld(() => WAYS[way]({ headers: Object.fromEntries(row.map((name, i) => [name, values[i]])) }));
+    const sent = Object.fromEntries(Object.entries(net.calls.at(-1)!.headers!).map(([k, v]) => [k.toLowerCase(), v]));
+    expect(sent).toMatchObject({ authorization: 'Bearer x', 'content-type': 'application/json', accept: 'application/json', 'content-length': String(Buffer.byteLength(B)) });
+    expect(Object.keys(sent).sort()).toEqual(['accept', 'accept-encoding', 'authorization', 'content-length', 'content-type', 'user-agent']);
+    expect(registry.size).toBe(0);
+  });
+
+  // Set on axios' own header object, past the cleaning its `set` does.
+  it.each([
+    ['a list', ['a', 'b']],
+    ['an empty list', []],
+    ['a number', 5],
+    ['true', true],
+    ['an object', { toString: () => 'x' }],
+    ['a line feed', 'a\nX-B: c'],
+    ['a carriage return', 'a\r'],
+    ['a NUL', 'a\0'],
+    ['a DEL', 'a\x7f'],
+    ['a Latin-1 letter', 'é'],
+    ['a letter outside Latin-1', '日'],
+  ])('a header value of %s is refused', async (_name, value) => {
+    const headers = Object.assign(new ax.AxiosHeaders(), { Accept: value });
+    await refusedBeforeRules('the adapter', { headers });
+  });
+
+  it('a tab and every printable ASCII character in a value are sent', async () => {
+    await inCallHeld(() => direct({ headers: { Authorization: 'a\t !~' } }));
+    expect(net.calls.at(-1)?.headers?.Authorization).toBe('a\t !~');
+  });
+
+  const BAD_TIMEOUTS = ['abc', '', '5', -1, 1.5, NaN, Infinity, 2147483648, null, true, [5], { connect: 1 }, 5n];
+  it.each(bothWays(BAD_TIMEOUTS.map((value) => [value])))('a timeout of $row is refused through $way', async ({ way, row: [timeout] }) => {
+    await refusedBeforeRules(way, { headers: JSON_TYPE, timeout }, { headers: JSON_TYPE, timeout: 5 });
+  });
+
+  it.each(bothWays([undefined, 0, 1, 2147483647].map((value) => [value])))('a timeout of $row is sent through $way', async ({ way, row: [timeout] }) => {
+    expect((await inCallHeld(() => WAYS[way]({ headers: JSON_TYPE, timeout }))).status).toBe(200);
+  });
+
+  it('the timeout sent is the one checked', async () => {
+    const sent: unknown[] = [];
+    const real = ax.getAdapter('http');
+    jest.spyOn(ax, 'getAdapter').mockReturnValue(((c: any) => (sent.push(c.timeout), (real as any)(c))) as any);
+    let reads = 0;
+    const config = Object.defineProperty({ method: 'post', url: UPDATE, data: B, headers: {} }, 'timeout', { get: () => ((reads += 1) === 1 ? 7 : 'abc') });
+    await inCallHeld(() => (ax.defaults.adapter as any)(config));
+    expect(sent).toEqual([7]);
+  });
+
+  it('a GET keeps its other headers and its timeout, in any case of GET; a method that is no string is not one', async () => {
+    const config = { url: BY_ID, headers: { 'User-Agent': 'x', 'Content-Type': 'text/plain' }, timeout: '5' };
+    await inCallHeld(async () => {
+      for (const method of ['get', 'GET']) await (ax.defaults.adapter as any)({ ...config, method });
+      expect(net.calls.map((c) => c.headers?.['User-Agent'])).toEqual(['x', 'x']);
+      const asked = seen.length;
+      for (const method of [['GET'], 'GETS', 'XGET', undefined]) {
+        await expect((ax.defaults.adapter as any)({ ...config, method })).rejects.toMatchObject({ name: 'GuardRefusedError', rule: 'guard-error' });
+      }
+      expect(seen.length).toBe(asked);
+    });
+  });
+
+  it('a Host header on a GET is refused before the rules too', async () => {
+    for (const name of ['Host', ' hOST ']) {
+      await inCallHeld(() => expect((ax.defaults.adapter as any)({ method: 'get', url: BY_ID, headers: { [name]: 'x' } })).rejects.toMatchObject({ rule: 'guard-error' }));
+    }
+    expect([net.calls.length, seen.length]).toEqual([0, 0]);
+  });
+});
+
 describe('A3.3 through the adapter', () => {
   it('(a) a replay', async () => {
     await inCall(() => send());
@@ -493,6 +631,16 @@ describe('A3.9 through the adapter', () => {
   });
 });
 
+describe('the URL sent is the one the adapter read (TD3)', () => {
+  it.each([['post', UPDATE, B, 'write-update'], ['get', BY_ID, undefined, 'entity-by-id-write']])('%s, whatever URL the rules answer with', async (method, url, data, rule) => {
+    const other = `${ROOT}/bill/6?minorversion=75`;
+    stop();
+    start({ decide: () => ({ allow: true, rule: rule as any, text: other, url: other }) });
+    await inCallHeld(() => (ax.defaults.adapter as any)({ method, url, data, headers: {} }));
+    expect(net.calls.map((c) => `https://${c.hostname}${c.path}`)).toEqual([url]);
+  });
+});
+
 describe('data is sent for an allowed write-update only', () => {
   const allowing = (rule: string): ExtraRules => ({ decide: (r) => (r.url === BY_ID ? { allow: true, rule: rule as any, text: BY_ID, url: BY_ID } : { match: false }) });
 
@@ -527,6 +675,11 @@ describe('the extra rules are fixed when the guard is made', () => {
     }
     await inCall(() => send());
     expect(qboCalls()).toHaveLength(1);
+  });
+
+  it('only an own extraRules throws: a primitive and an inherited one are read as the keys are (TD4)', () => {
+    for (const part of [0, '', true, 'keys', Symbol('x'), Object.create({ extraRules: rules, keys: 'not read either' })]) expect(() => configureGuard(part as any)).not.toThrow();
+    expect(() => configureGuard(Object.defineProperty({}, 'extraRules', { value: rules }))).toThrow(new TypeError('qbo-guard: extraRules are fixed at start'));
   });
 
   it('after a legal configureGuard they still decide, with the new callbacks', async () => {

@@ -108,7 +108,7 @@ const holder: { ctx: GuardContext | undefined; scope: CallScope | undefined } = 
 /** Replaces any of `keys`, `allowedRealm`, `callRecord`; never `stacksUrl`, nor the extra rules (asking throws). */
 export function configureGuard(part: Partial<Pick<GuardContext, "keys" | "allowedRealm" | "callRecord">>): void {
   if (holder.ctx === undefined) throw new Error("qbo-guard: not started");
-  if ("extraRules" in part) throw new TypeError("qbo-guard: extraRules are fixed at start");
+  if (Object.prototype.hasOwnProperty.call(part, "extraRules")) throw new TypeError("qbo-guard: extraRules are fixed at start");
   const next = { ...holder.ctx };
   for (const k of ["keys", "allowedRealm", "callRecord"] as const) {
     if (!Object.prototype.hasOwnProperty.call(part, k)) continue;
@@ -153,6 +153,31 @@ function outgoing(kept: Record<string, unknown>, method: unknown, headers: Recor
   return { send, ticket: { method: String(method).toUpperCase(), hostname: w.hostname, port: w.port, path: w.pathname + w.search } };
 }
 
+/** The only headers an update carries, as written but for case. Any other could frame, encode or reroute the body, or be refused by Node. */
+const UPDATE_HEADER = /^(?:authorization|content-type|accept)$/i;
+/** A header value that axios and Node send as it is. */
+const PLAIN_VALUE = /^[\t -~]*$/;
+/** The longest timeout Node's timers hold, in ms. */
+const TIMEOUT_MAX = 2147483647;
+
+/**
+ * Throws on what axios, Node or the backstop would change or refuse once the rules have allowed the request, its capability consumed.
+ * A GET consumes none, and is refused here only a Host header, as the backstop would.
+ */
+function checkSendable(method: unknown, headers: Record<string, unknown>, timeout: unknown): void {
+  if (typeof method === "string" && /^GET$/i.test(method)) {
+    if (Object.keys(headers).some((k) => k.trim().toLowerCase() === "host")) throw new Error("host header");
+    return;
+  }
+  for (const [name, value] of Object.entries(headers)) {
+    if (!UPDATE_HEADER.test(name)) throw new Error("header name");
+    if (typeof value !== "string" || !PLAIN_VALUE.test(value)) throw new Error("header value");
+    if (name.toLowerCase() === "content-type" && value !== "application/json") throw new Error("content type");
+  }
+  if (timeout === undefined) return;
+  if (!Number.isInteger(timeout) || (timeout as number) < 0 || (timeout as number) > TIMEOUT_MAX) throw new Error("timeout");
+}
+
 export type Guard = { adapter: (config: any) => Promise<any> };
 
 /** Write mode's rules (src/write/guard-rules.ts): asked first; 291's `decide` answers what they don't match. */
@@ -184,8 +209,7 @@ export function createGuard(ctx: GuardContext, options: { extraRules?: ExtraRule
       let own: Unmatched | WriteDecision = { match: false };
       if (extra !== undefined) {
         kept = keptFields(config);
-        // The backstop refuses a Host header, which would be after the capability is consumed.
-        if (Object.keys(headers).some((k) => k.trim().toLowerCase() === "host")) throw new Error("host header");
+        checkSendable(method, headers, kept.timeout);
         if (request.params === undefined || request.params === null) {
           if (ax.getUri(config) !== url) throw new Error("url");
           ready = { ...outgoing(kept, method, headers, url as string), httpAdapter: ax.getAdapter("http") as (c: any) => Promise<any> };
