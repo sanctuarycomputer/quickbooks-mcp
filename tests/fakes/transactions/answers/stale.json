@@ -1,0 +1,17 @@
+{
+  "status": 400,
+  "body": {
+    "Fault": {
+      "Error": [
+        {
+          "Message": "Stale Object Error",
+          "Detail": "Stale Object Error : You and Sample User were working on this at the same time. Sample User finished before you did, so your work was not saved. Entity=Purchase",
+          "code": "5010",
+          "element": ""
+        }
+      ],
+      "type": "ValidationFault"
+    },
+    "time": "2026-11-18T09:00:00.000-08:00"
+  }
+}

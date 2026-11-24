@@ -1,0 +1,27 @@
+{
+  "Purchase": {
+    "Id": "1003",
+    "SyncToken": "0",
+    "TxnDate": "2026-11-12",
+    "PaymentType": "CreditCard",
+    "TotalAmt": 30,
+    "MetaData": {
+      "CreateTime": "2026-11-12T09:00:00-08:00"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Amount": 30,
+        "DetailType": "ItemBasedExpenseLineDetail",
+        "ItemBasedExpenseLineDetail": {
+          "ItemRef": {
+            "value": "61"
+          },
+          "UnitPrice": 15,
+          "Qty": 2
+        }
+      }
+    ]
+  },
+  "time": "2026-11-18T09:00:00.000-08:00"
+}

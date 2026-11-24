@@ -1,0 +1,23 @@
+{
+  "Account": {
+    "Id": "40",
+    "SyncToken": "0",
+    "domain": "QBO",
+    "sparse": false,
+    "MetaData": {
+      "CreateTime": "2026-11-01T09:00:00-08:00",
+      "LastUpdatedTime": "2026-11-01T09:00:00-08:00"
+    },
+    "Name": "Sales",
+    "SubAccount": false,
+    "FullyQualifiedName": "Sales",
+    "Active": true,
+    "AccountType": "Income",
+    "CurrentBalance": 0,
+    "CurrencyRef": {
+      "value": "USD",
+      "name": "United States Dollar"
+    }
+  },
+  "time": "2026-11-18T09:00:00.000-08:00"
+}

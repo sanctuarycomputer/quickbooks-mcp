@@ -1,0 +1,56 @@
+{
+  "case": "undo-to-asset",
+  "tool": "qbo_undo_change",
+  "call": null,
+  "params": {
+    "receipt": "quickbooks-write:garden3d:purchase:1005:0:1"
+  },
+  "intent": {
+    "key": "quickbooks-write:garden3d:purchase:1005:0:1",
+    "lines": [
+      {
+        "line_id": "1",
+        "before": {
+          "account_id": "30",
+          "class_id": null
+        },
+        "after": {
+          "account_id": "84",
+          "class_id": null
+        }
+      }
+    ]
+  },
+  "fetched": "docs/contracts/quickbooks/transactions/fetched/purchase-1005-asset-after.json",
+  "fetch": "GET https://quickbooks.api.intuit.com/v3/company/9990000000000002/purchase/1005?minorversion=75",
+  "update": "POST https://quickbooks.api.intuit.com/v3/company/9990000000000002/purchase?operation=update&minorversion=75",
+  "sparse_body": {
+    "Id": "1005",
+    "SyncToken": "1",
+    "TxnDate": "2026-11-09",
+    "PaymentType": "CreditCard",
+    "TotalAmt": 75,
+    "Line": [
+      {
+        "Id": "1",
+        "Amount": 75,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "30"
+          }
+        }
+      }
+    ],
+    "sparse": true
+  },
+  "sparse_body_sha256": "2d450a7140ca299c31c7e11dd513247e9950ec74934820070370ab458024bcd2",
+  "digests": {
+    "Id": "39f0c71eb7637e0a504f4a36d161063d22f7df542bdeda5cfbc5f29ce0d982cf",
+    "Line": "43de3a417d75f4818c5a553268b80ce3a5805109a3bbc6b605e9fb0b8f50b485",
+    "Line:1": "59da51bd7b2ff1119e1071e36e3d776ed7593c1b34817b3aab9cb7b1a675b657",
+    "PaymentType": "e28ab3299eec22d2e89df4e9ed8f93899e26355dd049cd3954c444fc66eac8bd",
+    "TotalAmt": "f369cb89fc627e668987007d121ed1eacdc01db9e28f8bb26f358b7d8c4f08ac",
+    "TxnDate": "dd627efcb5b4f7a56b1dc2259533f08f93d260f95f32f227670084204b3069ef"
+  }
+}

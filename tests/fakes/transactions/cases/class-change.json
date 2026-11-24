@@ -1,0 +1,63 @@
+{
+  "case": "class-change",
+  "tool": "qbo_categorize_purchase",
+  "call": null,
+  "params": {
+    "id": "1001",
+    "lines": [
+      {
+        "line_id": "2",
+        "account_id": "84",
+        "class_id": "13"
+      }
+    ],
+    "reason": "Move the software line to the studio class."
+  },
+  "intent": null,
+  "fetched": "docs/contracts/quickbooks/transactions/fetched/purchase-1001.json",
+  "fetch": "GET https://quickbooks.api.intuit.com/v3/company/9990000000000002/purchase/1001?minorversion=75",
+  "update": "POST https://quickbooks.api.intuit.com/v3/company/9990000000000002/purchase?operation=update&minorversion=75",
+  "sparse_body": {
+    "Id": "1001",
+    "SyncToken": "3",
+    "TxnDate": "2026-11-10",
+    "PaymentType": "CreditCard",
+    "TotalAmt": 120,
+    "Line": [
+      {
+        "Id": "1",
+        "Amount": 100,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "77"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Amount": 20,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "84"
+          },
+          "ClassRef": {
+            "value": "13"
+          }
+        }
+      }
+    ],
+    "sparse": true
+  },
+  "sparse_body_sha256": "9a0fc515874d1c7490d2c41bd703a6b8eb1e01f6e534c60064eef467028b06a8",
+  "digests": {
+    "Id": "a0064c86a582fa64f14c66f6b43708d60e1bdb791ac2acfa332d059895c265f9",
+    "Line": "cc3f2a1ffd63c4db19e0114b93a94b774e4a2d07a2a5ec5b193303ac1387d633",
+    "Line:1": "ff720e8986fb8848c8e99f06056bf8b2a5d3d5d91e77700f7d8bfa922ccf19ae",
+    "Line:2": "61a6dcb7d8d5ead4d783bad8513ce9e6ad99b34fa423f6790cec7a1d13d64664",
+    "PaymentType": "e28ab3299eec22d2e89df4e9ed8f93899e26355dd049cd3954c444fc66eac8bd",
+    "TotalAmt": "2abaca4911e68fa9bfbf3482ee797fd5b9045b841fdff7253557c5fe15de6477",
+    "TxnDate": "f67c5ec50bf3ce9b5e2e30b3b2ba5789ee3f1491778fd8b3b94147e12dbc2a81"
+  }
+}
