@@ -566,6 +566,42 @@ describe('A4.4b: a 400’s fault text (D6)', () => {
     expect(bearers(r.qbo.requests)).toEqual([`Bearer ${ACCESS_A}`, `Bearer ${ACCESS_B}`, `Bearer ${ACCESS_B}`]);
   });
 
+  it('T6-1: a request still holding the call’s earlier token, answered 400 echoing it after a 401 elsewhere replaced the call’s token: [redacted]', async () => {
+    let open: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (open = resolve));
+    const seen: any[] = [];
+    const ax = axios.create({
+      adapter: async (config: any) => {
+        seen.push(config);
+        const n = seen.length;
+        const respond = (status: number, data: unknown) => {
+          const response = { status, statusText: String(status), headers: {}, data, config, request: {} };
+          if (status === 200) return response;
+          throw new AxiosError(`status ${status}`, 'ERR_BAD_RESPONSE', config, {}, response as any);
+        };
+        if (n === 1) return respond(401, {});
+        if (n === 2) {
+          await gate;
+          return respond(400, fault({ Message: 'Invalid query', Detail: `token ${ACCESS_A}` }));
+        }
+        open();
+        return respond(200, {});
+      },
+    });
+    installOn(ax);
+    const [first, second] = await plainCall(() =>
+      Promise.all([
+        settle(ax.get(INFO_URL, { headers: { Authorization: `Bearer ${ACCESS_A}` } })),
+        settle(ax.get(QUERY_URL, { headers: { authorization: `Bearer ${ACCESS_A}` } })),
+      ]),
+    );
+    expect(first.ok).toBe(true);
+    expect(seen.map((c) => c.headers.Authorization ?? c.headers.authorization)).toEqual([`Bearer ${ACCESS_A}`, `Bearer ${ACCESS_A}`, `Bearer ${ACCESS_B}`]);
+    // secrets() answers the call's token at record time, ACCESS_B: only the request's own bearer names ACCESS_A.
+    expect(second.failure).toEqual({ reason: 'http-400', text: 'QuickBooks answered 400. QuickBooks said: Invalid query: token [redacted]' });
+    expect(second.failure!.text).not.toContain(ACCESS_A);
+  });
+
   it('secrets are replaced longest first, and an absent or empty secret replaces nothing', async () => {
     const short = ['qbo', 'test'].join('-');
     const { ax } = scripted([{ status: 400, data: fault({ Message: `${ACCESS_A} ${short}` }) }]);
@@ -641,6 +677,12 @@ describe('A4.5b: no answer other than the limit is fork-error, not resent', () =
     expect(o.error).toBeInstanceOf(GuardRefusedError);
     expect(o.failure).toEqual({ reason: 'fork-error' });
     expect(r.qbo.requests).toHaveLength(0);
+    // T6-2: a refused Stacks request (an enterprise not in the keys) can't be told by host either: it records fork-error, replacing a kept reason.
+    const stacksRefused = await runInCall('garden3d', async () => {
+      recordFailure({ reason: 'http-500' });
+      return settle(guardedAxios()({ method: 'get', url: `${STACKS}/api/qbo/access_token?enterprise=nope`, headers: { 'X-Api-Key': KEY } }));
+    });
+    expect([stacksRefused.error instanceof GuardRefusedError, stacksRefused.failure, r.stacks.requests.length]).toEqual([true, { reason: 'fork-error' }, 1]);
   });
 
   const odd: Array<[string, unknown]> = [

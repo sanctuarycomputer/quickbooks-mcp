@@ -112,6 +112,9 @@ function noAnswerFailure(e: Record<string, unknown>, config: Record<string, unkn
   return Object.freeze({ reason: limit ? "timeout" : "fork-error" });
 }
 
+/** The token a request was sent with: its Authorization header (any casing) without the `Bearer ` scheme. */
+const bearerOf = (headers: unknown): string | undefined => headerValue(headers, "authorization")?.replace(/^Bearer\s+/i, "");
+
 /** The headers to resend with: the request's own, any Authorization replaced by the new token's. */
 function withToken(headers: unknown, token: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -179,7 +182,8 @@ export function installQboInterceptors(ax: AxiosInstance, deps: QboTransportDeps
       await sleep(retryAfterSeconds(response.headers) * 1000);
       return resend({ ...budget, used429: true }, config, config.headers);
     }
-    recordFailure(answerFailure(response, deps.secrets()));
+    // The failed request's own bearer too: it may be a token the call held before a 401 elsewhere replaced it (T6-1).
+    recordFailure(answerFailure(response, [...deps.secrets(), bearerOf(config.headers)]));
     throw e;
   };
 
