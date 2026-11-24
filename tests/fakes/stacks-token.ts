@@ -19,11 +19,17 @@ export const SERVED_STACKS_FIXTURES: Record<string, string> = {
   '502-unavailable.json': 'A1.5',
 };
 
-export type StacksStep = string | { status: number; headers?: Record<string, string>; body?: unknown };
+/** An answer: a fixture file name, or a status/headers/body object (no `body` sends `{}`, `body: ''` an empty answer). */
+export type StacksAnswer = string | { status: number; headers?: Record<string, string>; body?: unknown };
+/**
+ * A sequence step: an answer, an answer sent only once `hold` resolves, a failed connection, or no answer ever.
+ * (T5, T1-1: A1.3b holds one fetch while a second is made.)
+ */
+export type StacksStep = StacksAnswer | { answer: StacksAnswer; hold: Promise<unknown> } | { refuse: 'reset' | 'refused' } | { hang: true };
 export type StacksFakeOpts = {
   /** enterprise key -> fixture file name; a key not listed gets 200-<key>.json when that file exists, else 404.json */
   byKey?: Record<string, string>;
-  /** answers in order (a fixture file name, or a status/headers/body object); the last one repeats */
+  /** steps in order (StacksStep: an answer, a held answer, a refusal or a hang); the last one repeats */
   sequence?: StacksStep[];
   /** never answer */
   hang?: boolean;
@@ -39,7 +45,7 @@ export function stacksFixture(file: string): { status: number; headers: Record<s
   return JSON.parse(readFileSync(DIR + file, 'utf8'));
 }
 
-function answerOf(step: StacksStep, opts: StacksFakeOpts): StubAnswer {
+function answerOf(step: StacksAnswer, opts: StacksFakeOpts): StubAnswer {
   const f = typeof step === 'string' ? stacksFixture(step) : { headers: {}, ...step };
   const body = f.body;
   return {
@@ -54,16 +60,25 @@ export function enterpriseOf(call: StubCall): string {
   return new URL(call.path ?? '/', 'https://stacks.invalid').searchParams.get('enterprise') ?? '';
 }
 
+const refusal = (refuse: 'reset' | 'refused'): Promise<never> => {
+  const code = refuse === 'reset' ? 'ECONNRESET' : 'ECONNREFUSED';
+  return Promise.reject(Object.assign(new Error(`connect ${code}`), { code }));
+};
+
+function stepOf(step: StacksStep, opts: StacksFakeOpts): StubAnswer | Promise<StubAnswer> {
+  if (typeof step === 'object' && 'hang' in step) return new Promise<StubAnswer>(() => {});
+  if (typeof step === 'object' && 'refuse' in step) return refusal(step.refuse);
+  if (typeof step === 'object' && 'hold' in step) return step.hold.then(() => answerOf(step.answer, opts));
+  return answerOf(step, opts);
+}
+
 export function stacksFake(opts: StacksFakeOpts = {}): { handler: StubTable; requests: StubCall[] } {
   const requests: StubCall[] = [];
   const handler: StubTable = (call) => {
     requests.push(call);
     if (opts.hang) return new Promise<StubAnswer>(() => {});
-    if (opts.refuse) {
-      const code = opts.refuse === 'reset' ? 'ECONNRESET' : 'ECONNREFUSED';
-      return Promise.reject(Object.assign(new Error(`connect ${code}`), { code }));
-    }
-    if (opts.sequence) return answerOf(opts.sequence[Math.min(requests.length - 1, opts.sequence.length - 1)], opts);
+    if (opts.refuse) return refusal(opts.refuse);
+    if (opts.sequence) return stepOf(opts.sequence[Math.min(requests.length - 1, opts.sequence.length - 1)], opts);
     const key = enterpriseOf(call);
     const own = `200-${key}.json`;
     return answerOf(opts.byKey?.[key] ?? (own in SERVED_STACKS_FIXTURES ? own : '404.json'), opts);
