@@ -95,13 +95,13 @@ const faultCode = (data: unknown): unknown => {
 };
 
 /** One GET's body, a JSON object with no Fault. Fault 610 answers `missing`; any other failure the one 286 recorded. */
-async function read(call: CallStore, fetch: () => Promise<Answer>, missing: string | null): Promise<Record<string, unknown>> {
+async function read(call: CallStore, get: () => Promise<Answer>, missing: string | null): Promise<Record<string, unknown>> {
   const failed = (): never => {
     throw new Refused({ ok: false, ...(call.failure ?? { reason: "fork-error" }) });
   };
   let answer: Answer;
   try {
-    answer = await fetch();
+    answer = await get();
   } catch {
     return failed();
   }

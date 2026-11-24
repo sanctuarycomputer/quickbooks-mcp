@@ -943,10 +943,10 @@ describe('the call and the input', () => {
   });
 
   it('body is what bodyText parses to, whatever order the builder wrote', async () => {
-    const reversed = (f: any, c: any) => Object.fromEntries(Object.entries(buildBody(f, c)).reverse());
+    const reversed = (f: any, c: any) => Object.fromEntries([['Dropped', undefined], ...Object.entries(buildBody(f, c)).reverse()]);
     const checked = await allowed(P(), { buildBody: reversed });
     expect(JSON.stringify(checked.body)).toBe(checked.bodyText);
-    expect(checked.bodyText.startsWith('{"sparse":true,')).toBe(true);
+    expect(Object.keys(checked.body)[0]).toBe('sparse');
   });
 
   it('nothing in checked can be changed, and the builder\'s own object is not in it', async () => {
