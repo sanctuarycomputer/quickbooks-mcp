@@ -63,10 +63,11 @@ export function companyInfos(): Record<string, object> {
 }
 
 /**
- * The modules a built tool or handler may import besides other tools and handlers (T10-6): readTools maps the first two
- * (the only ones with state) to the sources; the rest hold none, so a second, built copy of each is harmless.
+ * The modules a built tool or handler may import besides other tools and handlers (T10-6), as paths under `dist`
+ * (TB10-1: a module of the same name in another directory is not one of them): readTools maps the first two (the only
+ * ones with state) to the sources; the rest hold none, so a second, built copy of each is harmless.
  */
-export const TOOL_IMPORTS = ['call-context', 'quickbooks-client', 'validate-input', 'format-error', 'tool-lists'];
+export const TOOL_IMPORTS = ['clients/call-context.js', 'clients/quickbooks-client.js', 'helpers/validate-input.js', 'helpers/format-error.js', 'tool-lists.js'];
 const RELATIVE = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["'](\.{1,2}\/[^"']+)["']/g;
 
 /**
@@ -87,30 +88,34 @@ export function assertToolImports(dist: string, files: string[]): void {
       const dir = path.relative(dist, path.dirname(target));
       const base = path.basename(target).replace(/\.js$/, '');
       if ((dir === 'tools' && base.endsWith('.tool')) || (dir === 'handlers' && base.endsWith('.handler'))) queue.push(target);
-      else if (!TOOL_IMPORTS.includes(base)) faults.push(`${path.relative(dist, file)} imports ${spec}, outside readTools' known modules`);
+      else if (!TOOL_IMPORTS.includes(path.relative(dist, target).split(path.sep).join('/'))) faults.push(`${path.relative(dist, file)} imports ${spec}, outside readTools' known modules`);
     }
   }
   if (faults.length > 0) throw new Error(`readTools: ${faults.join('; ')}`);
 }
 
 let toolList: ReadTool[] | undefined;
+/** The build readTools loads by default. */
+export const DIST = path.join(ROOT, 'dist');
 /**
  * The tool list as src/index.ts builds it (its `./tools/*.tool.js` imports, in order), loaded from the build (dist/, what
  * ships), as 291's A1.9 loaded it: the tools and handlers are upstream code these tests exercise but do not cover, so
  * loading their sources would count them in the coverage report. The build's call store and client are mapped to the
- * sources', so a built handler runs in the call the source runtime opened (one AsyncLocalStorage, not two).
+ * sources', so a built handler runs in the call the source runtime opened (one AsyncLocalStorage, not two). `dist` is
+ * for TB10-1's case only: a copy of the build that readTools must check, and refuse, before loading anything.
  */
-export async function readTools(): Promise<ReadTool[]> {
-  if (toolList !== undefined) return toolList;
+export async function readTools(dist: string = DIST): Promise<ReadTool[]> {
+  if (dist === DIST && toolList !== undefined) return toolList;
   assertFreshBuild();
+  const index = fs.readFileSync(path.join(ROOT, 'src', 'index.ts'), 'utf8');
+  const tools = [...index.matchAll(/^import \{ (\w+) \} from "\.\/tools\/([\w-]+\.tool)\.js";$/gm)];
+  // A built module outside the known list would load as a second copy beside its source, with no error (T10-6).
+  assertToolImports(dist, tools.map(([, , file]) => `tools/${file}.js`));
+  if (dist !== DIST) throw new Error('readTools: only the build in dist/ is loaded');
   const callContext = await import('../../src/clients/call-context.js');
   const client = await import('../../src/clients/quickbooks-client.js');
   jest.unstable_mockModule('../../dist/clients/call-context.js', () => callContext);
   jest.unstable_mockModule('../../dist/clients/quickbooks-client.js', () => client);
-  const index = fs.readFileSync(path.join(ROOT, 'src', 'index.ts'), 'utf8');
-  const tools = [...index.matchAll(/^import \{ (\w+) \} from "\.\/tools\/([\w-]+\.tool)\.js";$/gm)];
-  // A built module outside the known list would load as a second copy beside its source, with no error (T10-6).
-  assertToolImports(path.join(ROOT, 'dist'), tools.map(([, , file]) => `tools/${file}.js`));
   const list: ReadTool[] = [];
   for (const [, name, file] of tools) {
     const mod = await import(`../../dist/tools/${file}.js`);

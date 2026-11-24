@@ -33,13 +33,19 @@ describe('Company and Attachable Handlers', () => {
       expect(result.result).toEqual(mockInfo);
     });
 
-    it('should get company info with specific ID', async () => {
+    // Changed by Sanctuary Computer (quickbooks-mcp-286): the handler takes no id; it reads the client's realm, the
+    // call's kept realm (spec A4.9).
+    it("should get company info for the client's realm (the call's kept realm)", async () => {
       const mockInfo = { Id: '2', CompanyName: 'Another Company' };
       mockQuickBooksInstance.getCompanyInfo.mockImplementation((_id: any, cb: any) => cb(null, mockInfo));
+      (mockQuickBooksInstance as any).realmId = '9990000000000002';
 
-      const result = await getQuickbooksCompanyInfo('specific-id');
+      const result = await getQuickbooksCompanyInfo();
 
       expect(result.isError).toBe(false);
+      expect(result.result).toEqual(mockInfo);
+      expect(mockQuickBooksInstance.getCompanyInfo).toHaveBeenCalledTimes(1);
+      expect(mockQuickBooksInstance.getCompanyInfo.mock.calls[0][0]).toBe('9990000000000002');
     });
 
     it('should handle errors', async () => {

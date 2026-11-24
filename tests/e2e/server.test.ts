@@ -1,11 +1,15 @@
 // Sanctuary Computer (quickbooks-mcp-285): the built server lists only the allowlist, fits the size bound and refuses sign-in keys.
 // Changed by Sanctuary Computer (quickbooks-mcp-286): the server starts with the five keys (helpers' startEnv); R10's
-// call names a company and answers the Stacks client's failure.
+// call names a company and answers the Stacks client's failure; qbo_companies answers its contract fixtures (A3.8).
 import { describe, it, expect, beforeAll, afterEach, jest } from '@jest/globals';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { READ_ALLOWLIST } from '../../src/allowlist';
-import { assertFreshBuild, connectClient, spawnRaw, COMPANY_RESERVE } from './helpers';
+import { assertFreshBuild, connectClient, spawnRaw, COMPANY_RESERVE, ROOT } from './helpers';
+import fs from 'fs';
+import path from 'path';
+
+const fixture = (name: string): any => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fakes', name), 'utf8'));
 
 jest.setTimeout(30000);
 
@@ -48,13 +52,11 @@ describe('spawned server', () => {
     expect(responseChars).toBeLessThanOrEqual(32000);
   });
 
-  it('A9: qbo_companies answers the stub error', async () => {
+  // 286 T11: 285's A9 is A3.8: the spawned server's qbo_companies answers tool-results/qbo_companies/ok.json exactly.
+  it('A3.8: qbo_companies answers ok.json exactly', async () => {
     const { client } = await connect();
-    const result = await client.callTool({ name: 'qbo_companies', arguments: {} });
-    expect(result).toEqual({
-      isError: true,
-      content: [{ type: 'text', text: 'reason: fork-error\n\nqbo_companies lands with the Stacks token client' }],
-    });
+    const result = await client.callTool({ name: 'qbo_companies', arguments: fixture('tool-calls/qbo_companies.json') });
+    expect(result).toStrictEqual(fixture('tool-results/qbo_companies/ok.json'));
   });
 
   // Contract §5 and §11 (sdk-absent-arguments.json): at the pinned SDK a tools/call with no `arguments`
@@ -68,10 +70,8 @@ describe('spawned server', () => {
     );
     const empty = await client.callTool({ name: 'qbo_companies', arguments: {} });
     expect(absent).toEqual(empty);
-    expect(absent.isError).toBe(true);
-    expect(absent.content).toEqual([
-      { type: 'text', text: 'reason: fork-error\n\nqbo_companies lands with the Stacks token client' },
-    ]);
+    // 286 T11: the success, exactly sdk-absent-arguments.json (equal to ok.json).
+    expect(absent).toStrictEqual(fixture('tool-results/qbo_companies/sdk-absent-arguments.json'));
   });
 
   it.each(KEYS)('R7: each refused key stops the server (%s)', async (k) => {

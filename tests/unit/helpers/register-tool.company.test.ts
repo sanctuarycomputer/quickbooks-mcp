@@ -20,6 +20,7 @@ import {
   testEnv,
   textOf,
   assertToolImports,
+  DIST,
   ROOT,
   type Rig,
   type StartOpts,
@@ -79,6 +80,34 @@ describe("readTools' import check: a built tool or handler imports only the know
           "readTools: handlers/x.handler.js imports ../http-guard.js, outside readTools' known modules; " +
             "handlers/x.handler.js imports ../allowlist.js, outside readTools' known modules",
         ),
+      );
+    } finally {
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  });
+
+  // TB10-1: a known module is matched by its path under dist, not by its base name.
+  it('a module named like a known one in another directory (helpers/call-context.js) is named', () => {
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-tool-imports-'));
+    try {
+      fs.mkdirSync(path.join(dist, 'tools'));
+      fs.writeFileSync(path.join(dist, 'tools', 'x.tool.js'), 'import { c } from "../helpers/call-context.js";\nimport { d } from "../clients/call-context.js";\n');
+      expect(() => assertToolImports(dist, ['tools/x.tool.js'])).toThrow(
+        new Error("readTools: tools/x.tool.js imports ../helpers/call-context.js, outside readTools' known modules"),
+      );
+    } finally {
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  });
+
+  // TB10-1: readTools runs its own list (src/index.ts' tools) through the check before it loads anything.
+  it("readTools on a copy of the build whose get_company_info tool imports the guard refuses it, naming the file", async () => {
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-tool-imports-'));
+    try {
+      for (const dir of ['tools', 'handlers']) fs.cpSync(path.join(DIST, dir), path.join(dist, dir), { recursive: true });
+      fs.appendFileSync(path.join(dist, 'tools', 'get-company-info.tool.js'), 'import "../http-guard.js";\n');
+      await expect(readTools(dist)).rejects.toThrow(
+        new Error("readTools: tools/get-company-info.tool.js imports ../http-guard.js, outside readTools' known modules"),
       );
     } finally {
       fs.rmSync(dist, { recursive: true, force: true });
