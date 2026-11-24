@@ -6,7 +6,7 @@
 // T4-3 case, whose two calls' handlers share one bluebird drain through fetchAll; a single query here never does.)
 import { describe, it, expect, afterEach, afterAll } from '@jest/globals';
 import { quickbooksFake } from '../fakes/quickbooks.js';
-import { stacksFixture } from '../fakes/stacks-token.js';
+import { expectServedBy, stacksFixture } from '../fakes/stacks-token.js';
 import type { StubCall } from '../fakes/stub-network.js';
 import type { ReadTool } from '../../src/allowlist.js';
 import { QBO_HOST, REALMS, companyInfos, fixtureToken, installNetwork, readTools, startServer, textOf, type Rig } from '../helpers/server.js';
@@ -23,6 +23,8 @@ afterEach(async () => {
 afterAll(() => {
   expect(network.trap.reached).toEqual([]);
   network.restore();
+  // A1.8: usb-club's fixture is A3.4's too, served by its cases.
+  expectServedBy('A3.4', ['200-usb-club.json']);
 });
 
 const realmOf = (c: StubCall) => /^\/v3\/company\/([0-9]+)\//.exec(c.path ?? '')?.[1];

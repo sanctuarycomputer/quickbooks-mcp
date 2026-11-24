@@ -1,4 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-286): a fake Stacks token endpoint for 291's stub network; serves the copied stacks-token/ fixtures.
+// Each fixture file served is logged with the running test's name, so a named case can show it served its files (A1.8).
+import { expect } from '@jest/globals';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import type { StubAnswer, StubCall, StubTable } from './stub-network.js';
@@ -45,7 +47,28 @@ export function stacksFixture(file: string): { status: number; headers: Record<s
   return JSON.parse(readFileSync(DIR + file, 'utf8'));
 }
 
+/** Each fixture file this module's fakes served, with the test running then ('' outside a test). One log per test file. */
+export const servedLog: Array<{ file: string; test: string }> = [];
+
+/** True when jest was given a name filter (`-t`): jest-circus keeps it on its state, under its unregistered symbol. */
+function nameFiltered(): boolean {
+  const sym = Object.getOwnPropertySymbols(globalThis).find((x) => x.description === 'JEST_STATE_SYMBOL');
+  if (sym === undefined) throw new Error("jest-circus' state isn't on globalThis");
+  const pattern = (globalThis as Record<symbol, { testNamePattern?: RegExp | null }>)[sym].testNamePattern;
+  return pattern !== null && pattern !== undefined;
+}
+
+/**
+ * A1.8's named case: each of `files` was served by this test file's fakes inside a test whose full name holds `check`
+ * (its describe's title or its own). For an afterAll; skipped under a name filter, when the named tests may not run.
+ */
+export function expectServedBy(check: string, files: string[]): void {
+  if (nameFiltered()) return;
+  for (const file of files) expect({ check, file, served: servedLog.some((s) => s.file === file && s.test.includes(check)) }).toEqual({ check, file, served: true });
+}
+
 function answerOf(step: StacksAnswer, opts: StacksFakeOpts): StubAnswer {
+  if (typeof step === 'string') servedLog.push({ file: step, test: expect.getState().currentTestName ?? '' });
   const f = typeof step === 'string' ? stacksFixture(step) : { headers: {}, ...step };
   const body = f.body;
   return {

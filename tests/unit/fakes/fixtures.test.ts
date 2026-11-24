@@ -1,9 +1,13 @@
 // Sanctuary Computer (quickbooks-mcp-286): A1.8's copy half. Every copied stacks-token/ file is served by a named case, and the fakes serve them.
+// T13: A1.8's named-case half: each file is named by its check in an afterAll's expectServedBy, which fails unless that
+// check's cases served it (tests/fakes/stacks-token.ts logs each fixture served with the running test's name).
 import { describe, it, expect, afterEach } from '@jest/globals';
 import { readdirSync, readFileSync } from 'fs';
+import path from 'path';
+import ts from 'typescript';
 import { fileURLToPath } from 'url';
 import { installStubNetwork, type StubNetwork } from '../../fakes/stub-network.js';
-import { SERVED_STACKS_FIXTURES, stacksFake, stacksFixture } from '../../fakes/stacks-token.js';
+import { SERVED_STACKS_FIXTURES, expectServedBy, servedLog, stacksFake, stacksFixture } from '../../fakes/stacks-token.js';
 import { quickbooksFake } from '../../fakes/quickbooks.js';
 import https from 'https';
 
@@ -142,5 +146,77 @@ describe('fakes', () => {
     expect(done).toBe(false);
     release();
     expect((await p).body).toBe('raw');
+  });
+});
+
+const TESTS = fileURLToPath(new URL('../../', import.meta.url));
+
+/** Every `expectServedBy('<check>', ['<file>', …])` in a test file's afterAll, as `<check> <file> <test file>`; any other form is listed as such. */
+function servedByCalls(file: string, text: string): string[] {
+  const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+  const out: string[] = [];
+  const inAfterAll = (n: ts.Node): boolean => {
+    for (let p = n.parent; p !== undefined; p = p.parent) if (ts.isCallExpression(p) && p.expression.getText(sf) === 'afterAll') return true;
+    return false;
+  };
+  const visit = (n: ts.Node) => {
+    if (ts.isCallExpression(n) && n.expression.getText(sf) === 'expectServedBy') {
+      const [check, files] = n.arguments;
+      if (!inAfterAll(n) || !check || !ts.isStringLiteral(check) || !files || !ts.isArrayLiteralExpression(files) || !files.elements.every(ts.isStringLiteral)) out.push(`${file}: an expectServedBy not read (${n.getText(sf).slice(0, 60)})`);
+      else for (const f of files.elements as ts.NodeArray<ts.StringLiteral>) out.push(`${check.text} ${f.text} ${file}`);
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  return out;
+}
+
+function testFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? testFiles(path.join(dir, e.name)) : e.name.endsWith('.test.ts') ? [path.join(dir, e.name)] : []));
+}
+
+describe("A1.8's named-case half: every copied stacks-token/ file is served by a named case", () => {
+  it("each file is named by its check (SERVED_STACKS_FIXTURES' id; usb-club by A3.4 too) in an afterAll's expectServedBy; no copy is unused", () => {
+    // This file's own expectServedBy calls test the helper; they name no fixture's check.
+    const calls = testFiles(TESTS)
+      .filter((f) => f !== fileURLToPath(import.meta.url))
+      .flatMap((f) => servedByCalls(path.relative(TESTS, f).split(path.sep).join('/'), readFileSync(f, 'utf8')))
+      .sort();
+    const want = [
+      ...Object.entries(SERVED_STACKS_FIXTURES).map(([file, check]) => `${check} ${file}`),
+      'A3.4 200-usb-club.json',
+    ];
+    expect(calls.map((c) => c.split(' ').slice(0, 2).join(' ')).sort()).toEqual(want.sort());
+    expect(calls).toEqual([
+      'A1.1 200-garden3d.json unit/clients/stacks-token.test.ts',
+      'A1.5 403.json unit/clients/stacks-token.test.ts',
+      'A1.5 404.json unit/clients/stacks-token.test.ts',
+      'A1.5 409.json unit/clients/stacks-token.test.ts',
+      'A1.5 502-invalid_grant.json unit/clients/stacks-token.test.ts',
+      'A1.5 502-proxy.json unit/clients/stacks-token.test.ts',
+      'A1.5 502-unavailable.json unit/clients/stacks-token.test.ts',
+      'A3.4 200-usb-club.json integration/companies-overlap.test.ts',
+      'A4.9 200-index-space.json unit/tools/company-tools.test.ts',
+      'A4.9 200-sanctuary-computer.json unit/tools/company-tools.test.ts',
+      'A4.9 200-usb-club.json unit/tools/company-tools.test.ts',
+    ]);
+    // No copy unused: every file in the directory is named.
+    expect([...new Set(calls.map((c) => c.split(' ')[1]))].sort()).toEqual(readdirSync(dir('stacks-token')).sort());
+  });
+
+  it('the scan reads only an afterAll call with literal arguments; anything else is listed', () => {
+    expect(servedByCalls('t.ts', "afterAll(() => { expectServedBy('A9', ['a.json', 'b.json']); });")).toEqual(['A9 a.json t.ts', 'A9 b.json t.ts']);
+    expect(servedByCalls('t.ts', "it('x', () => { expectServedBy('A9', ['a.json']); });")).toEqual([expect.stringContaining('not read')]);
+    expect(servedByCalls('t.ts', "afterAll(() => expectServedBy(CHECK, ['a.json']));")).toEqual([expect.stringContaining('not read')]);
+    expect(servedByCalls('t.ts', "afterAll(() => expectServedBy('A9', FILES));")).toEqual([expect.stringContaining('not read')]);
+  });
+
+  it("expectServedBy passes only for a file served inside a test whose name holds the check (this test's own name names A1.8)", () => {
+    const before = servedLog.length;
+    stacksFake({ byKey: { garden3d: '409.json' } }).handler({ path: '/api/qbo/access_token?enterprise=garden3d' } as never);
+    expect(servedLog.slice(before)).toEqual([{ file: '409.json', test: expect.stringContaining('A1.8') }]);
+    expect(() => expectServedBy('A1.8', ['409.json'])).not.toThrow();
+    expect(() => expectServedBy('A1.8', ['403.json'])).toThrow();
+    expect(() => expectServedBy('A9.9', ['409.json'])).toThrow();
   });
 });

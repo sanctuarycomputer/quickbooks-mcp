@@ -5,7 +5,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { trapNetwork } from '../../fakes/no-network.js';
 import { installStubNetwork, type StubCall, type StubTable } from '../../fakes/stub-network.js';
-import { stacksFake, stacksFixture, type StacksAnswer, type StacksFakeOpts, type StacksStep } from '../../fakes/stacks-token.js';
+import { expectServedBy, stacksFake, stacksFixture, type StacksAnswer, type StacksFakeOpts, type StacksStep } from '../../fakes/stacks-token.js';
 import { startTestGuard } from '../../helpers/guard.js';
 import { guardedAxios } from '../../../src/http-guard.js';
 import { parseCompanies, type Company } from '../../../src/clients/companies.js';
@@ -121,6 +121,9 @@ afterAll(() => {
     expect(seenFailures.length).toBeGreaterThan(60);
     expect(seenFailures.some((f) => f.reported !== undefined)).toBe(true);
   }
+  // A1.8: the fixtures A1.1 and A1.5 are named for, each served by those cases.
+  expectServedBy('A1.1', ['200-garden3d.json']);
+  expectServedBy('A1.5', ['403.json', '404.json', '409.json', '502-invalid_grant.json', '502-proxy.json', '502-unavailable.json']);
 });
 
 describe('createRealmStore', () => {

@@ -24,6 +24,7 @@ import {
   type StartOpts,
 } from '../../helpers/server.js';
 import type { StubAnswer, StubCall } from '../../fakes/stub-network.js';
+import { expectServedBy } from '../../fakes/stacks-token.js';
 import { guardedAxios } from '../../../src/http-guard.js';
 import { QBO_LIMIT_MS } from '../../../src/clients/qbo-transport.js';
 import { parseCompanies } from '../../../src/clients/companies.js';
@@ -76,6 +77,8 @@ afterAll(() => {
   // A4.10: every fixture in the directory, produced by a case here. Skipped only under a name filter (`-t`); otherwise
   // every registered case must have run, or the check fails (T11-2).
   if (directoryCheckDue(ran, registered, nameFiltered())) expect([...produced].sort()).toEqual(fs.readdirSync(fakePath(INFO_DIR)).sort());
+  // A1.8: the three company fixtures A4.9 is named for, each served by its cases.
+  expectServedBy('A4.9', ['200-sanctuary-computer.json', '200-index-space.json', '200-usb-club.json']);
 });
 
 /** jest-circus' state (it keeps the run's name filter there), under its unregistered symbol. */
