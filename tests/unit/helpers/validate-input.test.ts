@@ -542,3 +542,92 @@ function whatBuilt(tool: string, input: unknown): string {
   if (r.ok) return 'ok';
   return (r.failure.text as string).slice('The search was refused before reaching QuickBooks: '.length, -'. Use limit up to 1000 and page with offset.'.length);
 }
+
+// Fix round 2 (TB8-1, TB8-2): a list element's keys, and an object that is one {field, value, operator} criterion.
+const EXTRA = 'a criterion has a key other than field, value and operator';
+
+describe('TB8-1 a filters or criteria element with a key other than field, value and operator is refused before the builder', () => {
+  const tools = ['search_accounts', 'search_invoices', 'search_items', 'search_bill_payments', 'search_employees', 'search_journal_entries', 'search_purchases'];
+  const extras: Array<[string, unknown]> = [['fetchAll', true], ['count', true], ['Count', true], ['extra', 'y'], ['limit', 5], ['key', 'Name'], ['Operator', '=']];
+  it.each(['filters', 'criteria'])('%s: each extra key, on each of the seven builder tools', (list) => {
+    for (const tool of tools) {
+      for (const [k, v] of extras) {
+        expect([tool, k, whatBuilt(tool, { [list]: [{ field: 'Id', value: '1', [k]: v }] })]).toEqual([tool, k, EXTRA]);
+        expect([tool, k, whatBuilt(tool, { [list]: [{ field: 'Id', value: '1' }, { field: 'Id', value: '2', [k]: v }] })]).toEqual([tool, k, EXTRA]);
+      }
+    }
+  });
+  it.each(['filters', 'criteria'])('%s: an element with field, value and operator, or fewer, is accepted', (list) => {
+    expect(normalizeBuiltSearch('search_invoices', { [list]: [{ field: 'Id', value: '1', operator: '=' }, { field: 'Id', value: '2' }] })).toMatchObject({
+      ok: true, criteria: [{ field: 'Id', value: '1', operator: '=' }, { field: 'Id', value: '2' }, { field: 'limit', value: 1000 }],
+    });
+    // an element with field and no value reaches the builder whole and is refused for its missing value, not lost
+    expect(whatBuilt('search_invoices', { [list]: [{ field: 'Id' }] })).toBe(BAD_VALUE('Id'));
+  });
+  it('the same element given as a direct array gets the same refusal', () => {
+    expect(what('search_invoices', [{ field: 'Id', value: '1', fetchAll: true }])).toBe(EXTRA);
+    expect(whatBuilt('search_invoices', [{ field: 'Id', value: '1', fetchAll: true }])).toBe(EXTRA);
+  });
+});
+
+describe('TB8-2 an object whose own keys are field and value (and operator) is one criterion, page keys beside it included', () => {
+  const entry = { field: 'Name', value: 'x', operator: '=' };
+  const asEntry = { field: 'Name', value: 'x', operator: '=' };
+  const cases: Array<[string, Record<string, unknown>, unknown[], number]> = [
+    ['no page key', {}, [asEntry, { field: 'limit', value: 1000 }], 1],
+    ['limit', { limit: 5 }, [asEntry, { field: 'limit', value: 5 }], 1],
+    ['Limit (any case)', { Limit: 5 }, [asEntry, { field: 'limit', value: 5 }], 1],
+    ['offset', { offset: 101 }, [asEntry, { field: 'offset', value: 101 }, { field: 'limit', value: 1000 }], 101],
+    ['OFFSET (any case)', { OFFSET: 101 }, [asEntry, { field: 'offset', value: 101 }, { field: 'limit', value: 1000 }], 101],
+    ['asc', { asc: 'Id' }, [asEntry, { field: 'asc', value: 'Id' }, { field: 'limit', value: 1000 }], 1],
+    ['desc', { desc: 'Id' }, [asEntry, { field: 'desc', value: 'Id' }, { field: 'limit', value: 1000 }], 1],
+    ['limit and offset', { limit: 21, offset: 101 }, [asEntry, { field: 'limit', value: 21 }, { field: 'offset', value: 101 }], 101],
+    ['an undefined key', { Other: undefined }, [asEntry, { field: 'limit', value: 1000 }], 1],
+  ];
+  it.each(cases)('%s, through normalizeBuiltSearch and normalizeSearch alike', (_label, page, criteria, usedOffset) => {
+    const expected = { ok: true, criteria, usedOffset, count: false, criteriaOffset: true };
+    expect(normalizeBuiltSearch('search_accounts', { ...entry, ...page })).toEqual(expected);
+    expect(normalizeSearch('search_accounts', { ...entry, ...page })).toEqual(expected);
+  });
+  it('without an operator the criterion has none', () => {
+    expect(normalizeBuiltSearch('search_items', { field: 'Name', value: 'x', limit: 5 })).toMatchObject({ criteria: [{ field: 'Name', value: 'x' }, { field: 'limit', value: 5 }] });
+  });
+  it.each([
+    ['a field name that would escape the statement', { field: "Id = '1' or Id", value: 'x' }, BAD_NAME],
+    ['the same beside limit', { field: "Id = '1' or Id", value: 'x', limit: 5 }, BAD_NAME],
+    ['an operator outside the list', { field: 'Name', value: 'x', operator: '!=' }, "the operator isn't one of = IN < > <= >= LIKE"],
+    ['a bad value', { field: 'Name', value: 'abc\\', limit: 5 }, BAD_VALUE('Name')],
+    ['fetchAll beside it', { field: 'Name', value: 'x', fetchAll: true }, FETCH_ALL],
+    ['count beside it', { field: 'Name', value: 'x', count: true }, COUNT_NO],
+    ['another filter key beside it (toCriterion would drop it)', { field: 'Name', value: 'x', Active: true }, EXTRA],
+    ['the same with a page key', { field: 'Name', value: 'x', Active: true, limit: 5 }, EXTRA],
+    ['limit twice', { field: 'limit', value: 5, limit: 5 }, 'limit is given more than once'],
+  ] as Array<[string, unknown, string]>)('%s is refused', (_label, input, expected) => {
+    expect(whatBuilt('search_accounts', input)).toBe(expected);
+    expect(what('search_accounts', input)).toBe(expected);
+  });
+  it('beside a filters or criteria list it would be lost, so it is refused', () => {
+    expect(whatBuilt('search_accounts', { field: 'Name', value: 'x', filters: [{ field: 'Id', value: '1' }] })).toBe(EXTRA);
+    expect(whatBuilt('search_purchases', { field: 'Name', value: 'x', criteria: [] })).toBe(EXTRA);
+  });
+  it('an object with value and no field is a plain record, its key named value a filter, as toCriterion reads it', () => {
+    expect(normalizeSearch('search_accounts', { value: 'x' })).toEqual({ ok: true, criteria: { value: 'x', limit: 1000 }, usedOffset: 1, count: false, criteriaOffset: true });
+    expect(normalizeBuiltSearch('search_accounts', { value: 'x', limit: 5 })).toEqual({
+      ok: true, criteria: [{ field: 'value', value: 'x' }, { field: 'limit', value: 5 }], usedOffset: 1, count: false, criteriaOffset: true,
+    });
+  });
+  it('a filters or criteria key that is null beside it is refused too', () => {
+    expect(whatBuilt('search_accounts', { field: 'Name', value: 'x', filters: null })).toBe(EXTRA);
+  });
+  it('a lone {field: limit} criterion is a page key', () => {
+    expect(normalizeSearch('search_accounts', { field: 'limit', value: 5 })).toMatchObject({ ok: true, criteria: [{ field: 'limit', value: 5 }] });
+  });
+  it('an object with field and no value is a plain record, as toCriterion reads it', () => {
+    expect(normalizeBuiltSearch('search_accounts', { field: 'Name', limit: 5 })).toMatchObject({ ok: true, criteria: [{ field: 'field', value: 'Name' }, { field: 'limit', value: 5 }] });
+    expect(normalizeSearch('search_accounts', { field: 'Name' })).toMatchObject({ ok: true, criteria: { field: 'Name', limit: 1000 } });
+  });
+  it('on the count tools the folded key form reads the same way', () => {
+    expect(normalizeSearch('search_bills', { field: 'DocNumber', value: '9' })).toMatchObject({ ok: true, criteria: [{ field: 'DocNumber', value: '9' }, { field: 'limit', value: 1000 }] });
+    expect(what('search_bills', { field: 'DocNumber', value: '9', count: true })).toBe(COUNT_ONLY);
+  });
+});

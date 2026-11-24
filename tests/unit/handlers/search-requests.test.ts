@@ -360,6 +360,45 @@ describe('T8-1 a filter beside a page key filters the query on the three criteri
   });
 });
 
+// Fix round 2 (TB8-1, TB8-2), at the request.
+describe('TB8-1 a list element with another key is refused with no request, on each builder handler', () => {
+  const EXTRA = 'a criterion has a key other than field, value and operator';
+  it.each([
+    ['search_accounts filters + fetchAll', () => searchQuickbooksAccounts({ filters: [{ field: 'Id', value: '1', fetchAll: true }] } as any)],
+    ['search_invoices filters + count', () => searchQuickbooksInvoices({ filters: [{ field: 'Id', value: '1', count: true }] } as any)],
+    ['search_items criteria + Count', () => searchQuickbooksItems({ criteria: [{ field: 'Id', value: '1', Count: true }] } as any)],
+    ['search_invoices criteria + extra', () => searchQuickbooksInvoices({ criteria: [{ field: 'Id', value: '1', extra: 'y' }] } as any)],
+    ['search_purchases criteria + fetchAll', () => viaTool(SearchPurchasesTool)({ criteria: [{ field: 'Id', value: '1', fetchAll: true }] })],
+    ['search_employees criteria + count', () => viaTool(SearchEmployeesTool)({ criteria: [{ field: 'Id', value: '1', count: true }] })],
+    ['search_bill_payments criteria + Count', () => searchQuickbooksBillPayments({ criteria: [{ field: 'Id', value: '1', Count: true }] })],
+    ['search_journal_entries criteria + extra', () => searchQuickbooksJournalEntries({ criteria: [{ field: 'Id', value: '1', extra: 'y' }] })],
+  ] as Array<[string, () => Promise<unknown>]>)('%s', async (_label, run) => {
+    expectRefused(await inCall(run), EXTRA);
+  });
+});
+
+describe('TB8-2 one {field, value, operator} object with page keys beside it filters the query once', () => {
+  it.each([
+    [{ field: 'Name', value: 'Cash', operator: '=' }, "select * from account where Name = 'Cash' startposition 1 maxresults 1000", 1],
+    [{ field: 'Name', value: 'Cash', operator: '=', limit: 5 }, "select * from account where Name = 'Cash' startposition 1 maxresults 5", 1],
+    [{ field: 'Name', value: 'Cash', operator: '=', offset: 101 }, "select * from account where Name = 'Cash' startposition 101 maxresults 1000", 101],
+    [{ field: 'Name', value: 'Cash', operator: '=', asc: 'Id' }, "select * from account where Name = 'Cash' orderby Id asc startposition 1 maxresults 1000", 1],
+    [{ field: 'Name', value: 'Cash', operator: '=', desc: 'Id' }, "select * from account where Name = 'Cash' orderby Id desc startposition 1 maxresults 1000", 1],
+  ] as Array<[P, string, number]>)('%j', async (criteria, query, used) => {
+    const r = await inCall(() => searchQuickbooksAccounts(criteria as any));
+    expect([r.failure, r.queries, r.usedOffset]).toEqual([null, [query], used]);
+  });
+  it('a field name that would escape the statement is refused with no request', async () => {
+    expectRefused(await inCall(() => searchQuickbooksAccounts({ field: "Id = '1' or Id", value: 'x', limit: 5 } as any)), "a field name isn't valid");
+  });
+  it("search_bills' {key} form folding to {field, value} filters once, and a hostile field is refused", async () => {
+    const ok = await inCall(() => viaTool(SearchBillsTool)({ criteria: [{ key: 'field', value: 'DocNumber' }, { key: 'value', value: '9' }] }));
+    expect([ok.failure, ok.queries]).toEqual([null, ["select * from bill where DocNumber = '9' startposition 1 maxresults 1000"]]);
+    const bad = await inCall(() => viaTool(SearchBillsTool)({ criteria: [{ key: 'field', value: "DocNumber = '1' or Id" }, { key: 'value', value: '9' }] }));
+    expectRefused(bad, "a field name isn't valid");
+  });
+});
+
 describe('T8-3 a broken filters or criteria list is refused before the builder, with no request', () => {
   it.each([
     ['search_accounts filters a string', () => searchQuickbooksAccounts({ filters: 'abc' } as any), 'filters must be an array'],

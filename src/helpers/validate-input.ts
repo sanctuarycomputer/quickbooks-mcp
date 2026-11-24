@@ -27,6 +27,10 @@ const COUNT_TOOLS: readonly string[] = ["search_bills", "search_customers", "sea
 /** The three that take their page keys only inside `criteria`, so their next offset is passed there (A5.11). */
 const CRITERIA_ONLY_TOOLS: readonly string[] = ["search_accounts", "search_invoices", "search_items"];
 
+/** The keys of one `{field, value, operator?}` criterion, and the refusal of any other key on one. */
+const ENTRY_KEYS: readonly string[] = ["field", "value", "operator"];
+const EXTRA_KEY = "a criterion has a key other than field, value and operator";
+
 type PageKey = "limit" | "offset" | "asc" | "desc";
 const PAGE_KEYS: readonly PageKey[] = ["limit", "offset", "asc", "desc"];
 
@@ -137,13 +141,27 @@ class Walk {
 
   /** A `{field, value, operator?}` entry, as node-quickbooks' toCriterion reads one. */
   entry(e: Record<string, unknown>): Record<string, unknown> | null {
-    if (Object.keys(e).some((k) => k !== "field" && k !== "value" && k !== "operator")) throw new Refused("a criterion has a key other than field, value and operator");
+    if (Object.keys(e).some((k) => !ENTRY_KEYS.includes(k))) throw new Refused(EXTRA_KEY);
     const field = checkName(e.field, "a field name isn't valid");
     if (this.special(field, e.value, true)) return null;
     if (e.operator !== undefined && !QUERY_OPERATORS.includes(e.operator as string)) throw new Refused(`the operator isn't one of ${QUERY_OPERATORS.join(" ")}`);
     checkValue(e.value, field);
     this.filters++;
     return e.operator === undefined ? { field, value: e.value } : { field, value: e.value, operator: e.operator };
+  }
+
+  /**
+   * An object holding both `field` and `value`: node-quickbooks' toCriterion reads it as one criterion and ignores every
+   * other key, so each other key is a page key (or count/fetchAll, refused as anywhere), or refused, never lost.
+   */
+  objectEntry(rec: Record<string, unknown>): Record<string, unknown>[] {
+    const own: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rec)) {
+      if (ENTRY_KEYS.includes(k)) own[k] = v;
+      else if (v !== undefined && !this.special(k, v, false)) throw new Refused(EXTRA_KEY);
+    }
+    const e = this.entry(own);
+    return e === null ? [] : [e];
   }
 
   top(top: SearchTop): void {
@@ -197,6 +215,8 @@ export function normalizeSearch(tool: string, criteria: unknown, top: SearchTop 
         }
       }
       out = kept;
+    } else if (isRecord(criteria) && "field" in criteria && "value" in criteria) {
+      out = w.objectEntry(criteria);
     } else if (isRecord(criteria)) {
       out = w.record(criteria, false);
     } else {
@@ -217,8 +237,10 @@ export function normalizeSearch(tool: string, criteria: unknown, top: SearchTop 
 
 /**
  * For the seven handlers that build their criteria with buildQuickbooksSearchCriteria: checks every value the builder
- * dereferences before it runs (its `filters` or `criteria` list must be an array of objects, and only one of the two
- * may be given, since the builder would drop the other), then builds and normalizes.
+ * dereferences before it runs (its `filters` or `criteria` list must be an array of objects whose keys are field,
+ * value and operator only, and only one of the two may be given, since the builder would drop the other), then builds
+ * and normalizes. The builder walk (fix round 2) is in the task-8 report: every key it reads, drops or passes is seen
+ * here or by normalizeSearch first.
  */
 export function normalizeBuiltSearch(tool: string, input: unknown): SearchNormalized {
   if (isRecord(input)) {
@@ -228,7 +250,13 @@ export function normalizeBuiltSearch(tool: string, input: unknown): SearchNormal
       const list = input[key];
       if (!Array.isArray(list)) return refusedSearch(`${key} must be an array`);
       if (!list.every(isRecord)) return refusedSearch("each criterion must be an object");
+      // The builder copies only field, value and operator of each element: any other key would be lost (TB8-1).
+      if (list.some((el) => Object.keys(el).some((k) => !ENTRY_KEYS.includes(k)))) return refusedSearch(EXTRA_KEY);
     }
+    // An object with both field and value is one criterion (TB8-2): normalizeSearch reads it, page keys beside it
+    // included, as node-quickbooks does; the builder would turn its three keys into three filters. A filters or
+    // criteria list beside it would be lost, and objectEntry refuses that key like any other non-page key.
+    if ("field" in input && "value" in input) return normalizeSearch(tool, input);
   }
   return normalizeSearch(tool, buildQuickbooksSearchCriteria(input as Record<string, unknown>));
 }
