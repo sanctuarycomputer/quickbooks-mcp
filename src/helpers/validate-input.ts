@@ -275,6 +275,46 @@ export function normalizeBuiltSearch(tool: string, input: unknown): SearchNormal
 
 const refusedSearch = (what: string): SearchNormalized => ({ ok: false, failure: { reason: "fork-error", text: searchRefusalText(what) } });
 
+const MIXED = "give every criterion as {field, value} or every one as {key, value}, not both";
+const KEY_EXTRA = "a criterion given as {key, value} has a key other than key and value";
+
+export type CountToolCriteria = { ok: true; criteria: object | unknown[] } | { ok: false; failure: Failure };
+
+/**
+ * The three count tools (search_bills, search_customers, search_vendors) take a `criteria` list in one of two forms
+ * beside their top-level options, and fold it into what their handler hands normalizeSearch. This reads the list as
+ * sent (the tool schemas keep unknown keys, TC12-2), so nothing the caller gave is lost in the fold:
+ * - a list that mixes the forms, or an element holding both `field` and `key`, is refused (fix 1b);
+ * - the `{field, value, operator?}` form goes on as a list with the top-level options as entries after it, where
+ *   normalizeSearch refuses any other key on an entry and a page key or count given twice (TC12-1, TC12-2);
+ * - the `{key, value}` form is folded into one record over the top-level options, so each key is checked here first: a
+ *   key other than key and value is refused (an `operator` would be lost), and so is a key given twice in the list, or
+ *   given in the list and at the top level, compared case-insensitively (one would replace the other) (TC12-1, TC12-2).
+ */
+export function countToolCriteria(criteria: unknown[], options: Record<string, unknown>): CountToolCriteria {
+  if (criteria.length === 0) return { ok: true, criteria: { ...options } };
+  const isField = (c: unknown): boolean => isRecord(c) && "field" in c;
+  if (criteria.some((c) => isField(c) && "key" in (c as object)) || (criteria.some(isField) && !criteria.every(isField))) {
+    return refusedSearch(MIXED);
+  }
+  if (isField(criteria[0])) {
+    return { ok: true, criteria: [...criteria, ...Object.entries(options).map(([field, value]) => ({ field, value }))] };
+  }
+  // Each key by its lower case, to the spelling it was first given in (the top level first), which the refusal names.
+  const seen = new Map(Object.keys(options).map((k) => [k.toLowerCase(), k]));
+  const out: Record<string, unknown> = { ...options };
+  for (const c of criteria as Record<string, unknown>[]) {
+    if (Object.keys(c).some((k) => k !== "key" && k !== "value")) return refusedSearch(KEY_EXTRA);
+    const key = String(c.key);
+    const first = seen.get(key.toLowerCase());
+    if (first !== undefined) return refusedSearch(`${first} is given more than once`);
+    seen.set(key.toLowerCase(), key);
+    // A null value is skipped as upstream's fold did (the tool schemas refuse null, so only a direct call sends one).
+    if (c.value !== undefined && c.value !== null) out[key] = c.value;
+  }
+  return { ok: true, criteria: out };
+}
+
 type OptionRule = (v: unknown) => boolean;
 const matches = (re: RegExp): OptionRule => (v) => typeof v === "string" && re.test(v);
 const oneOf = (values: readonly string[]): OptionRule => (v) => values.includes(v as string);

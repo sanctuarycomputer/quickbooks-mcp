@@ -128,7 +128,8 @@ function coerceAccountFieldValue(field: string, value: any): any {
       case "date":
         return typeof v === "number" ? String(v) : v;
       case "number":
-        return typeof v === "string" && NUMERIC.test(v) ? Number(v) : v;
+        // T12 fix 2 (TC12-3): only a string the number writes back exactly; any other goes on quoted, unrounded.
+        return typeof v === "string" && NUMERIC.test(v) && String(Number(v)) === v ? Number(v) : v;
       case "boolean":
         if (v === "true" || v === 1 || v === "1") return true;
         if (v === "false" || v === 0 || v === "0") return false;

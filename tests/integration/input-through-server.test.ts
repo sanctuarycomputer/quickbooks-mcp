@@ -420,3 +420,82 @@ describe('T12 fix 1b: a list mixing {field} and {key} criteria on the three coun
     expect(oneQuery()).toBe(`select * from ${TOOLS[tool].entity} where DocNumber = '' startposition 1 maxresults 1000`);
   });
 });
+
+// T12 fix 2 (TC12-1, TC12-2): the three count tools' criteria list is read as sent (the criterion schemas keep unknown
+// keys) and folded by countToolCriteria, which refuses what the fold would lose or rewrite, with D6's sentence and no
+// request. The probe values are the pass-3 record's (reviews/task-12-3.md).
+describe('T12 fix 2: the three count tools refuse a key given twice, and a criterion key the fold would lose', () => {
+  const COUNT_TOOLS3 = ['search_bills', 'search_customers', 'search_vendors'];
+  const MIXED = 'give every criterion as {field, value} or every one as {key, value}, not both';
+  const KEY_EXTRA = 'a criterion given as {key, value} has a key other than key and value';
+  const ENTRY_EXTRA = 'a criterion has a key other than field, value and operator';
+  const twice = (key: string) => `${key} is given more than once`;
+  const k = (key: string, value: unknown) => ({ key, value });
+
+  // TC12-1: a key given twice in the {key, value} list, or in the list and at the top level.
+  const DOUBLED: Array<[string, P, string]> = [
+    ['DocNumber twice in the list', { criteria: [k('DocNumber', '1'), k('DocNumber', '2')] }, twice('DocNumber')],
+    ['Id three times in the list', { criteria: [k('Id', '1'), k('Id', '2'), k('Id', '3')] }, twice('Id')],
+    ['asc twice in the list', { criteria: [k('asc', 'Id'), k('asc', 'DocNumber')] }, twice('asc')],
+    ['desc twice in the list', { criteria: [k('desc', 'Id'), k('desc', 'DocNumber')] }, twice('desc')],
+    ['asc in the list and at the top level', { criteria: [k('asc', 'Id')], asc: 'DocNumber' }, twice('asc')],
+    ['desc in the list and at the top level', { criteria: [k('desc', 'Id')], desc: 'DocNumber' }, twice('desc')],
+    ['limit in the list and at the top level', { criteria: [k('limit', '5')], limit: 5 }, twice('limit')],
+    ['offset in the list and at the top level', { criteria: [k('offset', '2')], offset: 2 }, twice('offset')],
+    ['count in the list and count false at the top level', { criteria: [k('count', true)], count: false }, twice('count')],
+    ['a key twice by another case', { criteria: [k('DocNumber', '1'), k('docnumber', '2')] }, twice('DocNumber')],
+    ['a top-level key in the list by another case', { criteria: [k('ASC', 'Id')], asc: 'DocNumber' }, twice('asc')],
+  ];
+  const DOUBLED_CASES = COUNT_TOOLS3.flatMap((tool) => DOUBLED.map(([what, params, refusal]) => [tool, what, params, refusal] as const));
+
+  it.each(DOUBLED_CASES)('TC12-1 %s: %s is refused with no request', async (tool, _what, params, what) => {
+    await expectRefused(call(tool, params), what);
+  });
+
+  it.each(COUNT_TOOLS3)('TC12-1 %s: distinct keys in the list and at the top level still go out, each once', async (tool) => {
+    await call(tool, { criteria: [k('DocNumber', '1'), k('Id', '2')], asc: 'Id' });
+    expect(oneQuery()).toBe(`select * from ${TOOLS[tool].entity} where DocNumber = '1' and Id = '2' orderby Id asc startposition 1 maxresults 1000`);
+  });
+
+  // TC12-2: a key the criterion schemas used to strip reaches the fold and the normalizer, and is refused.
+  const UNKNOWN: Array<[string, P, string]> = [
+    ['an operator on a {key, value} criterion (>)', { criteria: [{ key: 'Balance', value: '0', operator: '>' }] }, KEY_EXTRA],
+    ['an operator on a {key, value} criterion (LIKE)', { criteria: [{ key: 'DisplayName', value: 'A%', operator: 'LIKE' }] }, KEY_EXTRA],
+    ['another key on a {key, value} criterion', { criteria: [{ key: 'DocNumber', value: '1', extra: 'x' }] }, KEY_EXTRA],
+    ['an element holding both field and key', { criteria: [{ field: 'Id', value: '1', key: 'DocNumber' }] }, MIXED],
+    ['another key on a {field, value} criterion', { criteria: [{ field: 'Id', value: '1', extra: 'x' }] }, ENTRY_EXTRA],
+  ];
+  const UNKNOWN_CASES = COUNT_TOOLS3.flatMap((tool) => UNKNOWN.map(([what, params, refusal]) => [tool, what, params, refusal] as const));
+
+  it.each(UNKNOWN_CASES)('TC12-2 %s: %s is refused with no request', async (tool, _what, params, what) => {
+    await expectRefused(call(tool, params), what);
+  });
+
+  it.each(COUNT_TOOLS3)('TC12-2 %s: an operator on a {field, value} criterion still goes out as written', async (tool) => {
+    await call(tool, { criteria: [{ field: 'Id', value: '5', operator: '>' }] });
+    expect(oneQuery()).toBe(`select * from ${TOOLS[tool].entity} where Id > '5' startposition 1 maxresults 1000`);
+  });
+});
+
+// T12 fix 2 (TC12-3): search_accounts' number arm converts a numeric string only when the number writes it back
+// exactly; any other goes on quoted and unrounded, as in the shapes the coercion does not reach.
+describe('T12 fix 2 (TC12-3): search_accounts converts a numeric string only when the number is exact', () => {
+  const shapes = (value: unknown): Array<[string, P]> => [
+    ['a plain record', { criteria: { CurrentBalance: value } }],
+    ['an array of records', { criteria: [{ CurrentBalance: value }] }],
+    ['advanced filters', { criteria: { filters: [{ field: 'CurrentBalance', value }] } }],
+  ];
+  const INEXACT = ['9007199254740993', '12345678901234567891', '1234567890123456789012345678901', '0.1234567890123456789', '5.0', '-0'];
+  const INEXACT_CASES = INEXACT.flatMap((v) => shapes(v).map(([shape, params]) => [v, shape, params] as const));
+
+  it.each(INEXACT_CASES)('CurrentBalance %s as %s goes out quoted, unchanged', async (value, _shape, params) => {
+    await call('search_accounts', params);
+    expect(oneQuery()).toBe(`select * from account where CurrentBalance = '${value}' startposition 1 maxresults 1000`);
+  });
+
+  const EXACT_CASES = ['9007199254740991', '0.5', '-12'].flatMap((v) => shapes(v).map(([shape, params]) => [v, shape, params] as const));
+  it.each(EXACT_CASES)('CurrentBalance %s as %s is converted to the number', async (value, _shape, params) => {
+    await call('search_accounts', params);
+    expect(oneQuery()).toBe(`select * from account where CurrentBalance = ${value} startposition 1 maxresults 1000`);
+  });
+});

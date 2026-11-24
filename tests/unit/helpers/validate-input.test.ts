@@ -3,6 +3,7 @@
 // handler inside a call with the QuickBooks fake, is tests/unit/handlers/search-requests.test.ts.
 import { describe, it, expect } from '@jest/globals';
 import {
+  countToolCriteria,
   hasControl,
   normalizeBuiltSearch,
   normalizeReport,
@@ -641,5 +642,34 @@ describe('TB8-2 an object whose own keys are field and value (and operator) is o
   it('on the count tools the folded key form reads the same way', () => {
     expect(normalizeSearch('search_bills', { field: 'DocNumber', value: '9' })).toMatchObject({ ok: true, criteria: [{ field: 'DocNumber', value: '9' }, { field: 'limit', value: 1000 }] });
     expect(what('search_bills', { field: 'DocNumber', value: '9', count: true })).toBe(COUNT_ONLY);
+  });
+});
+
+// T12 fix 2 (TC12-1, TC12-2): the three count tools' fold, each rule against its accepted twin.
+describe('countToolCriteria', () => {
+  const k = (key: string, value: unknown) => ({ key, value });
+  it('an empty list is the top-level options alone', () => {
+    expect(countToolCriteria([], { asc: 'Id', count: true })).toStrictEqual({ ok: true, criteria: { asc: 'Id', count: true } });
+  });
+  it('the {field} form goes on as a list, the top-level options as entries after it, extra keys kept for normalizeSearch', () => {
+    expect(countToolCriteria([{ field: 'Id', value: '1', extra: 'x' }], { asc: 'Id' })).toStrictEqual({
+      ok: true,
+      criteria: [{ field: 'Id', value: '1', extra: 'x' }, { field: 'asc', value: 'Id' }],
+    });
+  });
+  it('the {key} form is one record over the top-level options, each key once', () => {
+    expect(countToolCriteria([k('DocNumber', ''), k('Id', false)], { asc: 'Id' })).toStrictEqual({ ok: true, criteria: { asc: 'Id', DocNumber: '', Id: false } });
+    expect(countToolCriteria([k('DocNumber', null)], {})).toStrictEqual({ ok: true, criteria: {} });
+  });
+  it.each([
+    ['a mixed list, {field} first', [{ field: 'Id', value: '1' }, k('Id', '2')], {}, 'give every criterion as {field, value} or every one as {key, value}, not both'],
+    ['a mixed list, {key} first', [k('Id', '2'), { field: 'Id', value: '1' }], {}, 'give every criterion as {field, value} or every one as {key, value}, not both'],
+    ['one element with both', [{ field: 'Id', value: '1', key: 'DocNumber' }], {}, 'give every criterion as {field, value} or every one as {key, value}, not both'],
+    ['an operator on {key}', [{ key: 'Balance', value: '0', operator: '>' }], {}, 'a criterion given as {key, value} has a key other than key and value'],
+    ['a key twice', [k('DocNumber', '1'), k('DocNumber', '2')], {}, 'DocNumber is given more than once'],
+    ['a key twice by case', [k('Id', '1'), k('ID', '2')], {}, 'Id is given more than once'],
+    ['a key in the list and at the top', [k('count', true)], { count: false }, 'count is given more than once'],
+  ] as const)('%s is refused', (_what, criteria, options, what) => {
+    expect(countToolCriteria([...criteria], { ...options })).toStrictEqual(refusedWith(what));
   });
 });
