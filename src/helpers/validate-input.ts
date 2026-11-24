@@ -25,7 +25,7 @@ const MAX_LIMIT = 1000;
 /** The three whose upstream tool files have the count form (D9): only there is a lone `count: true` accepted. */
 const COUNT_TOOLS: readonly string[] = ["search_bills", "search_customers", "search_vendors"];
 /** The three that take their page keys only inside `criteria`, so their next offset is passed there (A5.11). */
-const CRITERIA_ONLY_TOOLS: readonly string[] = ["search_accounts", "search_invoices", "search_items"];
+export const CRITERIA_ONLY_TOOLS: readonly string[] = ["search_accounts", "search_invoices", "search_items"];
 
 /** The keys of one `{field, value, operator?}` criterion, and the refusal of any other key on one. */
 const ENTRY_KEYS: readonly string[] = ["field", "value", "operator"];
@@ -190,8 +190,10 @@ function pageEntries(w: Walk): { field: string; value: unknown }[] {
 
 /**
  * Checks the criteria a search handler is about to pass `find*`, with the tool's own top-level page keys in `top`, and
- * gives them back with the page keys under their exact names and `limit` 1000 when none is given: an object stays an
- * object and an array an array, so node-quickbooks reads them as before. `usedOffset` is the `startposition` the
+ * gives them back with the page keys under their exact names and `limit` 1000 when none is given: an array stays an
+ * array, a plain object of field keys stays an object, and an object holding both `field` and `value` (one criterion,
+ * as node-quickbooks' toCriterion reads it) comes back as an array of that one entry with the page entries after it, so
+ * node-quickbooks reads each as before. `usedOffset` is the `startposition` the
  * request carries (`1` when no offset is given); `criteriaOffset` is true for the three tools whose offset goes inside
  * `criteria`.
  */
@@ -300,6 +302,9 @@ const REPORT_RULES = {
 } satisfies Record<string, Record<string, OptionRule>>;
 
 export type ReportTool = keyof typeof REPORT_RULES;
+
+/** The 11 report tools (contract §4's `reports/<Name>` rows): the tools whose result is a QuickBooks report (A5.5). */
+export const REPORT_TOOLS: readonly string[] = Object.keys(REPORT_RULES);
 
 /** Checks a report handler's options against its keys' patterns (A6.4); none of them admits `&`, `#`, `=` or `%`. Gives back only those keys. */
 export function normalizeReport(tool: ReportTool, options: unknown): ReportNormalized {
