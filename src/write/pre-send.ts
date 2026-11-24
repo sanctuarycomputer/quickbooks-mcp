@@ -47,7 +47,7 @@ export type { CheckedRequest };
 
 /** True only for a request `preSend` made. */
 export function isChecked(value: unknown): value is CheckedRequest {
-  return typeof value === "object" && value !== null && made.has(value);
+  return made.has(value as object);
 }
 
 /** Stops the check with its answer. */
@@ -80,8 +80,7 @@ function copyChanges(lines: unknown): readonly Change[] {
   if (!Array.isArray(lines)) return broken();
   return frozenCopy(
     Array.from(lines, (line: unknown) => {
-      if (!isRecord(line)) return broken();
-      const { line_id, account_id, class_id } = line;
+      const { line_id, account_id, class_id } = line as Record<string, unknown>;
       if (!isId(line_id) || !isId(account_id)) return broken();
       if (class_id === undefined) return { line_id, account_id };
       return class_id === null || isId(class_id) ? { line_id, account_id, class_id } : broken();
@@ -120,7 +119,7 @@ async function read(call: CallStore, fetch: () => Promise<Answer>, missing: stri
 async function readRef(call: CallStore, entity: "account" | "class", id: unknown): Promise<Record<string, unknown>> {
   if (!isId(id)) return broken();
   const found = (await read(call, () => fetchById(entity, id), `write:${entity}`))[entity === "account" ? "Account" : "Class"];
-  return isRecord(found) && found.Id === id ? found : broken();
+  return prop(found, "Id") === id ? (found as Record<string, unknown>) : broken();
 }
 
 const mustBeActive = ({ Active }: Record<string, unknown>, reason: string): void => {
@@ -159,7 +158,7 @@ async function check(input: PreSendInput, build: typeof buildBody): Promise<Chec
   const answer = frozenCopy(await read(call, () => fetchById(entity, id), "write:not-found"));
   if (entityKeys(answer).length === 0) broken();
   const txn = answer[entityKey(entity)] as Transaction;
-  if (txn !== undefined && !(isRecord(txn) && txn.Id === id && typeof txn.SyncToken === "string" && typeof txn.TxnDate === "string" && Array.isArray(txn.Line))) broken();
+  if (txn !== undefined && !(prop(txn, "Id") === id && typeof txn.SyncToken === "string" && typeof txn.TxnDate === "string" && Array.isArray(txn.Line))) broken();
   const prefs = prop((await read(call, fetchPreferences, null)).Preferences, "AccountingInfoPrefs");
   if (!isRecord(prefs)) return broken();
 

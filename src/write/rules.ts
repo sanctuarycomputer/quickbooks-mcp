@@ -33,7 +33,7 @@ export const entityKeys = (answer: Record<string, unknown>): string[] => Object.
 export function ruleType(entity: UpdateEntity, answer: Record<string, unknown>): "write:type" | null {
   const keys = entityKeys(answer);
   if (keys.length !== 1 || keys[0] !== entityKey(entity)) return "write:type";
-  return entity === "purchase" && prop(answer.Purchase, "Credit") === true ? "write:type" : null;
+  return prop(answer.Purchase, "Credit") === true ? "write:type" : null;
 }
 
 /** Step 6. */
@@ -91,14 +91,14 @@ export function lineRefs(txn: Transaction): { accounts: unknown[]; classes: unkn
   return { accounts: lines.map((line) => prop(refOf(line, "AccountRef"), "value")), classes: lines.map(classOf).filter((value) => value !== null) };
 }
 
-/** §15 "Sparse body". Never throws: a line it can't change is copied, and `checkBody` refuses it. */
+/** §15 "Sparse body". What it can't change as asked `checkBody` refuses. */
 export function buildBody(fetched: Transaction, changes: readonly Change[]): Record<string, unknown> {
-  const { MetaData: _metaData, sparse: _sparse, ...copied } = fetched;
+  const { MetaData: _metaData, ...copied } = fetched;
   const Line = linesOf(fetched).map((line) => {
     const change = changes.find((one) => one.line_id === prop(line, "Id"));
     const detail = prop(line, ACCOUNT_LINE);
-    if (change === undefined || !isRecord(detail)) return line;
-    const after: Record<string, unknown> = { ...detail, AccountRef: { value: change.account_id } };
+    if (change === undefined) return line;
+    const after: Record<string, unknown> = { ...(detail as object), AccountRef: { value: change.account_id } };
     if (change.class_id === null) delete after.ClassRef;
     else if (change.class_id !== undefined) after.ClassRef = { value: change.class_id };
     return { ...(line as Record<string, unknown>), [ACCOUNT_LINE]: after };
@@ -113,7 +113,7 @@ function same(a: unknown, b: unknown): boolean {
   if (!isRecord(a) || !isRecord(b)) return false;
   const keys = Object.keys(a);
   const other = new Map(Object.entries(b));
-  return keys.length === other.size && keys.every((key) => other.has(key) && same(a[key], other.get(key)));
+  return keys.length === other.size && keys.every((key) => same(a[key], other.get(key)));
 }
 
 /** The record without some of its keys. */
@@ -122,13 +122,13 @@ const without = (record: Record<string, unknown>, ...keys: string[]): Record<str
 
 /** The named line changed in its two refs, as asked, and nowhere else. */
 function sameButRefs(fetched: unknown, sent: unknown, change: Change): boolean {
-  if (!isRecord(fetched) || !isRecord(sent) || !isAccountLine(fetched)) return false;
-  const [before, after] = [fetched[ACCOUNT_LINE], sent[ACCOUNT_LINE]];
+  if (!isRecord(sent) || !isAccountLine(fetched)) return false;
+  const [before, after] = [prop(fetched, ACCOUNT_LINE), sent[ACCOUNT_LINE]];
   if (!isRecord(before) || !isRecord(after)) return false;
   const { class_id } = change;
   const classRef = class_id === undefined ? before.ClassRef : class_id === null ? undefined : { value: class_id };
   return (
-    same(without(sent, ACCOUNT_LINE), without(fetched, ACCOUNT_LINE)) &&
+    same(without(sent, ACCOUNT_LINE), without(fetched as Record<string, unknown>, ACCOUNT_LINE)) &&
     same(without(after, "AccountRef", "ClassRef"), without(before, "AccountRef", "ClassRef")) &&
     same(after.AccountRef, { value: change.account_id }) &&
     same(after.ClassRef, classRef)

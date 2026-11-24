@@ -313,8 +313,10 @@ describe('A2.5: line', () => {
     expect([ruleSubjectLine({}), ruleLines({}, P().lines)]).toEqual(['write:line', 'write:line']);
     purchase().Line[1].DetailType = 'AccountBasedExpenseLineDetail';
     expect(ruleSubjectLine(purchase())).toBeNull();
+    net.calls.length = 0;
     await allowed(DRY());
-    expect(gets().slice(-2)).toEqual(['account/84', 'class/12']);
+    // The item-based line's account is not one to read.
+    expect(gets()).toEqual([...P_READS, 'account/84', 'class/12']);
   });
 
   it('a line id is whatever non-empty string QuickBooks gave, on a line no one names', async () => {
@@ -600,6 +602,22 @@ describe('A2.12: write:diff', () => {
     await refused(P(), 'write:diff', [...P_READS, 'account/84', 'class/12']);
   });
 
+  it.each<[string, (list: any[]) => unknown]>([
+    ['dropped', (list) => list.pop()],
+    ['added', (list) => list.push({ TxnId: '3' })],
+    ['changed', (list) => (list[1].TxnId = '3')],
+    ['reordered', (list) => list.reverse()],
+  ])('an item of a header list %s', async (_name, edit) => {
+    purchase().LinkedTxn = [{ TxnId: '1' }, { TxnId: '2' }];
+    await allowed(P());
+    const bad = (fetched: any, changes: any) => {
+      const body = JSON.parse(JSON.stringify(buildBody(fetched, changes)));
+      edit(body.LinkedTxn);
+      return body;
+    };
+    await refused(P(), 'write:diff', [...P_READS, 'account/84', 'class/12'], { buildBody: bad });
+  });
+
   it('every change is made, on its own line', () => {
     const txn = purchase();
     const change = P().lines[0];
@@ -674,6 +692,7 @@ describe('A2.13: modes', () => {
   });
   it('dry takes no lines', async () => {
     for (const lines of [P().lines, [], null, changesOf(21)]) await refused({ ...DRY(), lines }, 'fork-error', []);
+    await refused({ ...DRY(), mode: 'send' }, 'fork-error', []);
     await allowed({ ...DRY(), lines: undefined });
   });
   it('checked.mode is the mode it ran in (SB5)', async () => {
@@ -752,6 +771,7 @@ describe('A2.15: a failed or unexpected read', () => {
     { name: 'a 200 Fault of another code', path, answer: () => fault('6000'), refusal: 'fork-error' },
     { name: 'a 200 Fault beside the asked object', path, answer: () => ({ ...(books[path] as Json), Fault: null }), refusal: 'fork-error' },
     ...['{}', '[]', 'null', '"x"', '5', '', 'not json', '{"time":"x"}'].map((body): Broken => ({ name: `a 200 of ${JSON.stringify(body)}`, path, answer: () => answered(200, body), refusal: 'fork-error' })),
+    { name: 'a 199 with the asked object', path, answer: () => answered(199, books[path]), refusal: HTTP(199), failure: 'stands' },
     { name: 'a 204', path, answer: () => answered(204, ''), refusal: 'fork-error' },
   ];
   const ALL = [...P_READS, 'account/84', 'class/12'];
@@ -853,7 +873,7 @@ describe('the call and the input', () => {
     ...['vendor', 'Purchase', 'account', undefined, null, ['purchase']].map((entity): [string, Json] => ['entity', { entity }]),
     ...['', 'x', '10 01', '1'.repeat(21), '../1', '1001\n', 1001, undefined, ['1001']].map((id): [string, Json] => ['id', { id }]),
     ...['', 'Dry', 'send', undefined, null, ['categorize']].map((mode): [string, Json] => ['mode', { mode }]),
-    ...[undefined, null, {}, 'x', { length: 1, 0: P().lines[0] }, [null], ['1'], [[]], Array(1)].map((lines): [string, Json] => ['lines', { lines }]),
+    ...[undefined, null, {}, 'x', { length: 1, 0: P().lines[0] }, { length: 21 }, 'x'.repeat(21), [null], ['1'], [[]], Array(1)].map((lines): [string, Json] => ['lines', { lines }]),
     ...[
       { line_id: 1 }, { line_id: '' }, { line_id: 'x' }, { line_id: undefined }, { account_id: 84 }, { account_id: '' }, { account_id: '84/x' }, { account_id: undefined },
       { class_id: 12 }, { class_id: '' }, { class_id: 'x' }, { class_id: false }, { class_id: {} },
@@ -922,6 +942,13 @@ describe('the call and the input', () => {
     }
   });
 
+  it('body is what bodyText parses to, whatever order the builder wrote', async () => {
+    const reversed = (f: any, c: any) => Object.fromEntries(Object.entries(buildBody(f, c)).reverse());
+    const checked = await allowed(P(), { buildBody: reversed });
+    expect(JSON.stringify(checked.body)).toBe(checked.bodyText);
+    expect(checked.bodyText.startsWith('{"sparse":true,')).toBe(true);
+  });
+
   it('nothing in checked can be changed, and the builder\'s own object is not in it', async () => {
     const kept: Json[] = [];
     const checked = await allowed(P(), { buildBody: (f: any, c: any) => (kept.push(JSON.parse(JSON.stringify(buildBody(f, c)))), kept[0]) });
@@ -933,7 +960,7 @@ describe('the call and the input', () => {
       expect([path, Object.isFrozen(value)]).toEqual([path, true]);
       for (const [key, inner] of Object.entries(value)) deep(inner, `${path}.${key}`);
     };
-    deep(checked, 'checked');
+    for (const one of [checked, await allowed(P()), await allowed(UNDO()), await allowed(DRY())]) deep(one, 'checked');
     expect(() => (checked.bodyText = 'x')).toThrow(TypeError);
     expect(() => (checked.changes[0].account_id = '91')).toThrow(TypeError);
     expect(() => checked.changes.push({})).toThrow(TypeError);
