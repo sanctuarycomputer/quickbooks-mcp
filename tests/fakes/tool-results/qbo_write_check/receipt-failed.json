@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:receipt-failed\n\nThe receipt command's ping failed."
+    }
+  ],
+  "isError": true
+}

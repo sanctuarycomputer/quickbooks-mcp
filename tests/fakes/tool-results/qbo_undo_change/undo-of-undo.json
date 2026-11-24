@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:undo-of-undo\n\nThat receipt is itself an undo; categorize again instead."
+    }
+  ],
+  "isError": true
+}

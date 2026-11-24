@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "MCP error -32602: Input validation error: Invalid arguments for tool get_company_info: Invalid input: expected object, received undefined at params"
+    }
+  ],
+  "isError": true
+}

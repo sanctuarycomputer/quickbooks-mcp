@@ -1,0 +1,20 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/qbo/access_token?enterprise=garden3d"
+  },
+  "status": 403,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "errors": [
+      {
+        "title": "Unauthorized",
+        "status": "forbidden",
+        "source": null,
+        "detail": "You are not authorized to access this resource."
+      }
+    ]
+  }
+}

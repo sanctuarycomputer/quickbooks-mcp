@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:cap\n\nThe daily limit of changes for this company is reached."
+    }
+  ],
+  "isError": true
+}

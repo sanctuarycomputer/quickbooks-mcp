@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: name-mismatch\nsource: stacks\nreported: Garden Three LLC\n\nStacks' name for this company isn't one of its accepted names."
+    }
+  ],
+  "isError": true
+}

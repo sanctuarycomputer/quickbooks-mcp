@@ -1,4 +1,6 @@
 // Changed by Sanctuary Computer (quickbooks-mcp-285): the removed switches' cases are gone.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): RegisterTool takes the runtime and adds `company`; a handler's
+// answer is shaped into contract §5's result, so the warning now follows the data item (it moved from content[0]).
 import { describe, it, expect, jest } from "@jest/globals";
 import {
   knownParamKeys,
@@ -9,6 +11,14 @@ import {
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { ToolDefinition } from "../../../src/types/tool-definition";
+import type { Runtime } from "../../../src/clients/runtime";
+
+// A runtime whose company state lets every call go on; registration reads only the loaded keys.
+const RUNTIME = {
+  cfg: { companies: [{ key: "garden3d", name: "garden3d, LLC", acceptedNames: ["garden3d, LLC"] }] },
+  companies: { prepareCall: async () => null },
+} as unknown as Runtime;
+const OK = '{"ok":true}';
 
 // ── RegisterTool ─────────────────────────────────────────────────────────────
 // Verifies RegisterTool forwards the definition's fields to server.tool().
@@ -24,7 +34,7 @@ describe("RegisterTool", () => {
   it("calls server.tool() with all definition fields", () => {
     const server = { tool: jest.fn() } as unknown as McpServer;
     const d = def("get_invoice");
-    RegisterTool(server, d);
+    RegisterTool(server, d, RUNTIME);
     expect(server.tool).toHaveBeenCalledTimes(1);
     const [name, description, shape, handler] = (server.tool as jest.Mock).mock.calls[0] as any[];
     expect(name).toBe(d.name);
@@ -34,6 +44,7 @@ describe("RegisterTool", () => {
     // unsupported parameter survives validation and can be reported instead of
     // silently vanishing. It is therefore not the same object identity.
     expect((shape.params as any).parse({ id: "1", unexpected_key: 1 }).unexpected_key).toBe(1);
+    expect(Object.keys(shape)).toEqual(["company", "params"]);
   });
 });
 
@@ -47,12 +58,12 @@ describe("unsupported parameter reporting", () => {
     const seen: any[] = [];
     const handler = jest.fn(async (args: any) => {
       seen.push(args);
-      return { content: [{ type: "text", text: "ok" }] };
+      return { content: [{ type: "text", text: OK }] };
     });
     const server = { tool: jest.fn() } as unknown as McpServer;
-    RegisterTool(server, { name: toolName, description: "d", schema, handler } as any);
+    RegisterTool(server, { name: toolName, description: "d", schema, handler } as any, RUNTIME);
     const registered = (server.tool as jest.Mock).mock.calls[0][3] as any;
-    const result = await registered({ params });
+    const result = await registered({ company: "garden3d", params });
     return { result, seenByHandler: seen[0]?.params };
   };
 
@@ -62,10 +73,10 @@ describe("unsupported parameter reporting", () => {
       z.object({ customer_ref: z.string() }),
       { customer_ref: "1", ship_date: "2026-09-01" }
     );
-    expect(result.content[0].text).toContain("create_invoice does not support");
-    expect(result.content[0].text).toContain("ship_date");
-    expect(result.content[0].text).toContain("customer_ref"); // lists what IS supported
-    expect(result.content[1].text).toBe("ok"); // original response preserved
+    expect(result.content[0].text).toBe(OK); // original response preserved, first
+    expect(result.content[1].text).toContain("create_invoice does not support");
+    expect(result.content[1].text).toContain("ship_date");
+    expect(result.content[1].text).toContain("customer_ref"); // lists what IS supported
   });
 
   it("strips unknown keys so they cannot reach QuickBooks", async () => {
@@ -87,7 +98,7 @@ describe("unsupported parameter reporting", () => {
       { invoice_id: "42" }
     );
     expect(seenByHandler).toEqual({ invoice_id: "42" });
-    expect(result.content[0].text).toBe("ok");
+    expect(result.content).toEqual([{ type: "text", text: OK }]);
   });
 
   it("pluralises, and stays silent on input it cannot analyse", () => {

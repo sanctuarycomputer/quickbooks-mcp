@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:disabled\n\nWrites are switched off; every other part of the check passed."
+    }
+  ],
+  "isError": true
+}

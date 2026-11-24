@@ -1,4 +1,5 @@
-// Sanctuary Computer (quickbooks-mcp-285): the client has no token source until the Stacks token client lands.
+// Sanctuary Computer (quickbooks-mcp-285, quickbooks-mcp-286): the client's source stays free of env, process hooks and fs;
+// outside a tool call getInstance throws (A3.3; the in-call cases are in quickbooks-client.company.test.ts).
 import { describe, it, expect, afterAll } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
@@ -35,8 +36,8 @@ describe('QuickbooksClient', () => {
     expect(text).not.toMatch(/["'`](?:node:)?(?:fs|path)(?:\/[^"'`]*)?["'`]/);
   });
 
-  it('R4: getInstance rejects', async () => {
+  it('R4 / A3.3: getInstance outside a tool call throws', async () => {
     const { QuickbooksClient } = await import('../../../src/clients/quickbooks-client.js');
-    await expect(QuickbooksClient.getInstance()).rejects.toThrow(/^no QuickBooks token source$/);
+    await expect(QuickbooksClient.getInstance()).rejects.toThrow(/^getInstance outside a tool call$/);
   });
 });

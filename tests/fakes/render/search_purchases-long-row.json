@@ -1,0 +1,2063 @@
+[
+  {
+    "Id": "101",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-02",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 22650,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "PrivateNote": "Made-up memo, line one\nline two",
+    "LinkedTxn": [
+      {
+        "TxnId": "501",
+        "TxnType": "Bill"
+      }
+    ],
+    "CustomField": [],
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 1-1: Demo Print Shop order, made-up description for a fixture line                         ",
+        "Amount": 10.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 1-2: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 13.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 1-3: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 16.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "4",
+        "Description": "Item 1-4: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 19.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "5",
+        "Description": "Item 1-5: Sample Hardware Ltd order, made-up description for a fixture line                     ",
+        "Amount": 22.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "6",
+        "Description": "Item 1-6: Demo Print Shop order, made-up description for a fixture line                         ",
+        "Amount": 25.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "7",
+        "Description": "Item 1-7: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 28.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "8",
+        "Description": "Item 1-8: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 31.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "9",
+        "Description": "Item 1-9: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 34.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "10",
+        "Description": "Item 1-10: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 37.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "11",
+        "Description": "Item 1-11: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 40.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "12",
+        "Description": "Item 1-12: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 43.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "13",
+        "Description": "Item 1-13: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 46.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "14",
+        "Description": "Item 1-14: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 49.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "15",
+        "Description": "Item 1-15: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 52.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "16",
+        "Description": "Item 1-16: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 55.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "17",
+        "Description": "Item 1-17: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 58.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "18",
+        "Description": "Item 1-18: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 61.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "19",
+        "Description": "Item 1-19: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 64.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "20",
+        "Description": "Item 1-20: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 67.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "21",
+        "Description": "Item 1-21: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 70.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "22",
+        "Description": "Item 1-22: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 73.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "23",
+        "Description": "Item 1-23: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 76.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "24",
+        "Description": "Item 1-24: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 79.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "25",
+        "Description": "Item 1-25: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 82.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "26",
+        "Description": "Item 1-26: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 85.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "27",
+        "Description": "Item 1-27: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 88.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "28",
+        "Description": "Item 1-28: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 91.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "29",
+        "Description": "Item 1-29: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 94.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "30",
+        "Description": "Item 1-30: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 97.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "31",
+        "Description": "Item 1-31: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 100.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "32",
+        "Description": "Item 1-32: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 103.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "33",
+        "Description": "Item 1-33: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 106.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "34",
+        "Description": "Item 1-34: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 109.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "35",
+        "Description": "Item 1-35: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 112.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "36",
+        "Description": "Item 1-36: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 115.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "37",
+        "Description": "Item 1-37: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 118.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "38",
+        "Description": "Item 1-38: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 121.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "39",
+        "Description": "Item 1-39: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 124.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "40",
+        "Description": "Item 1-40: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 127.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "41",
+        "Description": "Item 1-41: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 130.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "42",
+        "Description": "Item 1-42: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 133.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "43",
+        "Description": "Item 1-43: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 136.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "44",
+        "Description": "Item 1-44: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 139.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "45",
+        "Description": "Item 1-45: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 142.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "46",
+        "Description": "Item 1-46: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 145.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "47",
+        "Description": "Item 1-47: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 148.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "48",
+        "Description": "Item 1-48: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 151.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "49",
+        "Description": "Item 1-49: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 154.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "50",
+        "Description": "Item 1-50: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 157.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "51",
+        "Description": "Item 1-51: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 160.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "52",
+        "Description": "Item 1-52: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 163.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "53",
+        "Description": "Item 1-53: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 166.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "54",
+        "Description": "Item 1-54: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 169.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "55",
+        "Description": "Item 1-55: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 172.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "56",
+        "Description": "Item 1-56: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 175.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "57",
+        "Description": "Item 1-57: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 178.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "58",
+        "Description": "Item 1-58: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 181.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "59",
+        "Description": "Item 1-59: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 184.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "60",
+        "Description": "Item 1-60: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 187.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "61",
+        "Description": "Item 1-61: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 190.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "62",
+        "Description": "Item 1-62: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 193.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "63",
+        "Description": "Item 1-63: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 196.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "64",
+        "Description": "Item 1-64: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 199.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "65",
+        "Description": "Item 1-65: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 202.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "66",
+        "Description": "Item 1-66: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 205.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "67",
+        "Description": "Item 1-67: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 208.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "68",
+        "Description": "Item 1-68: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 211.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "69",
+        "Description": "Item 1-69: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 214.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "70",
+        "Description": "Item 1-70: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 217.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "71",
+        "Description": "Item 1-71: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 220.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "72",
+        "Description": "Item 1-72: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 223.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "73",
+        "Description": "Item 1-73: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 226.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "74",
+        "Description": "Item 1-74: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 229.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "75",
+        "Description": "Item 1-75: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 232.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "76",
+        "Description": "Item 1-76: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 235.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "77",
+        "Description": "Item 1-77: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 238.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "78",
+        "Description": "Item 1-78: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 241.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "79",
+        "Description": "Item 1-79: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 244.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "80",
+        "Description": "Item 1-80: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 247.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "81",
+        "Description": "Item 1-81: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 250.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "82",
+        "Description": "Item 1-82: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 253.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "83",
+        "Description": "Item 1-83: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 256.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "84",
+        "Description": "Item 1-84: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 259.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "85",
+        "Description": "Item 1-85: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 262.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "86",
+        "Description": "Item 1-86: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 265.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "87",
+        "Description": "Item 1-87: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 268.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "88",
+        "Description": "Item 1-88: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 271.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "89",
+        "Description": "Item 1-89: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 274.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "90",
+        "Description": "Item 1-90: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 277.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "91",
+        "Description": "Item 1-91: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 280.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "92",
+        "Description": "Item 1-92: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 283.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "93",
+        "Description": "Item 1-93: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 286.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "94",
+        "Description": "Item 1-94: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 289.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "95",
+        "Description": "Item 1-95: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 292.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "96",
+        "Description": "Item 1-96: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 295.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "97",
+        "Description": "Item 1-97: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 298.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "98",
+        "Description": "Item 1-98: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 301.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "99",
+        "Description": "Item 1-99: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 304.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "100",
+        "Description": "Item 1-100: Sample Hardware Ltd order, made-up description for a fixture line                   ",
+        "Amount": 307.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "101",
+        "Description": "Item 1-101: Demo Print Shop order, made-up description for a fixture line                       ",
+        "Amount": 310.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "102",
+        "Description": "Item 1-102: Placeholder Freight order, made-up description for a fixture line                   ",
+        "Amount": 313.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "103",
+        "Description": "Item 1-103: Fictional Software Inc order, made-up description for a fixture line                ",
+        "Amount": 316.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "104",
+        "Description": "Item 1-104: Example Supplies Co order, made-up description for a fixture line                   ",
+        "Amount": 319.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "105",
+        "Description": "Item 1-105: Sample Hardware Ltd order, made-up description for a fixture line                   ",
+        "Amount": 322.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "106",
+        "Description": "Item 1-106: Demo Print Shop order, made-up description for a fixture line                       ",
+        "Amount": 325.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "107",
+        "Description": "Item 1-107: Placeholder Freight order, made-up description for a fixture line                   ",
+        "Amount": 328.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "108",
+        "Description": "Item 1-108: Fictional Software Inc order, made-up description for a fixture line                ",
+        "Amount": 331.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "109",
+        "Description": "Item 1-109: Example Supplies Co order, made-up description for a fixture line                   ",
+        "Amount": 334.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "110",
+        "Description": "Item 1-110: Sample Hardware Ltd order, made-up description for a fixture line                   ",
+        "Amount": 337.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "111",
+        "Description": "Item 1-111: Demo Print Shop order, made-up description for a fixture line                       ",
+        "Amount": 340.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "112",
+        "Description": "Item 1-112: Placeholder Freight order, made-up description for a fixture line                   ",
+        "Amount": 343.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "64",
+            "name": "Expense Account 64"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "113",
+        "Description": "Item 1-113: Fictional Software Inc order, made-up description for a fixture line                ",
+        "Amount": 346.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "65",
+            "name": "Expense Account 65"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "114",
+        "Description": "Item 1-114: Example Supplies Co order, made-up description for a fixture line                   ",
+        "Amount": 349.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "66",
+            "name": "Expense Account 66"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "115",
+        "Description": "Item 1-115: Sample Hardware Ltd order, made-up description for a fixture line                   ",
+        "Amount": 352.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "67",
+            "name": "Expense Account 67"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "116",
+        "Description": "Item 1-116: Demo Print Shop order, made-up description for a fixture line                       ",
+        "Amount": 355.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "68",
+            "name": "Expense Account 68"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "117",
+        "Description": "Item 1-117: Placeholder Freight order, made-up description for a fixture line                   ",
+        "Amount": 358.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "60",
+            "name": "Expense Account 60"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "118",
+        "Description": "Item 1-118: Fictional Software Inc order, made-up description for a fixture line                ",
+        "Amount": 361.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "119",
+        "Description": "Item 1-119: Example Supplies Co order, made-up description for a fixture line                   ",
+        "Amount": 364.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "120",
+        "Description": "Item 1-120: Sample Hardware Ltd order, made-up description for a fixture line                   ",
+        "Amount": 367.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "102",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-03",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 37.5,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 2-1: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 17.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 2-2: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 20.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "103",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-04",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 51.5,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 3-1: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 24.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 3-2: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 27.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  }
+]

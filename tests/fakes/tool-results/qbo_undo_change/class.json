@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:class\n\nClass 12 no longer exists."
+    }
+  ],
+  "isError": true
+}

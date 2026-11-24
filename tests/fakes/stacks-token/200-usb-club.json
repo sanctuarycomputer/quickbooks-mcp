@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/qbo/access_token?enterprise=usb-club"
+  },
+  "status": 200,
+  "headers": {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "enterprise": "usb-club",
+    "realm_id": "9990000000000004",
+    "access_token": "qbo-fake-access-token-usb-club",
+    "expires_at": "2026-11-18T12:00:00Z",
+    "company_name": "USB Club, LLC"
+  }
+}

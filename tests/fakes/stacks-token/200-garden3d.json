@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/qbo/access_token?enterprise=garden3d"
+  },
+  "status": 200,
+  "headers": {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "enterprise": "garden3d",
+    "realm_id": "9990000000000002",
+    "access_token": "qbo-fake-access-token-garden3d",
+    "expires_at": "2026-11-18T12:00:00Z",
+    "company_name": "garden3d, LLC"
+  }
+}

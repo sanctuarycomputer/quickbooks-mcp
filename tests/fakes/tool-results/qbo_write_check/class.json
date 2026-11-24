@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:class\n\nThe newest expense's class no longer exists."
+    }
+  ],
+  "isError": true
+}

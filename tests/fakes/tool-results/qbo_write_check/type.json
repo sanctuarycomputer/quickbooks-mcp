@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:type\n\nThe newest expense changed type while the check ran."
+    }
+  ],
+  "isError": true
+}

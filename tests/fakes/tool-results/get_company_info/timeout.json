@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: timeout\n\nQuickBooks didn't answer within the server's limit."
+    }
+  ],
+  "isError": true
+}

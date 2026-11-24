@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:account\n\nAccount 40 is an Income account; choose an Expense, Other Expense or Cost of Goods Sold account."
+    }
+  ],
+  "isError": true
+}

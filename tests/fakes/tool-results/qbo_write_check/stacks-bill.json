@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:stacks-bill\n\nThe newest bill turned out to be Stacks'."
+    }
+  ],
+  "isError": true
+}

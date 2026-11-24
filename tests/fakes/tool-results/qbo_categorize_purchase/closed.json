@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:closed\n\nThe books are closed for this transaction's date."
+    }
+  ],
+  "isError": true
+}

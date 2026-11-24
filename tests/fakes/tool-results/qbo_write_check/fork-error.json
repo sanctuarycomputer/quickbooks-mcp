@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: fork-error\n\nThe guard's dry decision refused the built request."
+    }
+  ],
+  "isError": true
+}

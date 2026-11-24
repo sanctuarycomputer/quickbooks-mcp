@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:not-found\n\nThe newest expense was deleted while the check ran."
+    }
+  ],
+  "isError": true
+}

@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"Id\":\"9990000000000003\",\"CompanyName\":\"Index Space, LLC\",\"LegalName\":\"Index Space, LLC\",\"CompanyAddr\":{\"Line1\":\"1 Example Street\",\"City\":\"Exampleton\",\"CountrySubDivisionCode\":\"NY\",\"PostalCode\":\"00000\"},\"Country\":\"US\"}"
+    }
+  ]
+}

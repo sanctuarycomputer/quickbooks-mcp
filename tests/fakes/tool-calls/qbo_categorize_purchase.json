@@ -1,0 +1,14 @@
+{
+  "company": "garden3d",
+  "params": {
+    "id": "1001",
+    "lines": [
+      {
+        "line_id": "1",
+        "account_id": "84",
+        "class_id": "12"
+      }
+    ],
+    "reason": "Monthly design tool subscription."
+  }
+}

@@ -1,4 +1,5 @@
 // Sanctuary Computer (quickbooks-mcp-291): a stub network in place of http(s).request/get; it records each call and answers from a table, never opening a socket.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): each call records the body written to it (A3.7 reads headers, URL and body).
 import { EventEmitter } from 'events';
 import http from 'http';
 import https from 'https';
@@ -13,6 +14,8 @@ export type StubCall = {
   headers: Record<string, unknown> | undefined;
   agent: unknown;
   options: Record<string, unknown>;
+  /** Every chunk written to the request, joined ('' when none was). */
+  body: string;
 };
 export type StubAnswer = { status: number; headers?: Record<string, string>; body?: string };
 export type StubTable = (call: StubCall) => StubAnswer | Promise<StubAnswer>;
@@ -34,11 +37,13 @@ class FakeRequest extends EventEmitter {
   }
   setNoDelay(): void {}
   setSocketKeepAlive(): void {}
-  write(): boolean {
+  write(chunk?: unknown): boolean {
+    if (chunk !== undefined && chunk !== null) this.call.body += String(chunk);
     return true;
   }
-  end(): this {
+  end(chunk?: unknown): this {
     if (this.ended) return this;
+    if (chunk !== undefined && chunk !== null && typeof chunk !== 'function') this.call.body += String(chunk);
     this.ended = true;
     Promise.resolve()
       .then(() => this.table(this.call))
@@ -88,6 +93,7 @@ export function installStubNetwork(table: StubTable = () => ({ status: 200 })): 
         headers: options.headers as Record<string, unknown> | undefined,
         agent: options.agent,
         options,
+        body: '',
       };
       calls.push(call);
       return new FakeRequest(call, table, cb);

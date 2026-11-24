@@ -1,0 +1,177 @@
+{
+  "v": "1.0",
+  "fold": [
+    [
+      "garden3d, LLC",
+      "garden3d"
+    ],
+    [
+      "Sanctuary Computer Inc",
+      "sanctuarycomputer"
+    ],
+    [
+      "Index Space, LLC",
+      "indexspace"
+    ],
+    [
+      "USB Club, LLC",
+      "usbclub"
+    ],
+    [
+      "LLC",
+      "llc"
+    ],
+    [
+      "Index Space LLC Inc",
+      "indexspacellc"
+    ],
+    [
+      "garden3d, L.L.C.",
+      "garden3d"
+    ],
+    [
+      "Sanctuáry Computer, Inc.",
+      "sanctuarycomputer"
+    ],
+    [
+      "Sanctuary Computer Ińc",
+      "sanctuarycomputer"
+    ],
+    [
+      "index-space",
+      "indexspace"
+    ],
+    [
+      "Ωmega Studio LLC",
+      "ωmegastudio"
+    ],
+    [
+      "Sanctuary Computer Incorporated",
+      "sanctuarycomputer"
+    ],
+    [
+      "",
+      ""
+    ],
+    [
+      "Example Works LLC",
+      "exampleworks"
+    ],
+    [
+      "Example Works, Inc.",
+      "exampleworks"
+    ],
+    [
+      "Example Works Incorporated",
+      "exampleworks"
+    ],
+    [
+      "Example Works Corp",
+      "exampleworks"
+    ],
+    [
+      "Example Works Corporation",
+      "exampleworks"
+    ],
+    [
+      "Example Works Co",
+      "exampleworks"
+    ],
+    [
+      "Example Works Company",
+      "exampleworks"
+    ],
+    [
+      "Example Works, Ltd.",
+      "exampleworks"
+    ],
+    [
+      "Example Works Limited",
+      "exampleworks"
+    ],
+    [
+      "Example Works LP",
+      "exampleworks"
+    ],
+    [
+      "Example Works LLP",
+      "exampleworks"
+    ],
+    [
+      "Example Works PLLC",
+      "exampleworks"
+    ],
+    [
+      "Example Works P.C.",
+      "exampleworks"
+    ],
+    [
+      "Acme™ Labs",
+      "acmetmlabs"
+    ],
+    [
+      "Ｇａｒｄｅｎ３ｄ, LLC",
+      "garden3d"
+    ],
+    [
+      "Ińdéx SpacéLLC",
+      "indexspacellc"
+    ],
+    [
+      "Example Works⃝LLC",
+      "exampleworksllc"
+    ],
+    [
+      "garden3d, LLC ",
+      "garden3d"
+    ],
+    [
+      "-LLC",
+      "llc"
+    ]
+  ],
+  "match": [
+    [
+      "Garden3D LLC",
+      "garden3d, LLC"
+    ],
+    [
+      "GARDEN3D",
+      "garden3d, LLC"
+    ],
+    [
+      "Sanctuary Computer Incorporated",
+      "Sanctuary Computer Inc"
+    ],
+    [
+      "USB Club, LLC.",
+      "USB Club, LLC"
+    ]
+  ],
+  "no_match": [
+    [
+      "Garden Three",
+      "garden3d, LLC"
+    ],
+    [
+      "Index",
+      "Index Space, LLC"
+    ],
+    [
+      "USB Club Holdings LLC",
+      "USB Club, LLC"
+    ],
+    [
+      "Index Space LLC Inc",
+      "Index Space, LLC"
+    ],
+    [
+      "",
+      ""
+    ],
+    [
+      "LLC",
+      "USB Club, LLC"
+    ]
+  ]
+}

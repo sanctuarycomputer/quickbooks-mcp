@@ -1,0 +1,8 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"ReportName\":\"ProfitAndLoss\",\"StartPeriod\":\"2026-10-01\",\"EndPeriod\":\"2026-10-31\",\"Currency\":\"USD\"}\n{\"Column\":[{\"ColTitle\":\"\",\"ColType\":\"Account\"},{\"ColTitle\":\"Total\",\"ColType\":\"Money\"}]}\n{\"Header\":{\"ColData\":[{\"value\":\"Income\"},{\"value\":\"\"}]},\"Summary\":{\"ColData\":[{\"value\":\"Total Income\"},{\"value\":\"100000.00\"}]},\"type\":\"Section\",\"depth\":0}\n{\"ColData\":[{\"value\":\"Design Services\"},{\"value\":\"42000.00\"}],\"type\":\"Data\",\"depth\":1}\n{\"ColData\":[{\"value\":\"Development Services\"},{\"value\":\"58000.00\"}],\"type\":\"Data\",\"depth\":1}\n{\"Header\":{\"ColData\":[{\"value\":\"Expenses\"},{\"value\":\"\"}]},\"Summary\":{\"ColData\":[{\"value\":\"Total Expenses\"},{\"value\":\"11000.00\"}]},\"type\":\"Section\",\"depth\":0}\n{\"Header\":{\"ColData\":[{\"value\":\"Software\"},{\"value\":\"\"}]},\"Summary\":{\"ColData\":[{\"value\":\"Total Software\"},{\"value\":\"2000.00\"}]},\"type\":\"Section\",\"depth\":1}\n{\"ColData\":[{\"value\":\"Hosting\"},{\"value\":\"1200.00\"}],\"type\":\"Data\",\"depth\":2}\n{\"ColData\":[{\"value\":\"Licenses\"},{\"value\":\"800.00\"}],\"type\":\"Data\",\"depth\":2}\n{\"ColData\":[{\"value\":\"Rent\"},{\"value\":\"9000.00\"}],\"type\":\"Data\",\"depth\":1}\n{\"Summary\":{\"ColData\":[{\"value\":\"Net Income\"},{\"value\":\"89000.00\"}]},\"type\":\"Section\",\"depth\":0}"
+    }
+  ]
+}

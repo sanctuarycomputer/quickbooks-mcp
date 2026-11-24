@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:changed-since\n\nSomeone changed these lines since; nothing was sent."
+    }
+  ],
+  "isError": true
+}

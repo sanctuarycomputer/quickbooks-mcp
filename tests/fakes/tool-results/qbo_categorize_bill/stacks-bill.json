@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:stacks-bill\n\nStacks made this bill (DocNumber Stacks_…); Stacks would undo the change."
+    }
+  ],
+  "isError": true
+}

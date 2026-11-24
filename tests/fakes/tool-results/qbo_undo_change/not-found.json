@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:not-found\n\nQuickBooks has no Purchase 1001 any more."
+    }
+  ],
+  "isError": true
+}

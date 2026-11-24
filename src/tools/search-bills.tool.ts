@@ -1,4 +1,7 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286, T12 fix 1b and fix 2): the criterion schemas keep unknown keys,
+// and countToolCriteria reads the list as sent: a mixed list, a key it would lose, or a key given twice is refused.
 import { searchQuickbooksBills } from "../handlers/search-quickbooks-bills.handler.js";
+import { countToolCriteria, refusal } from "../helpers/validate-input.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -32,7 +35,7 @@ const billFieldEnum = z.enum([
 const criterionSchema = z.object({
   key: z.string().describe("Simple key (legacy) – any Bill property name."),
   value: z.union([z.string(), z.boolean()]),
-});
+}).loose(); // T12 fix 2 (TC12-2): unknown keys reach countToolCriteria
 
 // Advanced criterion schema with operator support.
 const advancedCriterionSchema = z.object({
@@ -42,7 +45,7 @@ const advancedCriterionSchema = z.object({
     .enum(["=", "<", ">", "<=", ">=", "LIKE", "IN"])
     .optional()
     .describe("Comparison operator. Defaults to '=' if omitted."),
-});
+}).loose(); // T12 fix 2 (TC12-2): unknown keys reach normalizeSearch
 
 const toolSchema = z.object({
   // Allow advanced criteria array like [{field,value,operator}]
@@ -69,20 +72,14 @@ export const SearchBillsTool: ToolDefinition<typeof toolSchema> = {
     const { criteria = [], ...options } = (args.params ?? {}) as z.infer<typeof toolSchema>;
 
     // build criteria to pass to SDK, supporting advanced operator syntax
-    let criteriaToSend: any;
-    if (Array.isArray(criteria) && criteria.length > 0) {
-      const first = criteria[0] as any;
-      if (typeof first === "object" && "field" in first) {
-        criteriaToSend = [...criteria, ...Object.entries(options).map(([key, value]) => ({ field: key, value }))];
-      } else {
-        criteriaToSend = (criteria as Array<{ key: string; value: any }>).reduce<Record<string, any>>((acc, { key, value }) => {
-          if (value !== undefined && value !== null) acc[key] = value;
-          return acc;
-        }, { ...options });
-      }
-    } else {
-      criteriaToSend = { ...options };
+    // Sanctuary Computer (quickbooks-mcp-286, T12 fix 2): the fold is countToolCriteria's, which refuses what it would
+    // lose or rewrite (TC12-1, TC12-2); a refusal records the failure and nothing is sent.
+    const folded = countToolCriteria(criteria, options);
+    if (!folded.ok) {
+      refusal(folded.failure);
+      return { content: [{ type: "text" as const, text: `Error searching bills: ${folded.failure.text}` }] };
     }
+    const criteriaToSend = folded.criteria;
 
     const response = await searchQuickbooksBills(criteriaToSend);
     if (response.isError) {

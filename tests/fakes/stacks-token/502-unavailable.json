@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/api/qbo/access_token?enterprise=garden3d"
+  },
+  "status": 502,
+  "headers": {
+    "content-type": "application/json; charset=utf-8"
+  },
+  "body": {
+    "error": "renewal-failed",
+    "code": "unavailable"
+  }
+}

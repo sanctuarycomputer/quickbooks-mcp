@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:failed\nreceipt: quickbooks-write:garden3d:purchase:1001:3:1\ncode: 6000\nintuit_tid: fake-tid-0002\n\nQuickBooks refused the change."
+    }
+  ],
+  "isError": true
+}

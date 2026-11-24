@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: http-500\nintuit_tid: fake-tid-0001\n\nQuickBooks answered 500."
+    }
+  ],
+  "isError": true
+}

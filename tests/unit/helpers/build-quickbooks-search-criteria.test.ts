@@ -1,5 +1,7 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the fetchAll and count pass-through case becomes the normalizer's refusals.
 import { describe, it, expect } from '@jest/globals';
 import { buildQuickbooksSearchCriteria } from '../../../src/helpers/build-quickbooks-search-criteria';
+import { normalizeSearch } from '../../../src/helpers/validate-input';
 
 describe('buildQuickbooksSearchCriteria – Fixes #13', () => {
   it('should pass through a simple criteria object', () => {
@@ -53,14 +55,52 @@ describe('buildQuickbooksSearchCriteria – Fixes #13', () => {
     expect(result).not.toContainEqual({ field: 'Name', value: 'B', operator: '=' });
   });
 
-  it('should handle desc, offset, count, and fetchAll options', () => {
-    const input = { desc: 'MetaData.CreateTime', offset: 5, count: true, fetchAll: true };
+  it('should handle desc and offset options', () => {
+    const input = { desc: 'MetaData.CreateTime', offset: 5 };
     const result = buildQuickbooksSearchCriteria(input) as Array<Record<string, any>>;
 
     expect(result).toContainEqual({ field: 'desc', value: 'MetaData.CreateTime' });
     expect(result).toContainEqual({ field: 'offset', value: 5 });
-    expect(result).toContainEqual({ field: 'count', value: true });
-    expect(result).toContainEqual({ field: 'fetchAll', value: true });
+  });
+
+  // quickbooks-mcp-286 (A5.2, A5.3, A6.3): count and fetchAll are passed on, and the input normalizer refuses them.
+  it('passes count and fetchAll on, and the normalizer refuses each', () => {
+    const refused = (what: string) => ({
+      ok: false,
+      failure: { reason: 'fork-error', text: `The search was refused before reaching QuickBooks: ${what}. Use limit up to 1000 and page with offset.` },
+    });
+    const withCount = buildQuickbooksSearchCriteria({ desc: 'MetaData.CreateTime', offset: 5, count: true });
+    expect(withCount).toContainEqual({ field: 'count', value: true });
+    expect(normalizeSearch('search_purchases', withCount)).toEqual(refused("count isn't supported by this tool"));
+    const withFetchAll = buildQuickbooksSearchCriteria({ desc: 'MetaData.CreateTime', offset: 5, fetchAll: true });
+    expect(withFetchAll).toContainEqual({ field: 'fetchAll', value: true });
+    expect(normalizeSearch('search_purchases', withFetchAll)).toEqual(refused("fetchAll isn't supported"));
+  });
+
+  it('passes every page key on whatever its value, so a bad one is refused rather than dropped', () => {
+    const input = { asc: '', desc: '', limit: '10 x', offset: 0, count: false, fetchAll: false };
+    expect(buildQuickbooksSearchCriteria(input as any)).toEqual([
+      { field: 'asc', value: '' },
+      { field: 'desc', value: '' },
+      { field: 'limit', value: '10 x' },
+      { field: 'offset', value: 0 },
+      { field: 'count', value: false },
+      { field: 'fetchAll', value: false },
+    ]);
+  });
+
+  // quickbooks-mcp-286 (T8-1): a key beside an advanced key is a filter, never dropped; an array value is IN.
+  it('passes every other key on as a filter entry', () => {
+    expect(buildQuickbooksSearchCriteria({ CustomerRef: '5', Id: ['1', '2'], Gone: undefined, offset: 1001 } as any)).toEqual([
+      { field: 'CustomerRef', value: '5' },
+      { field: 'Id', value: ['1', '2'], operator: 'IN' },
+      { field: 'offset', value: 1001 },
+    ]);
+    expect(buildQuickbooksSearchCriteria({ filters: [{ field: 'Id', value: '1', operator: '=' }], Name: 'x', limit: 5 })).toEqual([
+      { field: 'Id', value: '1', operator: '=' },
+      { field: 'Name', value: 'x' },
+      { field: 'limit', value: 5 },
+    ]);
   });
 
   it('should return empty object when advanced options are all empty', () => {

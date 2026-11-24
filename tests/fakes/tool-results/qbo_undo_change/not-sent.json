@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:not-sent\n\nThat change was never sent."
+    }
+  ],
+  "isError": true
+}

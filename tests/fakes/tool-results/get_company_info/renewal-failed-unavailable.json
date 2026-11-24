@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: renewal-failed:unavailable\n\nStacks couldn't renew the QuickBooks sign-in; Intuit gave no code (502)."
+    }
+  ],
+  "isError": true
+}

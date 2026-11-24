@@ -1,3 +1,4 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286): a top-level offset, so this search can page (A5.13).
 import { searchQuickbooksSalesReceipts } from "../handlers/search-quickbooks-sales-receipts.handler.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
@@ -10,6 +11,7 @@ const toolSchema = z.object({
   txn_date_from: z.string().optional().describe("Filter by date from (YYYY-MM-DD)"),
   txn_date_to: z.string().optional().describe("Filter by date to (YYYY-MM-DD)"),
   limit: z.number().optional().describe("Maximum results to return"),
+  offset: z.number().int().min(1).optional(),
 });
 
 const toolHandler = async ({ params }: any) => {

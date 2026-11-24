@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:unknown\nreceipt: quickbooks-write:garden3d:purchase:1001:3:1\n\nQuickBooks didn't answer; the change will be settled by a later check."
+    }
+  ],
+  "isError": true
+}

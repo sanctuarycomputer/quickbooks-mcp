@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:closed\n\nThe company's close date isn't a date."
+    }
+  ],
+  "isError": true
+}

@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: name-mismatch\nsource: quickbooks\nreported: Garden Three Studio\n\nQuickBooks' name for this company isn't one of its accepted names."
+    }
+  ],
+  "isError": true
+}

@@ -1,0 +1,13 @@
+{
+  "company": "garden3d",
+  "params": {
+    "id": "2001",
+    "lines": [
+      {
+        "line_id": "1",
+        "account_id": "91"
+      }
+    ],
+    "reason": "Freelancer invoice for November."
+  }
+}

@@ -1,5 +1,8 @@
 // Changed by Sanctuary Computer (quickbooks-mcp-285): zod 4 takes z.record with a key schema.
+// Changed by Sanctuary Computer (quickbooks-mcp-286, TB12-1): the input normalizer judges the criteria as sent, before the
+// coercion; the coercion then converts only a value's exact other spelling and passes anything else on unchanged.
 import { searchQuickbooksAccounts } from "../handlers/search-quickbooks-accounts.handler.js";
+import { normalizeBuiltSearch, refusal } from "../helpers/validate-input.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -112,20 +115,25 @@ const RUNTIME_CRITERIA_SCHEMA = z.union([
 ]);
 
 // ---------- Coercion & Normalization ----------
+const NUMERIC = /^-?[0-9]+(\.[0-9]+)?$/;
 function coerceAccountFieldValue(field: string, value: any): any {
   const expected = ACCOUNT_FIELD_TYPE_MAP[field as keyof typeof ACCOUNT_FIELD_TYPE_MAP];
   if (!expected) return value;
 
+  // Only a value whose meaning is kept is converted (a number written as a string, a boolean as "true" or 1); anything
+  // else (null, an object, "yes", "") goes on as given, so the normalizer's check holds and no filter is rewritten (TB12-1).
   const convert = (v: any): any => {
     switch (expected) {
       case "string":
-        return typeof v === "string" ? v : String(v);
-      case "number":
-        return typeof v === "number" ? v : Number(v);
-      case "boolean":
-        return typeof v === "boolean" ? v : (v === "true" || v === 1 || v === "1");
       case "date":
-        return typeof v === "string" ? v : String(v);
+        return typeof v === "number" ? String(v) : v;
+      case "number":
+        // T12 fix 2 (TC12-3): only a string the number writes back exactly; any other goes on quoted, unrounded.
+        return typeof v === "string" && NUMERIC.test(v) && String(Number(v)) === v ? Number(v) : v;
+      case "boolean":
+        if (v === "true" || v === 1 || v === "1") return true;
+        if (v === "false" || v === 0 || v === "0") return false;
+        return v;
       default:
         return v;
     }
@@ -175,6 +183,13 @@ const toolHandler = async ({ params }: any) => {
   const parsed = RUNTIME_CRITERIA_SCHEMA.safeParse(criteria);
   if (!parsed.success) {
     return { content: [{ type: "text" as const, text: `Invalid criteria: ${parsed.error.message}` }] };
+  }
+  // The values as the caller sent them, checked before the coercion (A6.3): a refusal records the call's failure and
+  // nothing is sent; the handler checks the coerced criteria again.
+  const checked = normalizeBuiltSearch(toolName, criteria);
+  if (!checked.ok) {
+    refusal(checked.failure);
+    return { content: [{ type: "text" as const, text: `Error searching accounts: ${checked.failure.text}` }] };
   }
   const normalized = normalizeAccountCriteria(criteria);
   const response = await searchQuickbooksAccounts(normalized);

@@ -1,6 +1,8 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the input normalizer checks the report options before any request (A6.4).
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
+import { normalizeReport, refusal } from "../helpers/validate-input.js";
 
 export interface GeneralLedgerOptions {
   start_date?: string;
@@ -13,14 +15,17 @@ export interface GeneralLedgerOptions {
 
 export async function getQuickbooksGeneralLedger(options: GeneralLedgerOptions): Promise<ToolResponse<any>> {
   try {
+    const r = normalizeReport("get_general_ledger", options);
+    if (!r.ok) return refusal(r.failure);
+    const o = r.options as GeneralLedgerOptions;
     const quickbooks = await QuickbooksClient.getInstance();
     const params: Record<string, any> = {};
-    if (options.start_date) params.start_date = options.start_date;
-    if (options.end_date) params.end_date = options.end_date;
-    if (options.accounting_method) params.accounting_method = options.accounting_method;
-    if (options.account) params.account = options.account;
-    if (options.source_account) params.source_account = options.source_account;
-    if (options.sort_by) params.sort_by = options.sort_by;
+    if (o.start_date) params.start_date = o.start_date;
+    if (o.end_date) params.end_date = o.end_date;
+    if (o.accounting_method) params.accounting_method = o.accounting_method;
+    if (o.account) params.account = o.account;
+    if (o.source_account) params.source_account = o.source_account;
+    if (o.sort_by) params.sort_by = o.sort_by;
 
     return new Promise((resolve) => {
       (quickbooks as any).reportGeneralLedgerDetail(params, (err: any, report: any) => {

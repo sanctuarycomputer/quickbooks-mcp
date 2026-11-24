@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:account\n\nThe newest expense's account no longer exists."
+    }
+  ],
+  "isError": true
+}

@@ -1,0 +1,14 @@
+{
+  "company": "garden3d",
+  "params": {
+    "id": "1001",
+    "lines": [
+      {
+        "line_id": "2",
+        "account_id": "84",
+        "class_id": null
+      }
+    ],
+    "reason": "Not tied to one client."
+  }
+}

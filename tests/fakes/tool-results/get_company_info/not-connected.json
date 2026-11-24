@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: not-connected\n\nThis company has no QuickBooks connection in Stacks (409)."
+    }
+  ],
+  "isError": true
+}

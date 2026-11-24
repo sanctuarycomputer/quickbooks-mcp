@@ -1,0 +1,9 @@
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "reason: write:receipt-failed\n\nThe write receipt couldn't be recorded; nothing was sent."
+    }
+  ],
+  "isError": true
+}

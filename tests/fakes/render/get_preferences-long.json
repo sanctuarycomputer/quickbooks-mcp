@@ -1,0 +1,2013 @@
+{
+  "Preferences": {
+    "Id": "1",
+    "SalesFormsPrefs": {
+      "CustomField": [
+        {
+          "CustomField": [
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName1",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 1                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName2",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 2                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName3",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 3                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName4",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 4                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName5",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 5                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName6",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 6                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName7",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 7                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName8",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 8                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName9",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 9                                      "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName10",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 10                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName11",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 11                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName12",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 12                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName13",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 13                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName14",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 14                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName15",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 15                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName16",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 16                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName17",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 17                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName18",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 18                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName19",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 19                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName20",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 20                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName21",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 21                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName22",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 22                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName23",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 23                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName24",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 24                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName25",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 25                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName26",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 26                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName27",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 27                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName28",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 28                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName29",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 29                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName30",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 30                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName31",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 31                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName32",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 32                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName33",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 33                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName34",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 34                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName35",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 35                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName36",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 36                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName37",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 37                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName38",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 38                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName39",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 39                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName40",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 40                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName41",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 41                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName42",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 42                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName43",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 43                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName44",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 44                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName45",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 45                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName46",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 46                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName47",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 47                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName48",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 48                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName49",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 49                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName50",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 50                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName51",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 51                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName52",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 52                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName53",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 53                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName54",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 54                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName55",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 55                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName56",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 56                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName57",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 57                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName58",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 58                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName59",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 59                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName60",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 60                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName61",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 61                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName62",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 62                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName63",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 63                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName64",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 64                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName65",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 65                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName66",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 66                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName67",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 67                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName68",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 68                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName69",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 69                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName70",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 70                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName71",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 71                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName72",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 72                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName73",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 73                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName74",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 74                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName75",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 75                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName76",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 76                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName77",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 77                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName78",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 78                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName79",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 79                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName80",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 80                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName81",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 81                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName82",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 82                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName83",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 83                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName84",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 84                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName85",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 85                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName86",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 86                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName87",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 87                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName88",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 88                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName89",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 89                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName90",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 90                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName91",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 91                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName92",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 92                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName93",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 93                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName94",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 94                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName95",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 95                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName96",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 96                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName97",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 97                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName98",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 98                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName99",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 99                                     "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName100",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 100                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName101",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 101                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName102",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 102                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName103",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 103                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName104",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 104                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName105",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 105                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName106",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 106                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName107",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 107                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName108",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 108                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName109",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 109                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName110",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 110                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName111",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 111                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName112",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 112                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName113",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 113                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName114",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 114                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName115",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 115                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName116",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 116                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName117",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 117                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName118",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 118                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName119",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 119                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName120",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 120                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName121",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 121                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName122",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 122                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName123",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 123                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName124",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 124                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName125",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 125                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName126",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 126                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName127",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 127                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName128",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 128                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName129",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 129                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName130",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 130                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName131",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 131                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName132",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 132                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName133",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 133                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName134",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 134                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName135",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 135                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName136",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 136                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName137",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 137                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName138",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 138                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName139",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 139                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName140",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 140                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName141",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 141                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName142",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 142                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName143",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 143                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName144",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 144                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName145",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 145                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName146",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 146                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName147",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 147                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName148",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 148                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName149",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 149                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName150",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 150                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName151",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 151                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName152",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 152                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName153",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 153                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName154",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 154                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName155",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 155                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName156",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 156                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName157",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 157                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName158",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 158                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName159",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 159                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName160",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 160                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName161",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 161                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName162",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 162                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName163",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 163                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName164",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 164                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName165",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 165                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName166",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 166                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName167",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 167                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName168",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 168                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName169",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 169                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName170",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 170                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName171",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 171                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName172",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 172                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName173",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 173                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName174",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 174                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName175",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 175                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName176",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 176                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName177",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 177                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName178",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 178                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName179",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 179                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName180",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 180                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName181",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 181                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName182",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 182                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName183",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 183                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName184",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 184                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName185",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 185                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName186",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 186                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName187",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 187                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName188",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 188                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName189",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 189                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName190",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 190                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName191",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 191                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName192",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 192                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName193",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 193                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName194",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 194                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName195",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 195                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName196",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 196                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName197",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 197                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName198",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 198                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName199",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 199                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName200",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 200                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName201",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 201                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName202",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 202                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName203",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 203                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName204",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 204                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName205",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 205                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName206",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 206                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName207",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 207                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName208",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 208                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName209",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 209                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName210",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 210                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName211",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 211                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName212",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 212                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName213",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 213                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName214",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 214                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName215",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 215                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName216",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 216                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName217",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 217                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName218",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 218                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName219",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 219                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName220",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 220                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName221",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 221                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName222",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 222                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName223",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 223                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName224",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 224                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName225",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 225                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName226",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 226                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName227",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 227                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName228",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 228                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName229",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 229                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName230",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 230                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName231",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 231                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName232",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 232                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName233",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 233                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName234",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 234                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName235",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 235                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName236",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 236                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName237",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 237                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName238",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 238                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName239",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 239                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName240",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 240                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName241",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 241                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName242",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 242                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName243",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 243                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName244",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 244                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName245",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 245                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName246",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 246                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName247",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 247                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName248",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 248                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName249",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 249                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName250",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 250                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName251",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 251                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName252",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 252                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName253",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 253                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName254",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 254                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName255",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 255                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName256",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 256                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName257",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 257                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName258",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 258                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName259",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 259                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName260",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 260                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName261",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 261                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName262",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 262                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName263",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 263                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName264",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 264                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName265",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 265                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName266",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 266                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName267",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 267                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName268",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 268                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName269",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 269                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName270",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 270                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName271",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 271                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName272",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 272                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName273",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 273                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName274",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 274                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName275",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 275                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName276",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 276                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName277",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 277                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName278",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 278                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName279",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 279                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName280",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 280                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName281",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 281                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName282",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 282                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName283",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 283                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName284",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 284                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName285",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 285                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName286",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 286                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName287",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 287                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName288",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 288                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName289",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 289                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName290",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 290                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName291",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 291                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName292",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 292                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName293",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 293                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName294",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 294                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName295",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 295                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName296",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 296                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName297",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 297                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName298",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 298                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName299",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 299                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName300",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 300                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName301",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 301                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName302",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 302                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName303",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 303                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName304",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 304                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName305",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 305                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName306",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 306                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName307",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 307                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName308",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 308                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName309",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 309                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName310",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 310                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName311",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 311                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName312",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 312                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName313",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 313                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName314",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 314                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName315",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 315                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName316",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 316                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName317",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 317                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName318",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 318                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName319",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 319                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName320",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 320                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName321",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 321                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName322",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 322                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName323",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 323                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName324",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 324                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName325",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 325                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName326",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 326                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName327",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 327                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName328",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 328                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName329",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 329                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName330",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 330                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName331",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 331                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName332",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 332                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName333",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 333                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName334",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 334                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName335",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 335                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName336",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 336                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName337",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 337                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName338",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 338                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName339",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 339                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName340",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 340                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName341",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 341                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName342",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 342                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName343",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 343                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName344",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 344                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName345",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 345                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName346",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 346                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName347",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 347                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName348",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 348                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName349",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 349                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName350",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 350                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName351",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 351                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName352",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 352                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName353",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 353                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName354",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 354                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName355",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 355                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName356",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 356                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName357",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 357                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName358",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 358                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName359",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 359                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName360",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 360                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName361",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 361                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName362",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 362                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName363",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 363                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName364",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 364                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName365",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 365                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName366",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 366                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName367",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 367                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName368",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 368                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName369",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 369                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName370",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 370                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName371",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 371                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName372",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 372                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName373",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 373                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName374",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 374                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName375",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 375                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName376",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 376                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName377",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 377                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName378",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 378                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName379",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 379                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName380",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 380                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName381",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 381                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName382",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 382                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName383",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 383                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName384",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 384                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName385",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 385                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName386",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 386                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName387",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 387                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName388",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 388                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName389",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 389                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName390",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 390                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName391",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 391                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName392",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 392                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName393",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 393                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName394",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 394                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName395",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 395                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName396",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 396                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName397",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 397                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName398",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 398                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName399",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 399                                    "
+            },
+            {
+              "Name": "SalesFormsPrefs.SalesCustomName400",
+              "Type": "StringType",
+              "StringValue": "Made-up custom field 400                                    "
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

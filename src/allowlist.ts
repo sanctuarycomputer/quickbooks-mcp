@@ -1,45 +1,15 @@
 // Sanctuary Computer (quickbooks-mcp-285): the read allowlist and the start refusal; the server registers only what is listed here.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the start loads the config and builds the runtime before registering,
+// and every tool registers with it; the lists moved to tool-lists.ts (no import cycle through tool-result.ts).
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { loadConfig } from "./clients/config.js";
+import { createRuntime, type Runtime } from "./clients/runtime.js";
 import { RegisterTool } from "./helpers/register-tool.js";
+import { COMPANIES_TOOL, READ_ALLOWLIST } from "./tool-lists.js";
 import type { ToolDefinition } from "./types/tool-definition.js";
 
-// The fork review's appendix A (scripts-283), sorted. A change here is a change to what the server exposes.
-export const READ_ALLOWLIST: readonly string[] = [
-  "get_aged_payables",
-  "get_aged_receivables",
-  "get_balance_sheet",
-  "get_cash_flow",
-  "get_company_info",
-  "get_customer_balance",
-  "get_customer_sales",
-  "get_general_ledger",
-  "get_preferences",
-  "get_profit_and_loss",
-  "get_trial_balance",
-  "get_vendor_balance",
-  "get_vendor_expenses",
-  "search_accounts",
-  "search_bill_payments",
-  "search_bills",
-  "search_classes",
-  "search_credit_memos",
-  "search_customers",
-  "search_departments",
-  "search_deposits",
-  "search_employees",
-  "search_invoices",
-  "search_items",
-  "search_journal_entries",
-  "search_payments",
-  "search_purchases",
-  "search_sales_receipts",
-  "search_transfers",
-  "search_vendor_credits",
-  "search_vendors",
-];
-
-export const COMPANIES_TOOL = "qbo_companies";
+export { COMPANIES_TOOL, READ_ALLOWLIST };
 
 // Sign-in material the server must never be given: present at all, even empty, refuses the start.
 export const REFUSED_KEYS: readonly string[] = ["QUICKBOOKS_CLIENT_ID", "QUICKBOOKS_CLIENT_SECRET", "QUICKBOOKS_REFRESH_TOKEN", "QUICKBOOKS_REALM_ID"];
@@ -47,7 +17,8 @@ export const REFUSED_KEYS: readonly string[] = ["QUICKBOOKS_CLIENT_ID", "QUICKBO
 export interface CompaniesToolDefinition {
   name: string;
   description: string;
-  handler: () => Promise<CallToolResult>;
+  /** Receives the call's arguments and the runtime (so the companies tool can read `runtime.cfg.companies`). */
+  handler: (args: Record<string, unknown>, runtime: Runtime) => Promise<CallToolResult>;
 }
 
 export type ReadTool = ToolDefinition<any> | CompaniesToolDefinition;
@@ -69,7 +40,7 @@ export function startRefusal(env: Record<string, string | undefined>): string | 
  * Registers exactly the allowlist plus the companies tool, or throws before registering anything.
  * An entry without a schema is the companies tool only under its own name; a listed name must carry a schema.
  */
-export function registerReadTools(server: McpServer, tools: readonly ReadTool[]): void {
+export function registerReadTools(server: McpServer, tools: readonly ReadTool[], runtime: Runtime): void {
   const seen = new Set<string>();
   for (const tool of tools) {
     if (seen.has(tool.name)) throw new Error(`allowlist: duplicate ${tool.name}`);
@@ -83,22 +54,40 @@ export function registerReadTools(server: McpServer, tools: readonly ReadTool[])
     if (!allowed) throw new Error(`allowlist: unlisted ${tool.name}`);
   }
   for (const tool of tools) {
-    if (hasSchema(tool)) RegisterTool(server, tool);
-    else server.tool(tool.name, tool.description, {}, tool.handler);
+    if (hasSchema(tool)) RegisterTool(server, tool, runtime);
+    else {
+      const { handler } = tool;
+      server.tool(tool.name, tool.description, {}, (args: Record<string, unknown>) => handler(args, runtime));
+    }
   }
 }
 
-/** Refuses first, then registers; every failure is one `refused to start: <reason>` error. */
+/**
+ * Refuses first (285's sign-in keys), then loads the config (the five keys), builds the runtime and registers; returns
+ * the runtime, which tests close. Every failure is one `refused to start: <reason>` error, and a failure after the
+ * runtime was built closes it first (U1). 291's `secureStart` must have run. `deps.now` is the Stacks client's clock (tests).
+ */
 export function startReadServer(
   env: Record<string, string | undefined>,
   server: McpServer,
   tools: readonly ReadTool[],
-): void {
+  deps: { now?: () => number } = {},
+): Runtime {
   const reason = startRefusal(env);
   if (reason !== null) throw new Error("refused to start: " + reason);
+  // loadConfig's own refusals already read `refused to start: <KEY> <reason>`.
+  const cfg = loadConfig(env);
+  let runtime: Runtime;
   try {
-    registerReadTools(server, tools);
+    runtime = createRuntime(cfg, deps);
   } catch (e) {
     throw new Error("refused to start: " + (e as Error).message);
   }
+  try {
+    registerReadTools(server, tools, runtime);
+  } catch (e) {
+    runtime.close();
+    throw new Error("refused to start: " + (e as Error).message);
+  }
+  return runtime;
 }

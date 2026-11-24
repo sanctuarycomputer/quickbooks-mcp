@@ -1,0 +1,5682 @@
+[
+  {
+    "Id": "101",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-02",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 39.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 1-1: Demo Print Shop order, made-up description for a fixture line                         ",
+        "Amount": 10.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 1-2: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 13.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 1-3: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 16.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "102",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-03",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 60.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 2-1: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 17.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 2-2: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 20.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 2-3: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 23.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "103",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-04",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 81.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 3-1: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 24.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 3-2: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 27.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 3-3: Sample Hardware Ltd order, made-up description for a fixture line                     ",
+        "Amount": 30.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "104",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-05",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 102.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 4-1: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 31.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 4-2: Sample Hardware Ltd order, made-up description for a fixture line                     ",
+        "Amount": 34.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 4-3: Demo Print Shop order, made-up description for a fixture line                         ",
+        "Amount": 37.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "105",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-06",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 123.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 5-1: Sample Hardware Ltd order, made-up description for a fixture line                     ",
+        "Amount": 38.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 5-2: Demo Print Shop order, made-up description for a fixture line                         ",
+        "Amount": 41.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 5-3: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 44.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "106",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-07",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 144.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 6-1: Demo Print Shop order, made-up description for a fixture line                         ",
+        "Amount": 45.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 6-2: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 48.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 6-3: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 51.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "107",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-08",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 165.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 7-1: Placeholder Freight order, made-up description for a fixture line                     ",
+        "Amount": 52.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 7-2: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 55.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 7-3: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 58.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "108",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-09",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 186.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 8-1: Fictional Software Inc order, made-up description for a fixture line                  ",
+        "Amount": 59.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 8-2: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 62.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 8-3: Sample Hardware Ltd order, made-up description for a fixture line                     ",
+        "Amount": 65.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "109",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-10",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 207.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 9-1: Example Supplies Co order, made-up description for a fixture line                     ",
+        "Amount": 66.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 9-2: Sample Hardware Ltd order, made-up description for a fixture line                     ",
+        "Amount": 69.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 9-3: Demo Print Shop order, made-up description for a fixture line                         ",
+        "Amount": 72.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "110",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-11",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 228.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 10-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 73.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 10-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 76.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 10-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 79.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "111",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-12",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 249.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 11-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 80.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 11-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 83.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 11-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 86.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "112",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-13",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 270.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 12-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 87.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 12-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 90.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 12-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 93.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "113",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-14",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 291.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 13-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 94.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 13-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 97.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 13-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 100.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "114",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-15",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 312.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 14-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 101.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 14-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 104.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 14-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 107.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "115",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-16",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 333.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 15-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 108.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 15-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 111.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 15-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 114.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "116",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-17",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 354.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 16-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 115.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 16-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 118.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 16-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 121.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "117",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-18",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 375.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 17-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 122.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 17-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 125.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 17-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 128.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "118",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-19",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 396.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 18-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 129.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 18-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 132.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 18-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 135.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "119",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-20",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 417.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 19-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 136.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 19-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 139.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 19-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 142.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "120",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-21",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 438.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 20-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 143.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 20-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 146.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 20-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 149.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "121",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-22",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 459.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 21-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 150.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 21-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 153.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 21-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 156.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "122",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-23",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 480.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 22-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 157.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 22-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 160.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 22-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 163.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "123",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-24",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 501.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 23-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 164.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 23-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 167.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 23-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 170.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "124",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-25",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 522.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 24-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 171.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 24-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 174.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 24-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 177.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "125",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-26",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 543.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 25-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 178.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 25-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 181.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 25-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 184.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "126",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-27",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 564.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 26-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 185.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 26-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 188.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 26-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 191.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "127",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-28",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 585.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 27-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 192.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 27-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 195.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 27-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 198.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "128",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-01",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 606.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 28-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 199.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 28-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 202.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 28-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 205.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "129",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-02",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 627.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 29-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 206.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 29-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 209.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 29-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 212.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "130",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-03",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 648.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 30-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 213.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 30-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 216.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 30-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 219.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "131",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-04",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 669.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 31-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 220.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 31-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 223.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 31-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 226.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "132",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-05",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 690.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 32-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 227.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 32-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 230.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 32-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 233.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "133",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-06",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 711.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 33-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 234.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 33-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 237.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 33-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 240.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "134",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-07",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 732.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 34-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 241.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 34-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 244.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 34-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 247.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "135",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-08",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 753.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 35-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 248.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 35-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 251.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 35-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 254.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "136",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-09",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 774.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 36-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 255.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 36-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 258.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 36-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 261.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "137",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-10",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 795.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 37-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 262.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 37-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 265.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 37-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 268.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "138",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-11",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 816.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 38-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 269.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 38-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 272.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 38-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 275.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "139",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-12",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 837.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 39-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 276.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 39-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 279.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 39-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 282.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "140",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-13",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 858.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 40-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 283.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 40-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 286.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 40-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 289.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "141",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-14",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 879.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 41-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 290.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 41-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 293.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 41-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 296.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "142",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-15",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 900.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 42-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 297.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 42-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 300.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 42-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 303.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "143",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-16",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 921.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 43-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 304.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 43-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 307.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 43-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 310.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "144",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-17",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 942.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 44-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 311.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 44-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 314.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 44-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 317.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "145",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-18",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 963.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 45-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 318.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 45-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 321.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 45-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 324.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "146",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-19",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 984.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 46-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 325.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 46-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 328.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 46-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 331.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "147",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-20",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1005.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 47-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 332.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 47-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 335.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 47-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 338.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "148",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-21",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1026.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 48-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 339.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 48-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 342.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 48-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 345.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "149",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-22",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1047.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 49-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 346.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 49-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 349.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 49-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 352.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "150",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-23",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1068.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 50-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 353.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 50-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 356.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 50-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 359.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "151",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-24",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1089.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 51-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 360.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 51-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 363.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 51-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 366.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "152",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-25",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1110.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 52-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 367.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 52-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 370.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 52-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 373.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "153",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-26",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1131.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 53-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 374.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 53-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 377.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 53-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 380.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "154",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-27",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1152.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 54-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 381.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 54-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 384.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 54-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 387.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "155",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-28",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1173.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 55-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 388.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 55-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 391.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 55-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 394.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "156",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-01",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1194.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 56-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 395.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 56-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 398.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 56-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 401.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "157",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-02",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1215.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 57-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 402.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 57-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 405.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 57-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 408.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "158",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-03",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1236.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 58-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 409.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 58-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 412.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 58-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 415.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "159",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-04",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1257.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 59-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 416.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 59-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 419.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 59-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 422.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "160",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-05",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1278.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 60-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 423.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 60-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 426.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 60-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 429.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "161",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-06",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1299.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 61-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 430.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 61-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 433.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 61-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 436.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "162",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-07",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1320.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 62-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 437.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 62-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 440.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 62-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 443.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "163",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-08",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1341.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 63-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 444.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 63-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 447.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 63-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 450.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "164",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-09",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1362.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 64-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 451.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 64-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 454.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 64-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 457.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "165",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-10",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1383.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 65-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 458.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 65-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 461.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 65-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 464.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "166",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-11",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1404.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 66-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 465.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 66-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 468.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 66-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 471.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "167",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-12",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1425.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 67-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 472.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 67-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 475.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 67-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 478.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "168",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-13",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1446.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 68-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 479.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 68-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 482.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 68-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 485.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "169",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-14",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 1467.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 69-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 486.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 69-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 489.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 69-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 492.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "170",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-15",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 1488.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 70-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 493.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 70-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 496.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 70-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 499.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "171",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-16",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 9.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 71-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 0.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 71-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 3.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 71-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 6.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "172",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-17",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 30.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 72-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 7.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 72-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 10.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 72-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 13.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "173",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-18",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 51.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 73-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 14.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 73-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 17.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 73-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 20.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "174",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-19",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 72.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 74-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 21.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 74-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 24.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 74-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 27.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "175",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-20",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 93.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 75-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 28.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 75-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 31.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 75-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 34.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "176",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-21",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 114.75,
+    "EntityRef": {
+      "value": "41",
+      "name": "Sample Hardware Ltd",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 76-1: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 35.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 76-2: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 38.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 76-3: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 41.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "177",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-22",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 135.75,
+    "EntityRef": {
+      "value": "42",
+      "name": "Demo Print Shop",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 77-1: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 42.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 77-2: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 45.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 77-3: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 48.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "178",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-23",
+    "PaymentType": "Check",
+    "Credit": false,
+    "TotalAmt": 156.75,
+    "EntityRef": {
+      "value": "43",
+      "name": "Placeholder Freight",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 78-1: Fictional Software Inc order, made-up description for a fixture line                 ",
+        "Amount": 49.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 78-2: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 52.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 78-3: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 55.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "179",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-24",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 177.75,
+    "EntityRef": {
+      "value": "44",
+      "name": "Fictional Software Inc",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 79-1: Example Supplies Co order, made-up description for a fixture line                    ",
+        "Amount": 56.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 79-2: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 59.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 79-3: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 62.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Id": "180",
+    "SyncToken": "0",
+    "MetaData": {
+      "CreateTime": "2026-10-01T09:00:00-07:00",
+      "LastUpdatedTime": "2026-10-02T09:00:00-07:00"
+    },
+    "TxnDate": "2026-10-25",
+    "PaymentType": "CreditCard",
+    "Credit": false,
+    "TotalAmt": 198.75,
+    "EntityRef": {
+      "value": "40",
+      "name": "Example Supplies Co",
+      "type": "Vendor"
+    },
+    "AccountRef": {
+      "value": "35",
+      "name": "Operating Card"
+    },
+    "Line": [
+      {
+        "Id": "1",
+        "Description": "Item 80-1: Sample Hardware Ltd order, made-up description for a fixture line                    ",
+        "Amount": 63.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "61",
+            "name": "Expense Account 61"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Description": "Item 80-2: Demo Print Shop order, made-up description for a fixture line                        ",
+        "Amount": 66.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "62",
+            "name": "Expense Account 62"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      },
+      {
+        "Id": "3",
+        "Description": "Item 80-3: Placeholder Freight order, made-up description for a fixture line                    ",
+        "Amount": 69.25,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "63",
+            "name": "Expense Account 63"
+          },
+          "BillableStatus": "NotBillable",
+          "TaxCodeRef": {
+            "value": "NON"
+          }
+        }
+      }
+    ]
+  }
+]
