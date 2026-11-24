@@ -82,11 +82,12 @@ describe('spawned server', () => {
     expect(stdout).not.toContain(sentinel);
   });
 
-  it('R10: a listed tool answers the token-source error and the server stays up', async () => {
+  // 286 T7: until T10 runs each tool in a call, getInstance answers its outside-a-call error.
+  it('R10: a listed tool answers getInstance\'s outside-a-call error and the server stays up', async () => {
     const { client } = await connect();
     const result = await client.callTool({ name: 'get_company_info', arguments: { params: {} } });
     const text = (result.content as Array<{ type: string; text: string }>).map((c) => c.text).join('\n');
-    expect(text).toContain('no QuickBooks token source');
+    expect(text).toContain('getInstance outside a tool call');
     const { tools } = await client.listTools();
     expect(tools).toHaveLength(32);
   });
