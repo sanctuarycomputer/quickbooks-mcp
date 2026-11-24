@@ -929,22 +929,22 @@ describe('the call and the input', () => {
   });
 
   it('lines is copied once, before the size check (TF1)', async () => {
-    const proxied = (n: number, shown: number) => {
-      const lengths: number[] = [];
+    const proxied = (n: number, one: (read: number) => boolean) => {
+      let reads = 0;
       const lines = new Proxy(changesOf(n), {
         get: (target, key) => {
           if (key !== 'length') return Reflect.get(target, key);
-          lengths.push(0);
-          return lengths.length <= shown ? 1 : n;
+          reads += 1;
+          return one(reads) ? 1 : n;
         },
       });
       return lines;
     };
     withLines(books['purchase/1001'] as Json, 21);
-    // However many times the length first reads 1, what is judged is what is copied.
-    for (let shown = 0; shown < 6; shown++) {
+    // Whichever reads of the length answer 1, what is judged is what is copied.
+    for (const one of [0, 1, 2, 3, 4, 5].flatMap((n) => [(read: number) => read <= n, (read: number) => read === n])) {
       net.calls.length = 0;
-      const { out } = await ask({ ...P(), lines: proxied(21, shown) });
+      const { out } = await ask({ ...P(), lines: proxied(21, one) });
       if (out.ok) expect(out.checked.changes.length).toBeLessThanOrEqual(20);
       else expect([out.reason, gets()]).toEqual(['write:size', []]);
     }
