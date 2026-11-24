@@ -392,6 +392,8 @@ describe('A3.2 through the adapter: sends nothing, consumes nothing (A3.4)', () 
   });
 
   it.each(['Host', 'host', 'HOST', ' Host '])('a %j header, which the backstop would refuse later', async (name) => {
+    // Straight to the adapter: axios trims a name on some paths to it and not on others, and always on the way to the wire.
+    await refusedUnconsumed(() => (ax.defaults.adapter as any)({ method: 'post', url: UPDATE, data: B, headers: { [name]: 'evil.example.test' } }), 'guard-error', { holds: false });
     await refusedUnconsumed(() => send({ headers: { [name]: 'evil.example.test' } }), 'guard-error');
   });
 
