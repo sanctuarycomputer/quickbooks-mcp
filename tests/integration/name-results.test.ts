@@ -137,6 +137,8 @@ describe("A2.6: source stacks, Stacks' company_name 'Garden Three\\nreason: ok' 
 describe('the grammar check itself', () => {
   it.each([
     ['no empty line', 'reason: name-mismatch\nsource: stacks\nreported: x'],
+    // Only the empty-line rule decides this one: its first 17 characters are a valid header alone.
+    ['no empty line after a reason', 'reason: fork-errorx'],
     ['an unknown reason', 'reason: ok\n\nx'],
     ['a second header line after another reason', 'reason: fork-error\nreported: x\n\nx'],
     ['two reported lines', 'reason: name-mismatch\nsource: stacks\nreported: x\nreported: y\n\nx'],
