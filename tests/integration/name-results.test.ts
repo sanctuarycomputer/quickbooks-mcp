@@ -48,9 +48,11 @@ const REASON = /^(name-mismatch|not-connected|unknown-enterprise|renewal-failed:
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 
 /**
- * An error's first item by the Result grammar: the header lines up to the empty line, `reason` first, then `source` and
- * `reported` with name-mismatch and only there, `reported` a name after the name rule; then the free text. Throws on any
- * break; gives the header's values.
+ * An error's first item, read for this file's cases only (T12-3): a `name-mismatch` header (`reason`, `source`,
+ * `reported`, a name after the name rule) or a lone `reason` line, up to the empty line; then the free text. Throws on
+ * any break; gives the header's values. Its scope is those two forms: it refuses `intuit_tid` and every other header the
+ * Result grammar allows, so it is not the grammar. A header any other test checks is read by
+ * tests/helpers/result-grammar.ts' readError, the whole grammar.
  */
 function parseHeader(text: string): { reason: string; source?: string; reported?: string; free: string } {
   const blank = text.indexOf('\n\n');
