@@ -3,6 +3,7 @@
 // handler inside a call with the QuickBooks fake, is tests/unit/handlers/search-requests.test.ts.
 import { describe, it, expect } from '@jest/globals';
 import {
+  hasControl,
   normalizeBuiltSearch,
   normalizeReport,
   normalizeSearch,
@@ -159,6 +160,17 @@ describe('A6.3 values: a number, a boolean, a date, a string of at most 200 with
     expect(normalizeSearch('search_accounts', { Name: undefined, Active: true })).toEqual({
       ok: true, criteria: { Active: true, limit: 1000 }, usedOffset: 1, count: false, criteriaOffset: true,
     });
+  });
+});
+
+describe('hasControl: U+0000-U+001F and U+007F-U+009F, each bound and its neighbour (286 T10 step 7)', () => {
+  it.each([
+    ['0000', true], ['001F', true], ['0020', false], ['007E', false], ['007F', true], ['009F', true], ['00A0', false], ['00A1', false],
+  ])('U+%s', (unit, expected) => {
+    expect(hasControl(`a${String.fromCharCode(parseInt(unit, 16))}b`)).toBe(expected);
+  });
+  it('no control character in an empty or a plain string', () => {
+    expect([hasControl(''), hasControl('abc')]).toEqual([false, false]);
   });
 });
 

@@ -14,7 +14,17 @@ const NAME = /^[A-Za-z][A-Za-z0-9.]{0,63}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const IDS = /^[0-9]{1,20}(,[0-9]{1,20})*$/;
 const SORT_BY = /^[A-Za-z_]{1,64}$/;
-const CONTROL = /[\u0000-\u001F\u007F-\u009F]/;
+/**
+ * A C0 or C1 control character or DEL (U+0000-U+001F, U+007F-U+009F), read per UTF-16 code unit (no-control-regex).
+ * Exported for its bounds table: U+00A0 is refused earlier, as a separator, so only a direct case decides the top bound.
+ */
+export function hasControl(v: string): boolean {
+  for (let i = 0; i < v.length; i++) {
+    const c = v.charCodeAt(i);
+    if (c <= 0x1f || (c >= 0x7f && c <= 0x9f)) return true;
+  }
+  return false;
+}
 /** `\p{Zs}` other than U+0020, and U+0085, U+2028, U+2029 (contract §6's `query` rule at 66cd209c). */
 const SEPARATOR = /(?! )\p{Zs}|[\u0085\u2028\u2029]/u;
 /** `from` as a word: no letter, digit or `_` on either side, any case (contract §6's `query` rule). */
@@ -77,7 +87,7 @@ function checkScalar(v: unknown, field: string): void {
   if (Number.isFinite(v)) return;
   if (typeof v === "string") {
     if (SEPARATOR.test(v)) throw new Refused(`the value for ${field} holds a space other than a plain space`);
-    if (v.length > MAX_STRING || v.includes("\\") || CONTROL.test(v)) throw new Refused(`the value for ${field} isn't valid`);
+    if (v.length > MAX_STRING || v.includes("\\") || hasControl(v)) throw new Refused(`the value for ${field} isn't valid`);
     if (FROM_WORD.test(v)) throw new Refused(`the value for ${field} holds the word from`);
     return;
   }
