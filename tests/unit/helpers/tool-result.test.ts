@@ -37,7 +37,7 @@ const WARNING_CUT = 'truncated: warning cut at 2,000 characters.';
 
 const item = (text: string) => ({ type: 'text' as const, text });
 const raw = (...texts: string[]) => ({ content: texts.map(item) });
-const call = (over: Partial<CallStore> = {}): CallStore => ({ company: 'garden3d', record: newCallRecord(), failure: null, warnings: [], ...over });
+const call = (over: Partial<CallStore> = {}): CallStore => ({ company: 'garden3d', held: [], record: newCallRecord(), failure: null, warnings: [], ...over });
 const length = (r: CallToolResult) => (r.content as { text: string }[]).reduce((n, c) => n + c.text.length, 0);
 const dataOf = (r: CallToolResult) => (r.content[0] as { text: string }).text;
 const pretty = (v: unknown) => JSON.stringify(v, null, 2);

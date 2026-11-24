@@ -49,12 +49,22 @@ describe('outside a call', () => {
 });
 
 describe('inside a call', () => {
-  it('the store starts with the company, a fresh record, no failure, no realm, token or offset, and no warnings', async () => {
+  it('the store starts with the company, a fresh record, no failure, no realm, token or offset, no token held, and no warnings', async () => {
     const store = await runInCall('garden3d', async () => currentCall());
-    expect(store).toEqual({ company: 'garden3d', record: { queries: [] }, failure: null, warnings: [] });
+    expect(store).toEqual({ company: 'garden3d', held: [], record: { queries: [] }, failure: null, warnings: [] });
     expect(store!.realm).toBeUndefined();
     expect(store!.token).toBeUndefined();
     expect(store!.usedOffset).toBeUndefined();
+  });
+
+  // T13 (A5.7): a 401's resend replaces the call's token; the earlier one stays held, so a later fault echoing it is redacted.
+  it('setCallToken keeps every token the call held, in order, the current one last', async () => {
+    const held = await runInCall('garden3d', async () => {
+      setCallToken(TOKEN(1), REALM_A);
+      setCallToken(TOKEN(2), REALM_A);
+      return { held: [...currentCall()!.held], token: currentCall()!.token };
+    });
+    expect(held).toEqual({ held: [TOKEN(1), TOKEN(2)], token: TOKEN(2) });
   });
 
   it('runInCall returns what fn resolves and passes on what it rejects', async () => {

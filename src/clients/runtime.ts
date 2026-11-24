@@ -27,7 +27,8 @@ export function createRuntime(cfg: Config, deps: { now?: () => number } = {}): R
   const interceptors = installQboInterceptors(guardedAxios() as unknown as AxiosInstance, {
     reacquire: (company, sentAt) => stacks.get(company, { force: true, sentAt }),
     mark: () => stacks.mark(),
-    secrets: () => [currentCall()?.token, cfg.stacksKey],
+    // Every token the call held, not only its current one: after a 401's resend a fault may echo the old one (T13, A5.7).
+    secrets: () => [...(currentCall()?.held ?? []), cfg.stacksKey],
   });
   return { cfg, stacks, companies, close: () => interceptors.eject() };
 }

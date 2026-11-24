@@ -10,6 +10,8 @@ export type CallStore = {
   company: string;
   realm?: string;
   token?: string;
+  /** Every token the call has held, the current one last: a QuickBooks answer may echo an earlier one (T13, A5.7). */
+  held: string[];
   record: CallRecord;
   failure: Failure | null;
   usedOffset?: number;
@@ -20,7 +22,7 @@ const calls = new AsyncLocalStorage<CallStore>();
 
 /** Runs `fn` as one tool call for `company`, with a fresh store. */
 export function runInCall<T>(company: string, fn: () => Promise<T>): Promise<T> {
-  return calls.run({ company, record: newCallRecord(), failure: null, warnings: [] }, fn);
+  return calls.run({ company, held: [], record: newCallRecord(), failure: null, warnings: [] }, fn);
 }
 
 /** The current call's store; undefined outside a call. */
@@ -45,6 +47,7 @@ export function setCallToken(token: string, realm: string): void {
   const s = calls.getStore();
   if (s === undefined) throw new Error("call-context: setCallToken outside a call");
   s.token = token;
+  s.held.push(token);
   s.realm = realm;
 }
 

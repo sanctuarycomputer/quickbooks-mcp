@@ -33,7 +33,7 @@ export type QboTransportDeps = {
   reacquire(company: string, sentAt: number): Promise<TokenResult>;
   /** The next send mark (T5's `mark()`): every QuickBooks GET takes one as it is sent. */
   mark(): number;
-  /** The call's access token and STACKS_QBO_TOKEN, replaced in a 400's fault text (D6). */
+  /** Every access token the call held and STACKS_QBO_TOKEN, replaced in a 400's fault text (D6) and kept out of a tid. */
   secrets(): Array<string | undefined>;
   /** Waits before a 429's resend; a timer by default. */
   sleep?(ms: number): Promise<void>;
@@ -93,7 +93,7 @@ function parse(text: string): unknown {
  * by `[redacted]` (longest first, so no part of one survives), control and separator characters made spaces, trimmed,
  * then cut to 500 code points. Undefined when nothing is left.
  */
-function faultText(data: unknown, secrets: Array<string | undefined>): string | undefined {
+function faultText(data: unknown, known: string[]): string | undefined {
   const body = typeof data === "string" ? parse(data) : data;
   const fault = isObject(body) ? body.Fault : undefined;
   const errors = isObject(fault) ? fault.Error : undefined;
@@ -101,8 +101,7 @@ function faultText(data: unknown, secrets: Array<string | undefined>): string | 
   if (!isObject(first)) return undefined;
   const parts = [first.Message, first.Detail].filter((p): p is string => typeof p === "string" && p !== "");
   let said = parts.join(": ");
-  const known = secrets.filter((s): s is string => typeof s === "string" && s !== "").sort((a, b) => b.length - a.length);
-  for (const s of known) said = said.split(s).join("[redacted]");
+  for (const s of [...known].sort((a, b) => b.length - a.length)) said = said.split(s).join("[redacted]");
   said = Array.from(said.replace(/[\p{Cc}\u2028\u2029]/gu, " ").trim()).slice(0, FAULT_MAX).join("");
   return said === "" ? undefined : `QuickBooks answered 400. QuickBooks said: ${said}`;
 }
@@ -112,11 +111,12 @@ function answerFailure(response: Record<string, unknown>, secrets: Array<string 
   const status = response.status;
   if (typeof status !== "number" || !STATUS.test(String(status))) return Object.freeze({ reason: "fork-error" });
   const f: Failure = { reason: `http-${status}` };
+  const known = secrets.filter((s): s is string => typeof s === "string" && s !== "");
   const tid = headerValue(response.headers, "intuit_tid");
-  // A tid equal to a token or key (a token shaped like a tid, echoed in the header) is dropped (TB6-2).
-  if (tid !== undefined && TID.test(tid) && !secrets.includes(tid)) f.intuitTid = tid;
+  // A tid holding a token or key anywhere in it, equal or inside a longer value, is dropped (TB6-2; T13, TC6-1).
+  if (tid !== undefined && TID.test(tid) && !known.some((s) => tid.includes(s))) f.intuitTid = tid;
   if (status === 400) {
-    const text = faultText(response.data, secrets);
+    const text = faultText(response.data, known);
     if (text !== undefined) f.text = text;
   }
   return Object.freeze(f);
