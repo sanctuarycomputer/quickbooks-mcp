@@ -40,8 +40,7 @@ const TOKEN_PATH = [
 /** Outside the scan by design (spec A1.7), each named: the unregistered PDF tool and the library's own signature. */
 const OUTSIDE = ['src/tools/get-invoice-pdf.tool.ts', 'src/types/node-quickbooks.d.ts'];
 
-// Built from parts, so this file never spells them as one literal.
-const REFRESH_NAMES = ['refresh_token', 'refreshToken', 'client_secret', 'clientSecret', 'client_id', 'clientId'].map((s) => s.split('').join(''));
+const REFRESH_NAMES = ['refresh_token', 'refreshToken', 'client_secret', 'clientSecret', 'client_id', 'clientId'];
 const ENV_NAMES = ['CLIENT_ID', 'CLIENT_SECRET', 'REFRESH_TOKEN', 'REALM_ID'].map((k) => 'QUICKBOOKS_' + k);
 const FS = /^(node:)?fs(\/.*)?$/;
 
@@ -109,7 +108,11 @@ describe('A1.7: no refresh material, and no disk write, on the token path', () =
   });
 });
 
-/** Every top-level variable in a module: `let`/`var` named as such, and each `const` holding a container or a store. */
+/**
+ * Every top-level variable in a module: `let`/`var` named as such, and each `const` holding a container or a store: one
+ * made by `new`, an array or object literal, or a call (named by its callee, T13-5: `Object.freeze({…})` or a factory's
+ * result holds whatever it was given).
+ */
 function moduleState(file: string, text: string): string[] {
   const sf = parse(file, text);
   const out: string[] = [];
@@ -124,6 +127,7 @@ function moduleState(file: string, text: string): string[] {
       if (!isConst) out.push(`${file}: let ${name}`);
       else if (init && ts.isNewExpression(init) && init.expression.getText(sf) !== 'RegExp') out.push(`${file}: ${name} = new ${init.expression.getText(sf)}`);
       else if (init && (ts.isArrayLiteralExpression(init) || ts.isObjectLiteralExpression(init))) out.push(`${file}: ${name} = ${ts.isArrayLiteralExpression(init) ? '[…]' : '{…}'}`);
+      else if (init && ts.isCallExpression(init)) out.push(`${file}: ${name} = ${init.expression.getText(sf)}(…)`);
     }
   }
   return out;
@@ -153,27 +157,47 @@ describe('A3.3: the call store is the only holder and reader of company identity
   it('the token path holds exactly these module-level containers and stores', () => {
     const state = TOKEN_PATH.flatMap((f) => moduleState(f, fs.readFileSync(path.join(ROOT, f), 'utf8')));
     expect(state).toEqual([
+      'src/clients/bluebird-context.ts: BOUND = Symbol.for(…)', // the bound-promise mark, a symbol
       'src/clients/call-context.ts: calls = new AsyncLocalStorage', // the per-call store itself
+      'src/clients/company-state.ts: FORK_ERROR = Object.freeze(…)', // a frozen fork-error reading, no company
+      'src/clients/guard-decide.ts: REPORT_KEYS = Object.freeze(…)', // the report entities' frozen key list
       'src/clients/qbo-transport.ts: LIMIT_CODES = new Set', // axios' timeout codes
+      'src/clients/qbo-transport.ts: FRESH = Object.freeze(…)', // a frozen fresh resend budget, no company
       'src/clients/qbo-transport.ts: lineage = new AsyncLocalStorage', // a resend's budget, no company
+      'src/clients/qbo-transport.ts: SENT_AT = Symbol(…)', // the request's sent-at mark, a symbol
       'src/clients/stacks-token.ts: TOKEN_KEYS = […]', // the five keys of a Stacks 200
       'src/clients/stacks-token.ts: TRANSPORT_CODES = new Set', // step 7's codes
+      'src/clients/stacks-token.ts: BROKEN = Symbol(…)', // a reading's mark, a symbol
       'src/clients/stacks-token.ts: UNREACHABLE = {…}', // a frozen reading
+      'src/clients/stacks-token.ts: RETRY = Symbol(…)', // a reading's mark, a symbol
+      'src/http-guard.ts: requireHere = createRequire(…)', // 291's require for axios' CJS build
       'src/http-guard.ts: LOGGED_METHODS = […]', // 291's log line methods
       'src/http-guard.ts: tickets = new AsyncLocalStorage', // 291's single-use socket tickets
       'src/http-guard.ts: holder = {…}', // 291's guard context (the runtime's callbacks), never a company
       'src/http-guard.ts: AGENT = new https.Agent', // the guard's own agent
       'src/http-guard.ts: installed = new WeakMap', // 291's installed guards
+      'src/http-guard.ts: BACKSTOP_MARK = Symbol.for(…)', // 291's backstop mark, a symbol
       'src/http-guard.ts: ownWraps = new WeakSet', // 291's backstop wraps
       'src/http-guard.ts: KNOWN = new Set', // 291's option keys
       'src/http-guard.ts: PROXY_OPTIONS = […]', // 291's refused options
-      'src/helpers/validate-input.ts: COUNT_TOOLS = […]', // tool names, from here down: tables read, never written
+      'src/helpers/register-tool.ts: FORK_ERROR = Object.freeze(…)', // a frozen fork-error result
+      'src/helpers/tool-result.ts: REASON_TEXT = Object.freeze(…)', // each reason's fixed text
+      'src/helpers/tool-result.ts: FORK_ERROR = Object.freeze(…)', // a frozen fork-error result
+      'src/helpers/tool-result.ts: NOT_JSON = Symbol(…)', // a parse mark, a symbol
+      'src/helpers/name-fold.ts: SUFFIXES = Object.freeze(…)', // the company-name suffixes folded
+      'src/helpers/validate-input.ts: COUNT_TOOLS = […]', // tool names, from here down: tables and validators, never written
       'src/helpers/validate-input.ts: CRITERIA_ONLY_TOOLS = […]',
       'src/helpers/validate-input.ts: ENTRY_KEYS = […]',
       'src/helpers/validate-input.ts: PAGE_KEYS = […]',
+      'src/helpers/validate-input.ts: METHOD = oneOf(…)',
+      'src/helpers/validate-input.ts: SUMMARIZE = oneOf(…)',
+      'src/helpers/validate-input.ts: AGING = oneOf(…)',
       'src/helpers/validate-input.ts: DATES = {…}',
+      'src/helpers/validate-input.ts: ID = matches(…)',
       'src/helpers/validate-input.ts: AGED = {…}',
       'src/helpers/validate-input.ts: REPORT_RULES = {…}',
+      'src/helpers/validate-input.ts: REPORT_TOOLS = Object.keys(…)',
+      'src/tools/get-company-info.tool.ts: toolSchema = z.object(…)', // the tool's empty schema
       'src/tools/get-company-info.tool.ts: GetCompanyInfoTool = {…}', // the two tool definitions
       'src/tools/qbo-companies.tool.ts: QboCompaniesTool = {…}',
     ]);
@@ -212,6 +236,11 @@ describe('A3.3: the call store is the only holder and reader of company identity
       'x.ts: h = […]',
       'x.ts: r = {…}',
       'x.ts: w = new WeakMap',
+    ]);
+    // T13-5: a const made by a call is named by its callee.
+    expect(moduleState('x.ts', 'const state = makeState();\nconst current = Object.seal({ company: "" });\nconst n = 1 + f();')).toEqual([
+      'x.ts: state = makeState(…)',
+      'x.ts: current = Object.seal(…)',
     ]);
     expect(companyReads('x.ts', 'currentCall(); s.company; s["company"]; new AsyncLocalStorage<X>(); other();')).toEqual([
       'x.ts: currentCall()',

@@ -36,6 +36,8 @@ export type Scenario = {
   tools?: () => Promise<ReadTool[]>;
   /** Fake timers, advanced by this many ms once the call is sent. */
   advance?: number;
+  /** What reaches the wire (T13-7): the Stacks requests, and each QuickBooks request's bearer token in order. */
+  sent: { stacks: number; bearers: string[] };
   /** The result's `reason:`, or 'ok' for a success. */
   reason: string;
 };
@@ -55,63 +57,63 @@ async function guardRefusing(): Promise<ReadTool[]> {
 }
 
 export const SCENARIOS: Scenario[] = [
-  { name: 'success: get_company_info', tool: 'get_company_info', stacks: ONE_TOKEN, reason: 'ok' },
-  { name: 'success: search_purchases', tool: 'search_purchases', stacks: ONE_TOKEN, reason: 'ok' },
-  { name: 'name-mismatch, source stacks', tool: 'get_company_info', stacks: { sequence: [handOut(TOKEN, { company_name: 'Garden Three LLC' })] }, reason: 'name-mismatch' },
+  { name: 'success: get_company_info', tool: 'get_company_info', stacks: ONE_TOKEN, sent: { stacks: 1, bearers: [TOKEN, TOKEN] }, reason: 'ok' },
+  { name: 'success: search_purchases', tool: 'search_purchases', stacks: ONE_TOKEN, sent: { stacks: 1, bearers: [TOKEN, TOKEN] }, reason: 'ok' },
+  { name: 'name-mismatch, source stacks', tool: 'get_company_info', stacks: { sequence: [handOut(TOKEN, { company_name: 'Garden Three LLC' })] }, sent: { stacks: 1, bearers: [] }, reason: 'name-mismatch' },
   {
     name: 'name-mismatch, source quickbooks',
     tool: 'get_company_info',
     stacks: ONE_TOKEN,
     qbo: (n) => (n === 0 ? json(200, { CompanyInfo: { CompanyName: 'Garden Three Studio' }, time: '2026-11-18T00:00:00.000Z' }) : undefined),
-    reason: 'name-mismatch',
+    sent: { stacks: 1, bearers: [TOKEN] }, reason: 'name-mismatch',
   },
-  { name: 'not-connected (409)', tool: 'search_bills', stacks: { sequence: ['409.json'] }, reason: 'not-connected' },
-  { name: 'unknown-enterprise (404)', tool: 'search_bills', stacks: { sequence: ['404.json'] }, reason: 'unknown-enterprise' },
-  { name: 'renewal-failed:invalid_grant (502)', tool: 'search_bills', stacks: { sequence: ['502-invalid_grant.json'] }, reason: 'renewal-failed:invalid_grant' },
-  { name: 'renewal-failed:unavailable (502)', tool: 'search_bills', stacks: { sequence: ['502-unavailable.json'] }, reason: 'renewal-failed:unavailable' },
+  { name: 'not-connected (409)', tool: 'search_bills', stacks: { sequence: ['409.json'] }, sent: { stacks: 1, bearers: [] }, reason: 'not-connected' },
+  { name: 'unknown-enterprise (404)', tool: 'search_bills', stacks: { sequence: ['404.json'] }, sent: { stacks: 1, bearers: [] }, reason: 'unknown-enterprise' },
+  { name: 'renewal-failed:invalid_grant (502)', tool: 'search_bills', stacks: { sequence: ['502-invalid_grant.json'] }, sent: { stacks: 1, bearers: [] }, reason: 'renewal-failed:invalid_grant' },
+  { name: 'renewal-failed:unavailable (502)', tool: 'search_bills', stacks: { sequence: ['502-unavailable.json'] }, sent: { stacks: 1, bearers: [] }, reason: 'renewal-failed:unavailable' },
   {
     name: 'stacks-auth: a 403 whose body echoes the key',
     tool: 'get_company_info',
     stacks: { sequence: [{ status: 403, body: { errors: [{ status: 'forbidden', detail: `the key ${KEY} is revoked` }] } }] },
-    reason: 'stacks-auth',
+    sent: { stacks: 1, bearers: [] }, reason: 'stacks-auth',
   },
-  { name: 'stacks-unreachable: a 502 page echoing the key, twice', tool: 'get_company_info', stacks: { sequence: [{ status: 502, body: `<html>bad gateway for ${KEY}</html>` }] }, reason: 'stacks-unreachable' },
-  { name: 'stacks-unreachable: the connection refused, twice', tool: 'get_company_info', stacks: { refuse: 'refused' }, reason: 'stacks-unreachable' },
-  { name: 'fork-error: a Stacks 200 with a sixth key echoing the key and the token', tool: 'get_company_info', stacks: { sequence: [handOut(TOKEN, { refresh_token: `${KEY}.${TOKEN}` })] }, reason: 'fork-error' },
-  { name: 'stacks-unreachable: a 409 whose body echoes the key, a form the mapping does not know, twice', tool: 'get_company_info', stacks: { sequence: [{ status: 409, body: { error: 'not-connected', key: KEY } }] }, reason: 'stacks-unreachable' },
-  { name: 'fork-error: a guard refusal inside the call', tool: 'get_company_info', stacks: ONE_TOKEN, tools: guardRefusing, reason: 'fork-error' },
-  { name: 'http-500 with an intuit_tid', tool: 'search_purchases', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? json(500, {}, { intuit_tid: 'tid-500-one' }) : undefined), reason: 'http-500' },
+  { name: 'stacks-unreachable: a 502 page echoing the key, twice', tool: 'get_company_info', stacks: { sequence: [{ status: 502, body: `<html>bad gateway for ${KEY}</html>` }] }, sent: { stacks: 2, bearers: [] }, reason: 'stacks-unreachable' },
+  { name: 'stacks-unreachable: the connection refused, twice', tool: 'get_company_info', stacks: { refuse: 'refused' }, sent: { stacks: 2, bearers: [] }, reason: 'stacks-unreachable' },
+  { name: 'fork-error: a Stacks 200 with a sixth key echoing the key and the token', tool: 'get_company_info', stacks: { sequence: [handOut(TOKEN, { refresh_token: `${KEY}.${TOKEN}` })] }, sent: { stacks: 1, bearers: [] }, reason: 'fork-error' },
+  { name: 'stacks-unreachable: a 409 whose body echoes the key, a form the mapping does not know, twice', tool: 'get_company_info', stacks: { sequence: [{ status: 409, body: { error: 'not-connected', key: KEY } }] }, sent: { stacks: 2, bearers: [] }, reason: 'stacks-unreachable' },
+  { name: 'fork-error: a guard refusal inside the call', tool: 'get_company_info', stacks: ONE_TOKEN, tools: guardRefusing, sent: { stacks: 1, bearers: [TOKEN] }, reason: 'fork-error' },
+  { name: 'http-500 with an intuit_tid', tool: 'search_purchases', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? json(500, {}, { intuit_tid: 'tid-500-one' }) : undefined), sent: { stacks: 1, bearers: [TOKEN, TOKEN] }, reason: 'http-500' },
   {
     name: 'http-500 whose intuit_tid holds the token inside a longer value (TC6-1)',
     tool: 'search_purchases',
     stacks: ONE_TOKEN,
     qbo: (n) => (n === 1 ? json(500, {}, { intuit_tid: `t-${TOKEN}-x` }) : undefined),
-    reason: 'http-500',
+    sent: { stacks: 1, bearers: [TOKEN, TOKEN] }, reason: 'http-500',
   },
-  { name: 'http-500 whose intuit_tid is the key', tool: 'search_purchases', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? json(500, {}, { intuit_tid: KEY }) : undefined), reason: 'http-500' },
-  { name: 'timeout: QuickBooks never answers the tool\'s request', tool: 'get_preferences', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? never() : undefined), advance: QBO_LIMIT_MS, reason: 'timeout' },
-  { name: 'resend after a 401: the refetched token, then the data', tool: 'search_purchases', stacks: TWO_TOKENS, qbo: (n) => (n === 1 ? fault(401, `token ${TOKEN} expired`) : undefined), reason: 'ok' },
-  { name: 'resend after a 429: then the data', tool: 'search_purchases', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? fault(429, `slow down ${TOKEN}`, { 'retry-after': '0' }) : undefined), reason: 'ok' },
+  { name: 'http-500 whose intuit_tid is the key', tool: 'search_purchases', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? json(500, {}, { intuit_tid: KEY }) : undefined), sent: { stacks: 1, bearers: [TOKEN, TOKEN] }, reason: 'http-500' },
+  { name: 'timeout: QuickBooks never answers the tool\'s request', tool: 'get_preferences', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? never() : undefined), advance: QBO_LIMIT_MS, sent: { stacks: 1, bearers: [TOKEN, TOKEN] }, reason: 'timeout' },
+  { name: 'resend after a 401: the refetched token, then the data', tool: 'search_purchases', stacks: TWO_TOKENS, qbo: (n) => (n === 1 ? fault(401, `token ${TOKEN} expired`) : undefined), sent: { stacks: 2, bearers: [TOKEN, TOKEN, TOKEN_2] }, reason: 'ok' },
+  { name: 'resend after a 429: then the data', tool: 'search_purchases', stacks: ONE_TOKEN, qbo: (n) => (n === 1 ? fault(429, `slow down ${TOKEN}`, { 'retry-after': '0' }) : undefined), sent: { stacks: 1, bearers: [TOKEN, TOKEN, TOKEN] }, reason: 'ok' },
   {
     name: 'http-400 whose fault Detail holds the token and the key',
     tool: 'search_purchases',
     stacks: ONE_TOKEN,
     qbo: (n) => (n === 1 ? fault(400, `bad request with bearer ${TOKEN} and key ${KEY} and ${TOKEN}${TOKEN}`) : undefined),
-    reason: 'http-400',
+    sent: { stacks: 1, bearers: [TOKEN, TOKEN] }, reason: 'http-400',
   },
   {
     name: 'http-401: a 401 whose fault Detail holds the token, and its resend\'s holds the refetched one',
     tool: 'search_purchases',
     stacks: TWO_TOKENS,
     qbo: (n) => (n === 1 ? fault(401, `token ${TOKEN} expired`, { intuit_tid: TOKEN }) : n === 2 ? fault(401, `token ${TOKEN_2} expired`, { intuit_tid: TOKEN_2 }) : undefined),
-    reason: 'http-401',
+    sent: { stacks: 2, bearers: [TOKEN, TOKEN, TOKEN_2] }, reason: 'http-401',
   },
   {
     name: 'http-400: a 401, then a 400 echoing the refetched token',
     tool: 'search_purchases',
     stacks: TWO_TOKENS,
     qbo: (n) => (n === 1 ? fault(401, `token ${TOKEN} expired`) : n === 2 ? fault(400, `bad request, bearer ${TOKEN_2}, old ${TOKEN}`) : undefined),
-    reason: 'http-400',
+    sent: { stacks: 2, bearers: [TOKEN, TOKEN, TOKEN_2] }, reason: 'http-400',
   },
-  { name: 'http-401 on the first-use read, its resend refused by Stacks (403)', tool: 'get_company_info', stacks: { sequence: [handOut(TOKEN), { status: 403, body: { errors: [{ status: 'forbidden', key: KEY }] } }] }, qbo: (n) => (n === 0 ? fault(401, `token ${TOKEN}`) : undefined), reason: 'stacks-auth' },
+  { name: 'http-401 on the first-use read, its resend refused by Stacks (403)', tool: 'get_company_info', stacks: { sequence: [handOut(TOKEN), { status: 403, body: { errors: [{ status: 'forbidden', key: KEY }] } }] }, qbo: (n) => (n === 0 ? fault(401, `token ${TOKEN}`) : undefined), sent: { stacks: 2, bearers: [TOKEN] }, reason: 'stacks-auth' },
 ];

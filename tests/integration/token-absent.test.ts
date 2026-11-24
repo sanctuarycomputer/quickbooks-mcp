@@ -1,24 +1,27 @@
 // Sanctuary Computer (quickbooks-mcp-286): the known token and key absent everywhere (spec A5.7; carried TC6-1, TB6).
-// Every row of scenarios.ts runs through the started server with console.*, process.stdout.write and
+// Every row of scenarios.ts runs through the started server with every printing console method (each call's text as
+// Node's console prints it, and each object argument inspected in full: T13-1), process.stdout.write and
 // process.stderr.write captured; neither the tokens Stacks handed out nor STACKS_QBO_TOKEN appears, as a substring, in
 // any result item, any thrown message or any captured line. Each row's result is also read by the whole Result grammar
-// and must give the row's reason, so every path is really taken.
+// and must give the row's reason, and what reached the wire must be the row's (the Stacks requests, each QuickBooks
+// request's bearer: T13-7), so every path is really taken.
 import { describe, it, expect, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
+import { captureConsole, PRINTING } from '../helpers/console-capture.js';
 import { readError } from '../helpers/result-grammar.js';
+import type { StubCall } from '../fakes/stub-network.js';
 import { QBO_HOST, installNetwork, startServer, testEnv, type Rig } from '../helpers/server.js';
 import { KEY, SCENARIOS, SECRETS, TOKEN, TOKEN_2, type Scenario } from './scenarios.js';
 
 const network = installNetwork();
 const { net } = network;
 
-const CONSOLE = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as const;
 let captured: string[] = [];
 let rig: Rig | undefined;
 
 beforeEach(() => {
   captured = [];
   // In beforeEach: jest.config's restoreMocks restores every spy before each test.
-  for (const m of CONSOLE) jest.spyOn(console, m).mockImplementation((...a: unknown[]) => void captured.push(`console.${m}: ${a.map(String).join(' ')}`));
+  captureConsole(captured);
   for (const s of ['stdout', 'stderr'] as const) {
     jest.spyOn(process[s], 'write').mockImplementation(((chunk: unknown) => {
       captured.push(`${s}: ${String(chunk)}`);
@@ -36,6 +39,9 @@ afterAll(() => {
   expect(network.trap.reached).toEqual([]);
   network.restore();
 });
+
+/** A request header by name, whatever its case on the wire. */
+const header = (c: StubCall, name: string) => Object.entries(c.headers ?? {}).find(([k]) => k.toLowerCase() === name)?.[1];
 
 /** Each secret found as a substring of each text, as `<where>: <which>`. */
 function leaks(texts: Array<[string, string]>): string[] {
@@ -85,9 +91,32 @@ describe('A5.7: the known token and key are absent from every result, thrown mes
     const { result, texts } = await replay(row);
     if (row.reason === 'ok') expect((result as { isError?: unknown }).isError).toBeUndefined();
     else expect(readError(result).reason).toBe(row.reason);
-    // The server did hand the secrets out: the key went to Stacks, the token (when Stacks gave one) to QuickBooks.
-    expect(net.calls.some((c) => JSON.stringify(c.headers).includes(KEY))).toBe(true);
+    // The server did hand the secrets out, on the row's path: the key on each Stacks request, and each QuickBooks
+    // request's bearer the token Stacks had handed out by then.
+    const toStacks = net.calls.filter((c) => c.hostname !== QBO_HOST);
+    const toQbo = net.calls.filter((c) => c.hostname === QBO_HOST);
+    expect(toStacks.map((c) => header(c, 'x-api-key'))).toEqual(Array(row.sent.stacks).fill(KEY));
+    expect(toQbo.map((c) => header(c, 'authorization'))).toEqual(row.sent.bearers.map((t) => `Bearer ${t}`));
     expect(leaks(texts)).toEqual([]);
+  });
+
+  // T13-1: the capture holds what the console prints, so each form a logged secret can take is found.
+  it.each([
+    ['an object argument', () => console.log('state', { company: 'garden3d', token: TOKEN })],
+    ['an Error with the token in a nested property, below util.format\'s depth', () => console.error(Object.assign(new Error('Request failed with status code 400'), { config: { headers: { common: { Authorization: `Bearer ${TOKEN}` } } } }))],
+    ['a %o format string', () => console.warn('sent %o', { headers: { Authorization: `Bearer ${TOKEN}` } })],
+    ['a %s format string with an object', () => console.info('sent %s', { a: { b: { c: TOKEN } } })],
+    ['console.dir', () => console.dir({ a: { b: { c: { d: TOKEN } } } })],
+    ['console.table', () => console.table([{ token: TOKEN }])],
+    ['console.assert', () => console.assert(false, { token: TOKEN })],
+    ['console.group', () => console.group({ token: TOKEN })],
+  ])('the capture finds the token logged as %s', (_name, log) => {
+    log();
+    expect(leaks(captured.map((l, i) => [`captured line ${i}`, l]))).toEqual(['captured line 0: the token']);
+  });
+
+  it('every console method that prints is captured', () => {
+    for (const m of PRINTING) expect([m, jest.isMockFunction(console[m])]).toEqual([m, true]);
   });
 
   it('the scan finds a secret inside a longer value, in any text it is given', () => {

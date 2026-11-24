@@ -3,6 +3,7 @@
 import { expect } from '@jest/globals';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
+import { nameFiltered } from '../helpers/name-filter.js';
 import type { StubAnswer, StubCall, StubTable } from './stub-network.js';
 
 const DIR = fileURLToPath(new URL('./stacks-token/', import.meta.url));
@@ -49,14 +50,6 @@ export function stacksFixture(file: string): { status: number; headers: Record<s
 
 /** Each fixture file this module's fakes served, with the test running then ('' outside a test). One log per test file. */
 export const servedLog: Array<{ file: string; test: string }> = [];
-
-/** True when jest was given a name filter (`-t`): jest-circus keeps it on its state, under its unregistered symbol. */
-function nameFiltered(): boolean {
-  const sym = Object.getOwnPropertySymbols(globalThis).find((x) => x.description === 'JEST_STATE_SYMBOL');
-  if (sym === undefined) throw new Error("jest-circus' state isn't on globalThis");
-  const pattern = (globalThis as Record<symbol, { testNamePattern?: RegExp | null }>)[sym].testNamePattern;
-  return pattern !== null && pattern !== undefined;
-}
 
 /**
  * A1.8's named case: each of `files` was served by this test file's fakes inside a test whose full name holds `check`

@@ -5,6 +5,7 @@
 // §5's Result grammar. Matching uses the name as read: a name that would match only once cleaned is still a mismatch.
 import { describe, it, expect, afterEach, afterAll } from '@jest/globals';
 import fs from 'fs';
+import { REASON } from '../helpers/result-grammar.js';
 import { QBO_HOST, REALMS, fakePath, fixtureToken, installNetwork, startServer, type Rig, type StartOpts } from '../helpers/server.js';
 
 const network = installNetwork();
@@ -42,8 +43,6 @@ const CALLS: Array<[string, Record<string, unknown>]> = [
   ['search_purchases', { criteria: [{ field: 'Id', value: '1' }] }],
 ];
 
-/** The Result grammar's reason codes with origin `fork` (contract §5). */
-const REASON = /^(name-mismatch|not-connected|unknown-enterprise|renewal-failed:[A-Za-z0-9_-]{1,64}|stacks-auth|stacks-unreachable|http-[0-9]{3}|fork-error|timeout)$/;
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
 

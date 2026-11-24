@@ -26,6 +26,7 @@ import { QuickbooksClient } from '../../../src/clients/quickbooks-client.js';
 import { REFUSED_KEYS, type ReadTool } from '../../../src/allowlist.js';
 import { runInCall } from '../../../src/clients/call-context.js';
 import { createRuntime } from '../../../src/clients/runtime.js';
+import { captureConsole } from '../../helpers/console-capture.js';
 
 const network = installNetwork();
 const { net } = network;
@@ -514,9 +515,7 @@ describe('TB6: a handler that throws the error the interceptors rethrew', () => 
   it("answers the recorded failure; neither the result nor stderr nor the console holds the token or the key", async () => {
     captureStderr();
     const logs: string[] = [];
-    for (const m of ['log', 'error', 'warn', 'info', 'debug'] as const) {
-      jest.spyOn(console, m).mockImplementation(((...a: unknown[]) => void logs.push(a.map(String).join(' '))) as any);
-    }
+    captureConsole(logs);
     let thrown: unknown;
     const handler = async () => {
       const realm = REALMS.garden3d;

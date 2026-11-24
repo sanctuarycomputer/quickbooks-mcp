@@ -1,7 +1,7 @@
 // Sanctuary Computer (quickbooks-mcp-285): the removed sign-in flow, token store, upload and switches stay gone.
 // Changed by Sanctuary Computer (quickbooks-mcp-291): src/http-guard.ts may load http, https and http2 (it pins and wraps them), and nothing else on the network list.
 // Changed by Sanctuary Computer (quickbooks-mcp-286): and node:tls, for the one value it reads (tls.checkServerIdentity, the identity check it hands Node);
-// TB10-2: any other read of tls (destructuring, a bracket, an alias, another import binding) is refused.
+// TB10-2: any other read of tls (destructuring, a bracket, an alias, another import binding) is refused. T13-4: so is a write to tls.checkServerIdentity (assigned or deleted).
 import { describe, it, expect } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
@@ -75,15 +75,17 @@ function networkLoads(f: string, text: string): string[] {
 
 const TLS_IMPORT = 'import tls from "node:tls";';
 /**
- * The guard's reads of node:tls other than its one value (TB10-2): node:tls loaded other than by TLS_IMPORT once, and
- * every line with a `tls` word left once that import, each `tls.checkServerIdentity` and the module's name are taken out
- * (a destructuring, a bracket read, an alias, `tls.connect`).
+ * The guard's uses of node:tls other than reading its one value (TB10-2, T13-4): node:tls loaded other than by
+ * TLS_IMPORT once, and every line with a `tls` word left once that import, the module's name and each
+ * `tls.checkServerIdentity` read are taken out (a destructuring, a bracket read, an alias, `tls.connect`). A write to
+ * the member stays: one assigned (`=`, a compound `op=`, `++`/`--`, but not `==`) or deleted.
  */
+const TLS_VALUE_READ = /(?<!\bdelete\s+)\btls\.checkServerIdentity\b(?!\s*(?:=(?!=)|\+\+|--|(?:[-+*/%&|^]|\*\*|<<|>>>?|&&|\|\||\?\?)=))/g;
 function tlsReads(text: string): string[] {
   const out: string[] = [];
   const loads = text.split('"node:tls"').length - 1;
   if (loads !== 1 || !text.includes(TLS_IMPORT)) out.push(`node:tls loaded ${loads} time(s), ${text.includes(TLS_IMPORT) ? 'with' : 'without'} ${TLS_IMPORT}`);
-  const rest = text.split(TLS_IMPORT).join('').split('"node:tls"').join('').replace(/\btls\.checkServerIdentity\b/g, '');
+  const rest = text.split(TLS_IMPORT).join('').split('"node:tls"').join('').replace(TLS_VALUE_READ, '');
   for (const line of rest.split('\n')) if (/\btls\b/.test(line)) out.push(line.trim());
   return out;
 }
@@ -157,6 +159,9 @@ describe('removals', () => {
     ['an alias', 'const t = tls;\nt.connect(o);', ['const t = tls;']],
     ['another member', 'tls.connect(o);', ['tls.connect(o);']],
     ['a second import binding', 'import * as t from "node:tls";', ['node:tls loaded 2 time(s), with import tls from "node:tls";']],
+    ['writing its member (T13-4)', 'tls.checkServerIdentity = () => undefined;', ['tls.checkServerIdentity = () => undefined;']],
+    ['a compound write to its member (T13-4)', 'tls.checkServerIdentity ??= f;', ['tls.checkServerIdentity ??= f;']],
+    ['deleting its member (T13-4)', 'delete tls.checkServerIdentity;', ['delete tls.checkServerIdentity;']],
   ])('R3: the guard reading tls by %s is refused (TB10-2)', (_form, added, found) => {
     const text = `${TLS_IMPORT}\nx.checkServerIdentity = tls.checkServerIdentity;\n${added}`;
     expect(tlsReads(text)).toEqual(found);
@@ -165,6 +170,8 @@ describe('removals', () => {
   it('R3: the guard without its import, or loading node:tls under another binding, is refused (TB10-2)', () => {
     expect(tlsReads('import t from "node:tls";\nt.checkServerIdentity;')).toEqual(['node:tls loaded 1 time(s), without import tls from "node:tls";']);
     expect(tlsReads(`${TLS_IMPORT}\n// tls.checkServerIdentity, Node's own\nsend.c = tls.checkServerIdentity;`)).toEqual([]);
+    // A comparison reads the member; it is not a write (T13-4).
+    expect(tlsReads(`${TLS_IMPORT}\nif (f === tls.checkServerIdentity) g();\nif (tls.checkServerIdentity == f) g();`)).toEqual([]);
   });
 
   it('A7: no QUICKBOOKS_DISABLE text in src', () => {

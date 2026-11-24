@@ -15,6 +15,24 @@ import { selfSigned, type AltName } from '../helpers/self-signed.js';
 import { readError } from '../helpers/result-grammar.js';
 import { REALMS, fixtureToken, readTools, startServer, testEnv, type Rig } from '../helpers/server.js';
 
+// ---- the certificate, trusted only by the test ----
+type CaApi = { setDefaultCACertificates?(certs: string[]): void; getCACertificates?(kind: string): string[] };
+/** T13-3: why this Node can't run the file (tls's default-CA calls came in Node 22.19 and 24.5), or undefined. */
+export function caUnsupported(api: CaApi, version: string): string | undefined {
+  if (typeof api.setDefaultCACertificates === 'function' && typeof api.getCACertificates === 'function') return undefined;
+  return `loopback-tls needs Node 22.19 or later (24.5 or later on 24): tls.setDefaultCACertificates and tls.getCACertificates are missing on ${version}`;
+}
+const caApi = tls as unknown as Required<CaApi>;
+let defaultCA: string[] = [];
+const setDefaultCA = (certs: string[]) => caApi.setDefaultCACertificates(certs);
+beforeAll(() => {
+  // The file's first check: a Node without the default-CA calls fails here, naming the version it needs.
+  const unsupported = caUnsupported(caApi, process.version);
+  if (unsupported !== undefined) throw new Error(unsupported);
+  defaultCA = caApi.getCACertificates('default');
+});
+afterEach(() => setDefaultCA(defaultCA));
+
 // ---- loopback only ----
 const outside: string[] = [];
 const saved = { connect: net.Socket.prototype.connect, lookup: dns.lookup, promisesLookup: dns.promises.lookup };
@@ -58,10 +76,6 @@ afterAll(() => {
   expect(outside).toEqual([]);
 });
 
-// ---- the certificate, trusted only by the test ----
-const setDefaultCA = (tls as unknown as { setDefaultCACertificates(certs: string[]): void }).setDefaultCACertificates;
-const defaultCA = (tls as unknown as { getCACertificates(kind: string): string[] }).getCACertificates('default');
-afterEach(() => setDefaultCA(defaultCA));
 
 type Local = { port: number; connections: number; close(): Promise<void> };
 /** Closes `s`, destroying any socket still open (the guard's agent may keep one alive). */
@@ -164,8 +178,12 @@ describe("291's guard and backstop on a real socket: the identity check runs (lo
     const cert = selfSigned(RIGHT);
     local = await stacksServer(cert);
     await start(cert, local.port);
+    const stderr: string[] = [];
+    jest.spyOn(process.stderr, 'write').mockImplementation(((chunk: unknown) => (stderr.push(String(chunk)), true)) as never);
     expect(() => https.request(`https://127.0.0.1:${local!.port}/api/qbo/access_token?enterprise=garden3d`)).toThrow('qbo-guard: refused (backstop)');
     expect(local.connections).toBe(0);
+    // The refusal is logged once, naming the request without its query (T13-2).
+    expect(stderr).toEqual([`qbo-guard: refused GET https://127.0.0.1:${local.port}/api/qbo/access_token (backstop)\n`]);
   });
 });
 
@@ -178,5 +196,15 @@ describe('T5 on a real socket: a Stacks side writing an answer that is not HTTP'
     const result = await rig!.client.callTool({ name: 'get_company_info', arguments: { company: 'garden3d', params: {} } });
     expect(readError(result).reason).toBe('stacks-unreachable');
     expect(local.connections).toBe(2);
+  });
+});
+
+describe('T13-3: a Node without the default-CA calls', () => {
+  it('is refused by the first check, naming the Node version the file needs; this Node has both calls', () => {
+    const need = 'loopback-tls needs Node 22.19 or later (24.5 or later on 24): tls.setDefaultCACertificates and tls.getCACertificates are missing on v22.12.0';
+    expect(caUnsupported({}, 'v22.12.0')).toBe(need);
+    expect(caUnsupported({ getCACertificates: () => [] }, 'v22.12.0')).toBe(need);
+    expect(caUnsupported({ setDefaultCACertificates: () => undefined }, 'v22.12.0')).toBe(need);
+    expect(caUnsupported(tls as unknown as CaApi, process.version)).toBeUndefined();
   });
 });

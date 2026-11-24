@@ -5,6 +5,7 @@
 // and the afterAll checks that every file in that directory was produced by some case here.
 import { describe, it as jestIt, expect, afterEach, afterAll, jest } from '@jest/globals';
 import fs from 'fs';
+import { circusState, nameFiltered } from '../../helpers/name-filter.js';
 import { z } from 'zod';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
@@ -81,16 +82,6 @@ afterAll(() => {
   expectServedBy('A4.9', ['200-sanctuary-computer.json', '200-index-space.json', '200-usb-club.json']);
 });
 
-/** jest-circus' state (it keeps the run's name filter there), under its unregistered symbol. */
-function circusState(): { testNamePattern: RegExp | null } {
-  const sym = Object.getOwnPropertySymbols(globalThis).find((s) => s.description === 'JEST_STATE_SYMBOL');
-  if (sym === undefined) throw new Error("jest-circus' state isn't on globalThis");
-  return (globalThis as Record<symbol, { testNamePattern: RegExp | null }>)[sym];
-}
-/** True when jest was given a name filter (`-t` / `--testNamePattern`). */
-function nameFiltered(state: { testNamePattern: RegExp | null } = circusState()): boolean {
-  return state.testNamePattern !== null && state.testNamePattern !== undefined;
-}
 /** The directory check is due unless jest was given a name filter; with none, a case registered and not run fails it. */
 function directoryCheckDue(ranCount: number, registeredCount: number, filtered: boolean): boolean {
   if (filtered) return false;
