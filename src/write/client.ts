@@ -69,7 +69,8 @@ export function fetchPreferences(): Promise<Answer> {
   return get((realm) => `${company(realm)}/preferences?minorversion=${MINOR_VERSION}`);
 }
 
-/** The answer's `intuit_tid` as 286 reads it (qbo-transport.ts): the name in any case, its form, and none that holds a token of the call's. */
+/** The answer's `intuit_tid` as 286 reads it (qbo-transport.ts): the name in any case, its form, and none that holds a token of the call's. Not
+ * checked for STACKS_QBO_TOKEN, as 286 does: that key is never sent to QuickBooks. */
 function intuitTid(headers: unknown, held: readonly string[]): { intuit_tid?: string } {
   const tid: unknown = Object.entries(Object(headers)).find(([name]) => name.toLowerCase() === "intuit_tid")?.[1];
   if (typeof tid !== "string" || !/^[A-Za-z0-9-]{1,64}$/.test(tid) || held.some((token) => token !== "" && tid.includes(token))) return {};
