@@ -98,7 +98,8 @@ function answerFailure(response: Record<string, unknown>, secrets: Array<string 
   if (typeof status !== "number" || !STATUS.test(String(status))) return Object.freeze({ reason: "fork-error" });
   const f: Failure = { reason: `http-${status}` };
   const tid = headerValue(response.headers, "intuit_tid");
-  if (tid !== undefined && TID.test(tid)) f.intuitTid = tid;
+  // A tid equal to a token or key (a token shaped like a tid, echoed in the header) is dropped (TB6-2).
+  if (tid !== undefined && TID.test(tid) && !secrets.includes(tid)) f.intuitTid = tid;
   if (status === 400) {
     const text = faultText(response.data, secrets);
     if (text !== undefined) f.text = text;

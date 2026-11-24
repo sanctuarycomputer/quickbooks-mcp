@@ -46,7 +46,7 @@ const KEY = ['fake', 'stacks', 'key'].join('-');
 const ACCESS_A = ['qbo', 'test', 'access', 'a'].join('-');
 const ACCESS_B = ['qbo', 'test', 'access', 'b'].join('-');
 const ACCESS_C = ['qbo', 'test', 'access', 'c'].join('-');
-const SECRETS = [KEY, ACCESS_A, ACCESS_B, ACCESS_C];
+const SECRETS = [KEY, ACCESS_A, ACCESS_B, ACCESS_C, ['qbo', 'test', 'own', 'bearer'].join('-')];
 
 const REALM = '9990000000000002';
 const REALM_OTHER = '9990000000000009';
@@ -600,6 +600,47 @@ describe('A4.4b: a 400’s fault text (D6)', () => {
     // secrets() answers the call's token at record time, ACCESS_B: only the request's own bearer names ACCESS_A.
     expect(second.failure).toEqual({ reason: 'http-400', text: 'QuickBooks answered 400. QuickBooks said: Invalid query: token [redacted]' });
     expect(second.failure!.text).not.toContain(ACCESS_A);
+  });
+
+  // TB6-1: the request's own bearer, as its Authorization header spells it. The call holds token A, so secrets()
+  // never names OWN: only bearerOf decides each case.
+  const OWN = ['qbo', 'test', 'own', 'bearer'].join('-');
+  const ownBearer: Array<[string, string, string]> = [
+    ['a lowercase scheme', `bearer ${OWN}`, 'token [redacted]'],
+    ['two spaces after the scheme', `Bearer  ${OWN}`, 'token [redacted]'],
+    ['a tab after the scheme', `Bearer\t${OWN}`, 'token [redacted]'],
+  ];
+  for (const [name, value, said] of ownBearer) {
+    it(`TB6-1: the request’s own bearer with ${name} is redacted`, async () => {
+      const { ax } = scripted([{ status: 400, data: fault({ Message: `token ${OWN}` }) }]);
+      installOn(ax);
+      const o = await plainCall(() => settle(ax.get(INFO_URL, { headers: { Authorization: value } })));
+      expect(o.failure).toEqual({ reason: 'http-400', text: `QuickBooks answered 400. QuickBooks said: ${said}` });
+    });
+  }
+
+  it('TB6-1: a scheme word not at the start is not a bearer: the whole header value is what is redacted', async () => {
+    const value = 'Token Bearer plain-value';
+    const { ax } = scripted([{ status: 400, data: fault({ Message: 'said Token plain-value', Detail: `whole ${value}` }) }]);
+    installOn(ax);
+    const o = await plainCall(() => settle(ax.get(INFO_URL, { headers: { Authorization: value } })));
+    expect(o.failure!.text).toBe('QuickBooks answered 400. QuickBooks said: said Token plain-value: whole [redacted]');
+  });
+
+  it('TB6-2: an intuit_tid equal to the call’s token or the request’s own bearer is dropped; another is kept', async () => {
+    // Both tokens are built at runtime and match ^[A-Za-z0-9-]{1,64}$.
+    expect([/^[A-Za-z0-9-]{1,64}$/.test(ACCESS_A), /^[A-Za-z0-9-]{1,64}$/.test(OWN)]).toEqual([true, true]);
+    const { ax } = scripted([
+      { status: 500, headers: { intuit_tid: ACCESS_A } },
+      { status: 500, headers: { intuit_tid: OWN } },
+      { status: 500, headers: { intuit_tid: 'tid-ok' } },
+    ]);
+    installOn(ax);
+    const o = await plainCall(async () => {
+      const auth = { headers: { Authorization: `Bearer ${OWN}` } };
+      return [await settle(ax.get(INFO_URL)), await settle(ax.get(INFO_URL, auth)), await settle(ax.get(INFO_URL, auth))];
+    });
+    expect(o.map((x) => x.failure)).toEqual([{ reason: 'http-500' }, { reason: 'http-500' }, { reason: 'http-500', intuitTid: 'tid-ok' }]);
   });
 
   it('secrets are replaced longest first, and an absent or empty secret replaces nothing', async () => {
