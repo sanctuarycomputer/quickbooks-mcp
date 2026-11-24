@@ -1,4 +1,4 @@
-<!-- Changed by Sanctuary Computer (quickbooks-mcp-285): describes the read-only fork. -->
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285, quickbooks-mcp-286): describes the read-only fork. -->
 # Architecture Documentation
 
 This document explains the architecture, design decisions, and code patterns used in the QuickBooks Online MCP Server.
@@ -77,8 +77,8 @@ This fork of the QuickBooks Online MCP Server is a read-only Model Context Proto
                                 │ HTTPS
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                   QuickBooks Online API                          │
-│               (sandbox.api.intuit.com / api.intuit.com)          │
+│   QuickBooks Online API (quickbooks.api.intuit.com)              │
+│   Stacks token service (STACKS_QBO_URL)                          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -125,12 +125,12 @@ Every failure is one error, `refused to start: <reason>`.
 ## Call flow
 
 1. A tool call arrives with `company`, a key from `qbo_companies`.
-2. The call context starts (`src/clients/call-context.ts`). It holds the call's company, tokens, realm and failure, and nothing is shared between calls.
-3. The access token comes from Stacks: `GET <STACKS_QBO_URL>/api/qbo/access_token?enterprise=<company>` with the `X-Api-Key` header, a 10 second timeout and one retry. A kept token is refetched once it is within 5 minutes of its `expires_at`.
+2. The call context starts (`src/clients/call-context.ts`). It holds the call's company, tokens, realm and failure, and is not shared between calls. What is kept across calls is each company's token, realm, refusal and passed name check (`stacks-token.ts`, `company-state.ts`).
+3. The access token comes from Stacks: `GET <STACKS_QBO_URL>/api/qbo/access_token?enterprise=<company>` with the `X-Api-Key` header and a 10 second timeout. A token the fork already keeps is used with no request until 5 minutes before its `expires_at`; then it is fetched again. The request is sent once more only when there was no answer or the answer cannot be read; a 403, 404, 409 or 502 the fork can read is not asked again.
 4. On the first use per company, its QuickBooks name is checked against that company's `accepted_names` in `QBO_COMPANIES`. A mismatch is kept until restart.
 5. Every request goes through the HTTP guard.
-6. QuickBooks 401: the token is refetched and the request is sent once more. 429: the request is sent once more after `Retry-After`, at most 30 seconds.
-7. Results follow contract 1.0.
+6. Every QuickBooks request has a 15 second limit. A GET answered 401: the token is refetched and the request is sent once more. 429: the request is sent once more after `Retry-After` in whole seconds, at most 30 (2 when the header is missing or not whole seconds). Each resend is made once per request.
+7. Results follow contract 1.1.
 
 **Redaction.** Every access token the call held, and the Stacks key, are kept out of results, errors and logs. An `intuit_tid` that contains any of them is dropped.
 
@@ -142,7 +142,7 @@ Every request that leaves the server goes through one guard. It decides each req
 
 **Where it hooks.** `node-quickbooks` requires the CommonJS `axios` instance, which is a different object from the fork's ESM `import axios`. `guardedAxios()` returns that CommonJS instance. `installGuard` sets the guard as its `defaults.adapter` and adds a request interceptor that refuses (`transport`) any request whose config names another adapter. `secureStart(process.env, process.execArgv)` installs it as the first statement of `main()` in `src/index.ts`, before any tool registers.
 
-**What it allows.** Contract 1.0 §6 in Stacksbot's `docs/contracts/quickbooks.md` is the rule set; this document does not restate it. The allow rules are `companyinfo`, `preferences`, `query`, `reports` and `stacks`. Every other request is refused with a rule name. The guard's own rule names are:
+**What it allows.** Contract 1.1 §6 in Stacksbot's `docs/contracts/quickbooks.md` is the rule set; this document does not restate it. The allow rules are `companyinfo`, `preferences`, `query`, `reports` and `stacks`. Every other request is refused with a rule name. The guard's own rule names are:
 
 - `raw-text`: the URL spelling is one `new URL` would rewrite, or its head is not the exact allowed head.
 - `dot-segments`: the raw path holds a `\`, a `%2e`, or a `.` or `..` segment.
@@ -155,7 +155,7 @@ Every request that leaves the server goes through one guard. It decides each req
 
 `decide` lives in `src/clients/guard-decide.ts`. It loads no network module and sends nothing. The adapter and the probe both call it.
 
-**Transport pins.** The guard sends only the decided URL, with no `params`. It sets `maxRedirects: 0`, `proxy: false` and its own `https.Agent({ rejectUnauthorized: true })`. From the request config it keeps `method`, `headers`, `responseType`, `timeout`, `transformRequest`, `transformResponse` and `validateStatus` (the `KEPT` list), and only as own properties. Every other key is dropped. The guard passes the request's `timeout` through unchanged; the Stacks token request sets its own 10 second timeout.
+**Transport pins.** The guard sends only the decided URL, with no `params`. It sets `maxRedirects: 0`, `proxy: false` and its own `https.Agent({ rejectUnauthorized: true })`. From the request config it keeps `method`, `headers`, `responseType`, `timeout`, `transformRequest`, `transformResponse` and `validateStatus` (the `KEPT` list), and only as own properties. Every other key is dropped. The guard passes the request's `timeout` through unchanged. Every QuickBooks GET carries a 15 second limit (`QBO_LIMIT_MS` in `src/clients/qbo-transport.ts`); the Stacks token request sets its own 10 second timeout.
 
 **The backstop.** `installBackstop()` replaces these on the module and global objects:
 
@@ -197,10 +197,17 @@ src/
 │                               # - Handles MCP protocol communication
 │
 ├── clients/
+│   ├── config.ts               # The five keys and their start refusals
+│   ├── companies.ts            # Parser for the QBO_COMPANIES file
+│   ├── stacks-token.ts         # Stacks token client: keeps tokens, refetches
+│   ├── company-state.ts        # Per-call preparation: token, first-use name check
+│   ├── call-context.ts         # The per-call store (company, tokens, realm, failure)
+│   ├── qbo-transport.ts        # QuickBooks 401 and 429 resends, limits, failures
+│   ├── runtime.ts              # Joins the above for the tools
+│   ├── bluebird-context.ts     # Keeps the call context across node-quickbooks promises
 │   ├── guard-decide.ts         # The guard's pure decision; loads no network module
 │   └── quickbooks-client.ts    # QuickBooks API client wrapper
-│                               # - No sign-in; the call's token comes
-│                               #   from the Stacks token client
+│                               # - No sign-in; built from the call's token and realm
 │
 ├── allowlist.ts                # Read allowlist, refused keys, start check
 ├── http-guard.ts               # HTTP guard, backstop and secureStart
@@ -290,7 +297,7 @@ export async function searchQuickbooksCustomers(
   criteria: object | Array<Record<string, any>> = {}
 ): Promise<ToolResponse<any[]>> {
   try {
-    // 2a. Get the client (rejects if the call has no token)
+    // 2a. Get the client for this tool call (rejects only outside a tool call)
     const quickbooks = await QuickbooksClient.getInstance();
 
     // 2b. Execute the API call with a Promise wrapper
@@ -318,7 +325,7 @@ export async function searchQuickbooksCustomers(
 
 1. **Type Safety**: TypeScript interfaces ensure compile-time validation
 2. **Consistency**: Same structure across the handlers makes codebase predictable
-3. **Error Handling**: two levels: the API callback's error, and a failure getting the client (no token)
+3. **Error Handling**: the call is prepared before the handler runs (see [Error Handling](#error-handling)); the handler handles the API callback's error, and a failure getting the client, which happens only outside a tool call
 4. **Field Mapping**: Clean separation between snake_case inputs and PascalCase API
 
 ---
@@ -340,20 +347,23 @@ Tools are registered only through `startReadServer` in `src/allowlist.ts`, calle
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  Getting the client fails                        │
-│  • No token on the call                          │
-│  • Stacks token request failures                 │
-│  Handled by: the handler's try/catch            │
+│  Preparing the call fails                        │
+│  • Stacks token request failures                │
+│  • A refused company, a name mismatch           │
+│  • A failed first-use name read                 │
+│  Handled by: RegisterTool, before the handler   │
+│  runs: it answers the error result at once      │
 └─────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────┐
 │  The QuickBooks call fails                       │
 │  • Validation, not found, permission errors     │
 │  • Network errors                               │
+│  • A failed token refetch after a 401           │
 │  Handled by: the callback's err parameter       │
 └─────────────────────────────────────────────────┘
 ```
 
-Both become `{ result: null, isError: true, error: formatError(...) }`.
+`RegisterTool` (`src/helpers/register-tool.ts`) prepares each call (the token, and on a company's first use the name check) before it runs the handler. A failure there answers the error result at once and the handler never runs. `QuickbooksClient.getInstance()` rejects only outside a tool call, so the handler's try/catch is left for that; a token failure on a 401's refetch is recorded on the call by the transport interceptor and comes back through the callback's `err`. The handler's own failures become `{ result: null, isError: true, error: formatError(...) }`; the result a tool call returns follows contract 1.1.
 
 ### Response Format
 
@@ -476,7 +486,7 @@ MCP client sends a tool invocation
 
 ## Security
 
-1. **No credentials in this server**: it holds no QuickBooks refresh token, client id or client secret; the token client gets an access token from Stacks on every call
+1. **No credentials in this server**: it holds no QuickBooks refresh token, client id or client secret; the token client gets an access token from Stacks and keeps it in memory until 5 minutes before it expires
 2. **No sign-in material**: the server refuses to start if any of the four removed sign-in keys is present
 3. **Redaction**: every access token the call held, and the Stacks key, are kept out of results, errors and logs; an `intuit_tid` that contains any of them is dropped
 4. **Read only**: only the allowlisted read tools are registered

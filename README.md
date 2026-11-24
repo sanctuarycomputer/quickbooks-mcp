@@ -1,4 +1,4 @@
-<!-- Changed by Sanctuary Computer (quickbooks-mcp-285): describes the read-only fork. -->
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285, quickbooks-mcp-286): describes the read-only fork. -->
 # QuickBooks Online MCP Server
 
 ## This fork
@@ -6,9 +6,9 @@
 This is Sanctuary Computer's read-only fork of the QuickBooks Online MCP server.
 
 - It is read only. It registers 31 read tools (listed under [Available Tools](#available-tools)) and `qbo_companies`. Nothing else is registered: no create, update or delete tools.
-- There is no sign-in in this fork, and it never holds or stores a QuickBooks refresh token, client id or client secret. On every call it asks Stacks for an access token for the company the call names (see [Configuration](#configuration) and [How a call works](#how-a-call-works)).
-- Every tool takes a required `company`. `qbo_companies` lists the company keys and names you can pass.
-- Files this fork changed carry a "Changed by Sanctuary Computer (quickbooks-mcp-285)" notice, and files it added a "Sanctuary Computer (quickbooks-mcp-285)" one, where the format allows a comment (source, tests, `jest.config.js`, the docs and `.env.example`); `package.json` and `package-lock.json` can't hold one, and the fork's pull request lists their changes. Deleted files are listed there too.
+- There is no sign-in in this fork, and it never holds or stores a QuickBooks refresh token, client id or client secret. It gets an access token for the company a call names from Stacks, and keeps it in memory until 5 minutes before it expires (see [Configuration](#configuration) and [How a call works](#how-a-call-works)).
+- Every read tool takes a required `company`. `qbo_companies` lists the company keys and names you can pass.
+- Files this fork changed carry a "Changed by Sanctuary Computer (quickbooks-mcp-NNN)" notice, and files it added a "Sanctuary Computer (quickbooks-mcp-NNN)" one, where NNN is the ticket that made the change (285, 286 or 291), where the format allows a comment (source, tests, `jest.config.js`, the docs and `.env.example`); `package.json` and `package-lock.json` can't hold one, and the fork's pull request lists their changes. Deleted files are listed there too.
 - Licence mismatch: `LICENSE` holds the Apache-2.0 text (with "January 2025" typed for "January 2004" and a filled-in "Copyright 2025 Intuit, Inc."), while `package.json` says MIT. This fork leaves both as they are. See the ticket 283 fork review.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the start check, the token client and the guard work.
@@ -49,15 +49,21 @@ The server reads five keys from its environment. `.env.example` lists them with 
 | `QUICKBOOKS_ENVIRONMENT` | yes | Must be `production`. |
 | `QBO_MODE` | optional | If set, must be `read`. |
 
-The server refuses to start, with `refused to start: <KEY> <reason>` (it names the key and never prints its value), when:
+The server refuses to start when any of these holds. The key refusals read `refused to start: <KEY> <reason>`; they name the key and never print its value.
+
+Key refusals:
 
 - `STACKS_QBO_URL` is not set, is empty, is not a URL, is not https, or has a username, password, path, query or fragment;
 - `STACKS_QBO_TOKEN` is not set or is empty;
 - `QUICKBOOKS_ENVIRONMENT` is not set or is not `production`;
 - `QBO_COMPANIES` is not set, is unreadable, or its file is not a valid entities file;
 - `QBO_MODE` is set to anything but `read`;
-- any of the four QuickBooks sign-in keys the fork removed is present in the environment, even empty (the list is `REFUSED_KEYS` in `src/allowlist.ts`);
-- the registered tools do not match the allowlist.
+- any of the four QuickBooks sign-in keys the fork removed is present in the environment, even empty (the list is `REFUSED_KEYS` in `src/allowlist.ts`).
+
+Other refusals:
+
+- the registered tools do not match the allowlist (`refused to start: allowlist: <duplicate, missing or unlisted> <tool>`, which names no key);
+- the process environment is unsafe for the guard: a proxy (`NODE_USE_ENV_PROXY`, `--use-env-proxy` or a config-file flag), `NODE_TLS_REJECT_UNAUTHORIZED=0` or `NODE_EXTRA_CA_CERTS`. These read `qbo-guard: start refused: <key>`, and a guard that cannot be installed reads `qbo-guard: install failed` (see [HTTP guard](docs/ARCHITECTURE.md#http-guard)).
 
 ### Claude Code Integration
 
@@ -119,15 +125,15 @@ The server registers these 31 read tools and `qbo_companies`, and nothing else. 
 
 ## How a call works
 
-There is no sign-in. The fork asks Stacks for a short-lived access token for each company.
+There is no sign-in. The fork gets a short-lived access token for each company from Stacks and keeps it in memory until 5 minutes before it expires.
 
 1. A tool call arrives with `company`.
-2. The call context starts. It holds that call's company and tokens, and nothing is shared between calls.
-3. The access token comes from Stacks: `GET <STACKS_QBO_URL>/api/qbo/access_token?enterprise=<company>` with the `X-Api-Key` header, a 10 second timeout and one retry. A kept token is refetched once it is within 5 minutes of its `expires_at`.
+2. The call context starts. It holds that call's company, tokens and failure, and is not shared between calls. What is kept across calls is each company's token, realm, refusal and passed name check.
+3. The access token comes from Stacks: `GET <STACKS_QBO_URL>/api/qbo/access_token?enterprise=<company>` with the `X-Api-Key` header and a 10 second timeout. A token the fork already keeps is used with no request until 5 minutes before its `expires_at`; then it is fetched again. The request is sent once more only when there was no answer or the answer cannot be read; a 403, 404, 409 or 502 the fork can read is not asked again.
 4. On the first use of each company, its QuickBooks company name is checked against `accepted_names` in the `QBO_COMPANIES` file. A mismatch refuses that company until the server restarts.
-5. Every request goes through the HTTP guard, which allows only the read requests in contract 1.0.
-6. If QuickBooks answers 401, the token is fetched again and the request is sent once more. If it answers 429, the request is sent once more after `Retry-After` (at most 30 seconds).
-7. Results follow contract 1.0 (`docs/contracts/quickbooks.md` in Stacksbot).
+5. Every request goes through the HTTP guard, which allows only the read requests in contract 1.1.
+6. Every QuickBooks request has a 15 second limit. If QuickBooks answers a GET with 401, the token is fetched again and the request is sent once more. If it answers 429, the request is sent once more after `Retry-After` in whole seconds (at most 30 seconds; 2 seconds when the header is missing or not whole seconds). Each resend is made once per request.
+7. Results follow contract 1.1 (`docs/contracts/quickbooks.md` in Stacksbot).
 
 The fork never holds or stores a refresh token, client id or client secret.
 
@@ -168,7 +174,11 @@ tests/
 │   ├── handlers/    # Handler tests (25 test files)
 │   ├── helpers/     # Helper tests
 │   └── tools/       # Tool tests
+├── integration/     # Tests that run the server's parts together
 ├── e2e/             # Tests that spawn the built server
+├── fakes/           # Fake Stacks and QuickBooks answers and fixtures for the contract
+├── fixtures/        # Scripts the tests spawn
+├── helpers/         # Test helpers
 └── mocks/           # Test mocks
 
 docs/
@@ -191,8 +201,8 @@ docs/
 
 ## Error Handling
 
-- A start that fails says `refused to start: <reason>`. The reason is one of the configuration refusals listed under [Configuration](#configuration), or an allowlist mismatch (duplicate, missing or unlisted tool).
-- A tool call that fails returns an error result that follows contract 1.0. It never holds a token or the Stacks key.
+- A start that fails says `refused to start: <reason>` for a key or an allowlist mismatch, or `qbo-guard: start refused: <key>` for an unsafe environment; all are listed under [Configuration](#configuration).
+- A tool call that fails returns an error result that follows contract 1.1. It never holds a token or the Stacks key.
 
 ---
 
