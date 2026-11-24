@@ -5,6 +5,7 @@
 import QuickBooks from "node-quickbooks";
 import { recordFailure, type Failure } from "../clients/call-context.js";
 import type { ToolResponse } from "../types/tool-response.js";
+import { buildQuickbooksSearchCriteria } from "./build-quickbooks-search-criteria.js";
 
 // node-quickbooks' own operator list (index.js:24): an operator outside it never reaches the statement.
 const QUERY_OPERATORS: readonly string[] = (QuickBooks as unknown as { QUERY_OPERATORS: string[] }).QUERY_OPERATORS;
@@ -210,9 +211,29 @@ export function normalizeSearch(tool: string, criteria: unknown, top: SearchTop 
     return { ok: true, criteria: criteriaOut, usedOffset, count: false, criteriaOffset: CRITERIA_ONLY_TOOLS.includes(tool) };
   } catch (e) {
     if (!(e instanceof Refused)) throw e;
-    return { ok: false, failure: { reason: "fork-error", text: searchRefusalText(e.what) } };
+    return refusedSearch(e.what);
   }
 }
+
+/**
+ * For the seven handlers that build their criteria with buildQuickbooksSearchCriteria: checks every value the builder
+ * dereferences before it runs (its `filters` or `criteria` list must be an array of objects, and only one of the two
+ * may be given, since the builder would drop the other), then builds and normalizes.
+ */
+export function normalizeBuiltSearch(tool: string, input: unknown): SearchNormalized {
+  if (isRecord(input)) {
+    const lists = (["filters", "criteria"] as const).filter((k) => input[k] !== undefined && input[k] !== null);
+    if (lists.length > 1) return refusedSearch("give filters or criteria, not both");
+    for (const key of lists) {
+      const list = input[key];
+      if (!Array.isArray(list)) return refusedSearch(`${key} must be an array`);
+      if (!list.every(isRecord)) return refusedSearch("each criterion must be an object");
+    }
+  }
+  return normalizeSearch(tool, buildQuickbooksSearchCriteria(input as Record<string, unknown>));
+}
+
+const refusedSearch = (what: string): SearchNormalized => ({ ok: false, failure: { reason: "fork-error", text: searchRefusalText(what) } });
 
 type OptionRule = (v: unknown) => boolean;
 const matches = (re: RegExp): OptionRule => (v) => typeof v === "string" && re.test(v);
@@ -252,15 +273,19 @@ const REPORT_RULES = {
 
 export type ReportTool = keyof typeof REPORT_RULES;
 
-/** Checks a report handler's options against its keys' patterns (A6.4); none of them admits `&`, `#`, `=` or `%`. */
+/** Checks a report handler's options against its keys' patterns (A6.4); none of them admits `&`, `#`, `=` or `%`. Gives back only those keys. */
 export function normalizeReport(tool: ReportTool, options: unknown): ReportNormalized {
   const refuse = (option: string): ReportNormalized => ({ ok: false, failure: { reason: "fork-error", text: reportRefusalText(option) } });
   if (options === undefined || options === null) return { ok: true, options: {} };
   if (!isRecord(options)) return refuse("options");
   const rules: Record<string, OptionRule> = REPORT_RULES[tool];
+  // Only the keys checked here are passed on: a key with no rule never reaches the handler (T8-6).
+  const checked: Record<string, unknown> = {};
   for (const [key, rule] of Object.entries(rules)) {
     const v = options[key];
-    if (v !== undefined && !rule(v)) return refuse(key);
+    if (v === undefined) continue;
+    if (!rule(v)) return refuse(key);
+    checked[key] = v;
   }
-  return { ok: true, options };
+  return { ok: true, options: checked };
 }

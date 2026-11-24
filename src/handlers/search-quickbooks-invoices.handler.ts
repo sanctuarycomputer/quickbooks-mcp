@@ -3,9 +3,9 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
-import { normalizeSearch, refusal } from "../helpers/validate-input.js";
+import { normalizeBuiltSearch, refusal } from "../helpers/validate-input.js";
 import { setUsedOffset } from "../clients/call-context.js";
-import { buildQuickbooksSearchCriteria, QuickbooksSearchCriteriaInput } from "../helpers/build-quickbooks-search-criteria.js";
+import { QuickbooksSearchCriteriaInput } from "../helpers/build-quickbooks-search-criteria.js";
 
 export type InvoiceSearchCriteria = QuickbooksSearchCriteriaInput;
 
@@ -14,7 +14,7 @@ export type InvoiceSearchCriteria = QuickbooksSearchCriteriaInput;
  */
 export async function searchQuickbooksInvoices(criteria: InvoiceSearchCriteria): Promise<ToolResponse<any[]>> {
   try {
-    const r = normalizeSearch("search_invoices", buildQuickbooksSearchCriteria(criteria));
+    const r = normalizeBuiltSearch("search_invoices", criteria);
     if (!r.ok) return refusal(r.failure);
     setUsedOffset(r.usedOffset);
     const normalizedCriteria = r.criteria;

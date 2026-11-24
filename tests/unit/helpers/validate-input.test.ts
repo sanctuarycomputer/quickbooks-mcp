@@ -3,6 +3,7 @@
 // handler inside a call with the QuickBooks fake, is tests/unit/handlers/search-requests.test.ts.
 import { describe, it, expect } from '@jest/globals';
 import {
+  normalizeBuiltSearch,
   normalizeReport,
   normalizeSearch,
   refusal,
@@ -439,11 +440,14 @@ describe('A6.4 report options: each key per report, refused with D6 and accepted
     expect(normalizeReport('get_profit_and_loss', { summarize_column_by: 'Classes' })).toMatchObject({ ok: true });
     expect(normalizeReport('get_balance_sheet', { summarize_column_by: 'Classes' })).toMatchObject({ ok: false });
   });
-  it('a key that is not the report’s own is not checked (the handler drops it)', () => {
-    expect(normalizeReport('get_trial_balance', { vendor: '5#' })).toEqual({ ok: true, options: { vendor: '5#' } });
+  it('T8-6: only the checked keys are passed on; a key with no rule for the report never is', () => {
+    const r = normalizeReport('get_trial_balance', { vendor: '5#', start_date: '2026-10-01', extra: 'x&y=1' }) as { ok: true; options: object };
+    expect(r).toEqual({ ok: true, options: { start_date: '2026-10-01' } });
+    expect(Object.keys(r.options)).toEqual(['start_date']);
   });
   it('an undefined key is absent; missing options are {}; non-object options are refused', () => {
-    expect(normalizeReport('get_cash_flow', { start_date: undefined })).toEqual({ ok: true, options: { start_date: undefined } });
+    const undef = normalizeReport('get_cash_flow', { start_date: undefined }) as { ok: true; options: object };
+    expect(Object.keys(undef.options)).toEqual([]);
     expect(normalizeReport('get_cash_flow', undefined)).toEqual({ ok: true, options: {} });
     expect(normalizeReport('get_cash_flow', null)).toEqual({ ok: true, options: {} });
     for (const o of ['start_date=2026-10-01', [], 5]) {
@@ -454,3 +458,87 @@ describe('A6.4 report options: each key per report, refused with D6 and accepted
     expect(normalizeReport('get_profit_and_loss', { vendor: 'x', customer: 'y' })).toMatchObject({ failure: { text: REPORT('customer') } });
   });
 });
+
+// Fix round 1 (T8-1, T8-3): the seven builder handlers' input, checked before and after buildQuickbooksSearchCriteria.
+describe('T8-3 normalizeBuiltSearch checks every value the builder dereferences before it runs', () => {
+  const built = (input: unknown) => whatBuilt('search_accounts', input);
+  it.each([
+    ['filters a string', { filters: 'abc' }, 'filters must be an array'],
+    ['filters an object', { filters: { field: 'Name', value: 'x' } }, 'filters must be an array'],
+    ['filters a number', { filters: 5 }, 'filters must be an array'],
+    ['criteria a string', { criteria: 'abc' }, 'criteria must be an array'],
+    ['criteria true', { criteria: true }, 'criteria must be an array'],
+    ['filters holding null', { filters: [null] }, 'each criterion must be an object'],
+    ['criteria holding null', { criteria: [null] }, 'each criterion must be an object'],
+    ['criteria holding a string', { criteria: [{ field: 'Name', value: 'x' }, 'x'] }, 'each criterion must be an object'],
+    ['filters holding an array', { filters: [[{ field: 'Name', value: 'x' }]] }, 'each criterion must be an object'],
+    ['filters and criteria both (the builder would drop criteria)', { filters: [], criteria: [{ field: 'Name', value: 'x' }] }, 'give filters or criteria, not both'],
+    ['filters and criteria both, non-empty', { filters: [{ field: 'Name', value: 'a' }], criteria: [{ field: 'Name', value: 'b' }] }, 'give filters or criteria, not both'],
+  ] as Array<[string, unknown, string]>)('%s is refused', (_label, input, expected) => {
+    expect(built(input)).toBe(expected);
+  });
+  it.each([
+    ['filters an array of objects', { filters: [{ field: 'Name', value: 'x' }] }],
+    ['criteria an array of objects', { criteria: [{ field: 'Name', value: 'x' }] }],
+    ['an empty filters list', { filters: [] }],
+    ['filters null beside a criteria list (the builder reads criteria)', { filters: null, criteria: [{ field: 'Name', value: 'x' }] }],
+    ['criteria null beside a filters list', { filters: [{ field: 'Name', value: 'x' }], criteria: null }],
+    ['filters undefined', { filters: undefined, limit: 5 }],
+    ['no criteria', undefined],
+    ['an array', [{ field: 'Name', value: 'x' }]],
+  ] as Array<[string, unknown]>)('%s is accepted', (_label, input) => {
+    expect(built(input)).toBe('ok');
+  });
+  it('a string or function still reaches normalizeSearch and is refused there', () => {
+    expect(built("Name = 'x'")).toBe('criteria must be an object or an array');
+    expect(built(() => 1)).toBe('criteria must be an object or an array');
+  });
+  it('a null list beside the other keeps the other list as the builder reads it', () => {
+    expect(normalizeBuiltSearch('search_accounts', { filters: null, criteria: [{ field: 'Name', value: 'x' }] })).toMatchObject({
+      ok: true, criteria: [{ field: 'Name', value: 'x' }, { field: 'limit', value: 1000 }],
+    });
+  });
+});
+
+describe('T8-1 a filter key beside an advanced key reaches the normalizer as a filter (every shape the three accept)', () => {
+  const tools = ['search_accounts', 'search_invoices', 'search_items'];
+  it.each(tools)('%s: a filter beside each page key is kept and filters the query', (tool) => {
+    expect(normalizeBuiltSearch(tool, { CustomerRef: '5', offset: 1001 })).toEqual({
+      ok: true,
+      criteria: [{ field: 'CustomerRef', value: '5' }, { field: 'offset', value: 1001 }, { field: 'limit', value: 1000 }],
+      usedOffset: 1001, count: false, criteriaOffset: true,
+    });
+    expect(normalizeBuiltSearch(tool, { Name: 'x', limit: 5 })).toMatchObject({ ok: true, criteria: [{ field: 'Name', value: 'x' }, { field: 'limit', value: 5 }] });
+    expect(normalizeBuiltSearch(tool, { Name: 'x', asc: 'Id' })).toMatchObject({ ok: true, criteria: [{ field: 'Name', value: 'x' }, { field: 'asc', value: 'Id' }, { field: 'limit', value: 1000 }] });
+    expect(normalizeBuiltSearch(tool, { Name: 'x', desc: 'Id' })).toMatchObject({ ok: true, criteria: [{ field: 'Name', value: 'x' }, { field: 'desc', value: 'Id' }, { field: 'limit', value: 1000 }] });
+    expect(normalizeBuiltSearch(tool, { Name: 'x', filters: [{ field: 'Id', value: '1' }] })).toMatchObject({
+      ok: true, criteria: [{ field: 'Id', value: '1' }, { field: 'Name', value: 'x' }, { field: 'limit', value: 1000 }],
+    });
+    expect(normalizeBuiltSearch(tool, { Name: 'x', Limit: 5, offset: 2 })).toMatchObject({ ok: true, criteria: [{ field: 'Name', value: 'x' }, { field: 'limit', value: 5 }, { field: 'offset', value: 2 }] });
+    expect(normalizeBuiltSearch(tool, { Offset: 101, limit: 5 })).toMatchObject({ ok: true, usedOffset: 101, criteria: [{ field: 'limit', value: 5 }, { field: 'offset', value: 101 }] });
+  });
+  it.each(tools)('%s: an array value beside a page key is IN, as a plain record reads it', (tool) => {
+    expect(normalizeBuiltSearch(tool, { Id: ['1', '2'], limit: 5 })).toMatchObject({ ok: true, criteria: [{ field: 'Id', value: ['1', '2'], operator: 'IN' }, { field: 'limit', value: 5 }] });
+  });
+  it.each(tools)('%s: a bad key beside a page key is refused, not dropped', (tool) => {
+    const w = (input: unknown) => whatBuilt(tool, input);
+    expect(w({ 'Name;': 'x', limit: 5 })).toBe(BAD_NAME);
+    expect(w({ FetchAll: true, limit: 5 })).toBe(FETCH_ALL);
+    expect(w({ Count: true, limit: 5 })).toBe(COUNT_NO);
+    expect(w({ count: true, Name: 'x' })).toBe(COUNT_NO);
+    expect(w({ fetchAll: true, Name: 'x' })).toBe(FETCH_ALL);
+    expect(w({ Name: 'abc\\', offset: 2 })).toBe(BAD_VALUE('Name'));
+    expect(w({ Limit: 5, limit: 5 })).toBe('limit is given more than once');
+    expect(w({ Name: 'x', LIMIT: 5, limit: 6 })).toBe('limit is given more than once');
+  });
+  it('an undefined key beside a page key is absent', () => {
+    expect(normalizeBuiltSearch('search_items', { Name: undefined, limit: 5 })).toMatchObject({ ok: true, criteria: [{ field: 'limit', value: 5 }] });
+  });
+});
+
+/** normalizeBuiltSearch's refusal `<what>`, or 'ok'. */
+function whatBuilt(tool: string, input: unknown): string {
+  const r = normalizeBuiltSearch(tool, input);
+  if (r.ok) return 'ok';
+  return (r.failure.text as string).slice('The search was refused before reaching QuickBooks: '.length, -'. Use limit up to 1000 and page with offset.'.length);
+}

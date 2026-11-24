@@ -325,6 +325,58 @@ describe('A5.1 the three with required criteria, called at the handler with no c
   });
 });
 
+// Fix round 1 (T8-1, T8-3): the three criteria-only tools' mixed objects and broken lists, at the request.
+describe('T8-1 a filter beside a page key filters the query on the three criteria-only tools', () => {
+  const THREE: Array<[string, string, (c: any) => Promise<unknown>, string, string]> = [
+    ['search_accounts', 'account', searchQuickbooksAccounts, 'Name', 'Cash'],
+    ['search_invoices', 'invoice', searchQuickbooksInvoices, 'CustomerRef', '5'],
+    ['search_items', 'item', searchQuickbooksItems, 'Name', 'Widget'],
+  ];
+  it.each(THREE)('%s: beside limit, offset, asc and desc', async (_tool, entity, handler, field, value) => {
+    const where = `select * from ${entity} where ${field} = '${value}'`;
+    const cases: Array<[P, string, number]> = [
+      [{ [field]: value, limit: 5 }, `${where} startposition 1 maxresults 5`, 1],
+      [{ [field]: value, offset: 1001 }, `${where} startposition 1001 maxresults 1000`, 1001],
+      [{ [field]: value, offset: 101, limit: 21 }, `${where} startposition 101 maxresults 21`, 101],
+      [{ [field]: value, asc: 'Id' }, `${where} orderby Id asc startposition 1 maxresults 1000`, 1],
+      [{ [field]: value, desc: 'Id' }, `${where} orderby Id desc startposition 1 maxresults 1000`, 1],
+    ];
+    for (const [criteria, query, used] of cases) {
+      const r = await inCall(() => handler(criteria));
+      expect([criteria, r.failure, r.queries, r.usedOffset]).toEqual([criteria, null, [query], used]);
+    }
+  });
+  it.each(THREE)('%s: a bad key beside a page key is refused with no request', async (_tool, _entity, handler) => {
+    const cases: Array<[P, string]> = [
+      [{ 'Name;': 'x', limit: 5 }, "a field name isn't valid"],
+      [{ FetchAll: true, limit: 5 }, FETCH_ALL],
+      [{ Count: true, limit: 5 }, COUNT_NO],
+      [{ Name: 'x', Limit: 5, limit: 5 }, 'limit is given more than once'],
+    ];
+    for (const [criteria, what] of cases) {
+      const r = await inCall(() => handler(criteria));
+      expect([criteria, r.failure, r.requests]).toEqual([criteria, { reason: 'fork-error', text: SENTENCE(what) }, []]);
+    }
+  });
+});
+
+describe('T8-3 a broken filters or criteria list is refused before the builder, with no request', () => {
+  it.each([
+    ['search_accounts filters a string', () => searchQuickbooksAccounts({ filters: 'abc' } as any), 'filters must be an array'],
+    ['search_invoices criteria a string', () => searchQuickbooksInvoices({ criteria: 'abc' } as any), 'criteria must be an array'],
+    ['search_items filters holding null', () => searchQuickbooksItems({ filters: [null] } as any), 'each criterion must be an object'],
+    ['search_purchases criteria holding null', () => viaTool(SearchPurchasesTool)({ criteria: [null] }), 'each criterion must be an object'],
+    ['search_employees criteria holding null', () => viaTool(SearchEmployeesTool)({ criteria: [{ field: 'Id', value: '1' }, null] }), 'each criterion must be an object'],
+    ['search_bill_payments criteria a string', () => searchQuickbooksBillPayments({ criteria: 'abc' }), 'criteria must be an array'],
+    ['search_journal_entries criteria holding null', () => searchQuickbooksJournalEntries({ criteria: [null] }), 'each criterion must be an object'],
+    ['search_accounts filters and criteria both', () => searchQuickbooksAccounts({ filters: [], criteria: [{ field: 'Name', value: 'x' }] } as any), 'give filters or criteria, not both'],
+  ] as Array<[string, () => Promise<unknown>, string]>)('%s', async (_label, run, what) => {
+    const r = await inCall(run);
+    expect(isError(r.out)).toBe(true);
+    expectRefused(r, what);
+  });
+});
+
 describe('A5.2 a page key given twice is refused with no request', () => {
   it.each([
     ['search_purchases top level and a {field} entry', viaTool(SearchPurchasesTool), { limit: 5, criteria: [{ field: 'limit', value: 5 }] }, 'limit'],

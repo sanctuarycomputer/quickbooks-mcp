@@ -3,16 +3,15 @@
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
-import { normalizeSearch, refusal } from "../helpers/validate-input.js";
+import { normalizeBuiltSearch, refusal } from "../helpers/validate-input.js";
 import { setUsedOffset } from "../clients/call-context.js";
-import { buildQuickbooksSearchCriteria } from "../helpers/build-quickbooks-search-criteria.js";
 
 /**
  * Search purchases in QuickBooks Online that match given criteria
  */
 export async function searchQuickbooksPurchases(params: any): Promise<ToolResponse<any>> {
   try {
-    const r = normalizeSearch("search_purchases", buildQuickbooksSearchCriteria(params));
+    const r = normalizeBuiltSearch("search_purchases", params);
     if (!r.ok) return refusal(r.failure);
     setUsedOffset(r.usedOffset);
     const criteria = r.criteria;

@@ -1,4 +1,4 @@
-// Changed by Sanctuary Computer (quickbooks-mcp-286): page keys pass on whatever their value, for the input normalizer to check.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): page keys and filter keys pass on whatever their value, for the input normalizer to check.
 export interface QuickbooksFilter {
   /** Field/column name to filter on */
   field: string;
@@ -84,6 +84,14 @@ export function buildQuickbooksSearchCriteria(
   filterList?.forEach((f) => {
     criteriaArr.push({ field: f.field, value: f.value, operator: f.operator });
   });
+
+  // Changed by Sanctuary Computer (quickbooks-mcp-286): every other key is a filter, passed on as node-quickbooks reads
+  // a plain record's key (`IN` for an array), never dropped: so `{ CustomerRef: '5', offset: 1001 }` stays filtered,
+  // and the normalizer checks each key's name and value (a case variant of a page key, fetchAll or count included).
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (value === undefined || possibleAdvancedKeys.includes(key as keyof AdvancedQuickbooksSearchOptions)) continue;
+    criteriaArr.push(Array.isArray(value) ? { field: key, value, operator: "IN" } : { field: key, value });
+  }
 
   // Sorting and pagination / meta. Changed by Sanctuary Computer (quickbooks-mcp-286): every key given is passed on,
   // whatever its value, so that the input normalizer (validate-input.ts) sees it and refuses a bad one, never drops it.

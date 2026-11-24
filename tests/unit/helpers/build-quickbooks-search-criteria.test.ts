@@ -89,6 +89,20 @@ describe('buildQuickbooksSearchCriteria – Fixes #13', () => {
     ]);
   });
 
+  // quickbooks-mcp-286 (T8-1): a key beside an advanced key is a filter, never dropped; an array value is IN.
+  it('passes every other key on as a filter entry', () => {
+    expect(buildQuickbooksSearchCriteria({ CustomerRef: '5', Id: ['1', '2'], Gone: undefined, offset: 1001 } as any)).toEqual([
+      { field: 'CustomerRef', value: '5' },
+      { field: 'Id', value: ['1', '2'], operator: 'IN' },
+      { field: 'offset', value: 1001 },
+    ]);
+    expect(buildQuickbooksSearchCriteria({ filters: [{ field: 'Id', value: '1', operator: '=' }], Name: 'x', limit: 5 })).toEqual([
+      { field: 'Id', value: '1', operator: '=' },
+      { field: 'Name', value: 'x' },
+      { field: 'limit', value: 5 },
+    ]);
+  });
+
   it('should return empty object when advanced options are all empty', () => {
     const input = { filters: [] };
     const result = buildQuickbooksSearchCriteria(input);
