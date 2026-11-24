@@ -223,6 +223,8 @@ describe('A3.3: the call store is the only holder and reader of company identity
       'src/write/client.ts: currentCall()', // the write client's GETs: the call's own token and realm
       'src/write/guard-rules.ts: deps.company', // decideWrite's company callback (the call's), never a kept company
       'src/write/guard-rules.ts: deps.company', // decideDry's, the same
+      'src/write/pre-send.ts: currentCall()', // the pre-send check's call, whose failure it reads
+      'src/write/pre-send.ts: call.company', // compared with the input's company, which must be the call's
     ]);
   });
 
