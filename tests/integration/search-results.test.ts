@@ -40,7 +40,7 @@ const call = (name: string, params: Record<string, unknown>): Promise<any> => ri
 // Two built rows, the same for every tool: the first with two Lines (a journal Line's PostingType among them), every
 // field the spec names (a bill's DueDate and Balance, a purchase's AccountRef, PaymentType and Credit), another array
 // (LinkedTxn) that stays inside its object, and a PrivateNote and a Line Description holding LF, CR and U+2028.
-const MEMO = 'memo line one\nline two\rend after';
+const MEMO = 'memo line one\nline two\rend\u2028after';
 const FIRST = {
   Id: '1',
   SyncToken: '0',
@@ -97,7 +97,7 @@ describe.each(SEARCHES)('%s', (tool) => {
     expect(rebuild(text)).toStrictEqual([FIRST, SECOND]);
     const split = text.split('\n');
     expect(split).toHaveLength(4);
-    expect(split[0]).toContain('"PrivateNote":"memo line one\\nline two\\rend after"');
+    expect(split[0]).toContain('"PrivateNote":"memo line one\\nline two\\rend\u2028after"');
     expect(split[1]).toContain('"Description":"first\\nsecond\\r"');
     expect(text).not.toContain('\r');
     // Each line ends with depth, after the entity's own keys.
