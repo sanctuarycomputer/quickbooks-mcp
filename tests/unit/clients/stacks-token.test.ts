@@ -1,6 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-286): the Stacks token client, contract 1.1 §2 (A1.1-A1.7, A1.3b, A2.2, A2.6's Stacks
 // path, A3.6 (a)-(d), A3.7's Stacks half). Every request goes through 291's guard to the stub network below it.
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { trapNetwork } from '../../fakes/no-network.js';
@@ -103,6 +103,13 @@ afterEach(() => {
   for (const s of stderr) for (const secret of [KEY, ACCESS, ACCESS_B, FIXTURE_ACCESS]) expect(s).not.toContain(secret);
   net.calls.length = 0;
 });
+// Secrets (T5-5): after every case has run, no failure any case watched holds an access token or the key.
+afterAll(() => {
+  expect(seenFailures.length).toBeGreaterThan(60);
+  const text = JSON.stringify(seenFailures);
+  for (const secret of [KEY, ACCESS, ACCESS_B, FIXTURE_ACCESS]) expect(text).not.toContain(secret);
+  expect(seenFailures.some((f) => f.reported !== undefined)).toBe(true);
+});
 
 describe('createRealmStore', () => {
   it('keeps a realm and a refusal per company, each store its own', () => {
@@ -177,6 +184,9 @@ describe('A1.1: the request', () => {
   });
 
   it('a company not in the config is fork-error with no request', async () => {
+    // The guard would let `nope` through, so only the client's own check keeps the request from being sent.
+    restoreGuard();
+    restoreGuard = startTestGuard({ stacksUrl: STACKS, keys: [...KEYS, 'nope'] });
     const { fake, client } = rig({});
     expect(watch(await client.get('nope'))).toEqual({ ok: false, failure: { reason: 'fork-error' } });
     expect(fake.requests).toHaveLength(0);
@@ -392,6 +402,95 @@ describe('A1.5: retry only on step 7', () => {
   }
 });
 
+describe('T5-1: only a transport failure is step 7; any other throw is fork-error, asked once', () => {
+  /** A table whose every request fails at the connection with `code` (the adapter wraps it in an AxiosError). */
+  const failing = (code: string): StubTable => () => Promise.reject(Object.assign(new Error(`connect ${code}`), { code }));
+  const TRANSPORT = [
+    'ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'EHOSTUNREACH', 'EHOSTDOWN', 'ENETUNREACH', 'ENETDOWN', 'ENOTFOUND',
+    'EAI_AGAIN', 'ERR_BAD_RESPONSE', 'EPROTO', 'CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID', 'CERT_REVOKED', 'CERT_UNTRUSTED',
+    'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_GET_ISSUER_CERT', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+    'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'ERR_TLS_CERT_ALTNAME_INVALID', 'ERR_TLS_HANDSHAKE_TIMEOUT', 'ERR_SSL_WRONG_VERSION_NUMBER',
+  ];
+
+  for (const code of TRANSPORT) {
+    it(`a transport failure ${code}: stacks-unreachable after two requests`, async () => {
+      const { client } = rig({});
+      table = failing(code);
+      expect(watch(await client.get('garden3d'))).toEqual({ ok: false, failure: { reason: 'stacks-unreachable' } });
+      expect(net.calls).toHaveLength(2);
+    });
+  }
+
+  for (const code of ['ERR_BAD_REQUEST', 'ERR_SOMETHING_ELSE']) {
+    it(`a connection failure with an unlisted code ${code}: fork-error after one request`, async () => {
+      const { client, realms } = rig({});
+      table = failing(code);
+      expect(watch(await client.get('garden3d'))).toEqual({ ok: false, failure: { reason: 'fork-error' } });
+      expect(net.calls).toHaveLength(1);
+      expect(realms.refused('garden3d')).toBeUndefined();
+    });
+  }
+
+  it('a guard refusal (the company outside the guard’s keys): fork-error, asked once, one refusal line, no request reaches Stacks, nothing refused', async () => {
+    restoreGuard();
+    restoreGuard = startTestGuard({ stacksUrl: STACKS, keys: ['usb-club'] });
+    const { fake, client, realms } = rig({});
+    expect(watch(await client.get('garden3d'))).toEqual({ ok: false, failure: { reason: 'fork-error' } });
+    expect(fake.requests).toHaveLength(0);
+    expect(net.calls).toHaveLength(0);
+    expect(stderr.filter((s) => s.startsWith('qbo-guard: refused'))).toEqual(['qbo-guard: refused GET https://stacks.example.test/api/qbo/access_token (stacks)\n']);
+    expect(realms.refused('garden3d')).toBeUndefined();
+    // The company is not refused: once the guard allows it, the next call succeeds.
+    expect(reason(await client.get('usb-club'))).toBe('token');
+  });
+
+  for (const [label, thrown] of [
+    ['a TypeError', () => new TypeError('broken')],
+    ['an Error carrying a transport code but not from axios', () => Object.assign(new Error('x'), { code: 'ECONNRESET' })],
+  ] as const) {
+    it(`a non-transport throw (${label}): fork-error, asked once, no request`, async () => {
+      const ax = guardedAxios();
+      let asked = 0;
+      const id = ax.interceptors.request.use(() => {
+        asked++;
+        throw thrown();
+      });
+      try {
+        const { fake, client } = rig({});
+        expect(watch(await client.get('garden3d'))).toEqual({ ok: false, failure: { reason: 'fork-error' } });
+        expect([asked, fake.requests.length]).toEqual([1, 0]);
+      } finally {
+        ax.interceptors.request.eject(id);
+      }
+    });
+  }
+});
+
+describe('T5-6: the fake’s hang and reset sequence steps', () => {
+  it('502-proxy then a hang step: stacks-unreachable at 10 s, after two requests', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    const { fake, client } = rig({ sequence: ['502-proxy.json', { hang: true }] });
+    let result: TokenResult | undefined;
+    void client.get('garden3d').then((r) => (result = r));
+    await settle();
+    expect([fake.requests.length, result]).toEqual([2, undefined]);
+    await jest.advanceTimersByTimeAsync(9_999);
+    await settle();
+    expect(result).toBeUndefined();
+    await jest.advanceTimersByTimeAsync(1);
+    await settle();
+    expect(result).toEqual({ ok: false, failure: { reason: 'stacks-unreachable' } });
+    watch(result!);
+    expect(fake.requests).toHaveLength(2);
+  });
+
+  it('a reset step then 200: the token, after two requests', async () => {
+    const { fake, client } = rig({ sequence: [{ refuse: 'reset' }, '200-garden3d.json'] });
+    expect(reason(await client.get('garden3d'))).toBe('token');
+    expect(fake.requests).toHaveLength(2);
+  });
+});
+
 describe('A1.6: every row of the mapping, each conjunct its own case', () => {
   const name300 = 'garden3d, LLC' + ' '.repeat(190) + 'X';
   // Step 2: a 200 failing one conjunct of step 1 → fork-error, one request, nothing kept.
@@ -518,11 +617,6 @@ describe('A1.6: every row of the mapping, each conjunct its own case', () => {
     });
   }
 
-  it('no failure any test saw holds an access token or the key (Secrets)', () => {
-    expect(seenFailures.length).toBeGreaterThan(forkErrors.length + unreachable.length);
-    const text = JSON.stringify(seenFailures);
-    for (const secret of [KEY, ACCESS, ACCESS_B, FIXTURE_ACCESS]) expect(text).not.toContain(secret);
-  });
 });
 
 describe('A1.7: the cache holds exactly the four fields', () => {
@@ -657,6 +751,26 @@ describe('A3.6: the realm is kept only after the Stacks name check passes', () =
     await client.get('garden3d');
     const r = await client.get('garden3d', { force: true });
     expect(r.ok && r.token.access_token).toBe(ACCESS_B);
+    expect(realms.kept('garden3d')).toBe(REALM);
+  });
+
+  it('realms.keep is called only when no realm is kept: once over two fetches (T5-2)', async () => {
+    const inner = createRealmStore();
+    const keeps: Array<[string, string]> = [];
+    const realms: RealmStore = { ...inner, keep: (c, r) => (keeps.push([c, r]), inner.keep(c, r)) };
+    const { fake, client } = rig({ sequence: [ok200(body()), ok200(body({ access_token: ACCESS_B }))] }, { realms });
+    expect(reason(await client.get('garden3d'))).toBe('token');
+    expect(reason(await client.get('garden3d', { force: true }))).toBe('token');
+    expect(fake.requests).toHaveLength(2);
+    expect(keeps).toEqual([['garden3d', REALM]]);
+  });
+
+  it('a kept realm, then another realm with a sixth key: plain fork-error, nothing refused, the next good reply accepted (T5-4)', async () => {
+    const { client, realms } = rig({ sequence: [ok200(body()), ok200(body({ realm_id: REALM_OTHER, extra: 'x' })), ok200(body())] });
+    await client.get('garden3d');
+    expect(watch(await client.get('garden3d', { force: true }))).toEqual({ ok: false, failure: { reason: 'fork-error' } });
+    expect(realms.refused('garden3d')).toBeUndefined();
+    expect(reason(await client.get('garden3d', { force: true }))).toBe('token');
     expect(realms.kept('garden3d')).toBe(REALM);
   });
 

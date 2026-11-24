@@ -41,8 +41,47 @@ const REALM = /^[0-9]{1,20}$/;
 const INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const CODE = /^[A-Za-z0-9_-]{1,64}$/;
 
-/** What one request brought back: a status and the body's text, or null for no answer (timeout, refused, reset, TLS). */
-type Answer = { status: number; text: string } | null;
+/**
+ * The transport failures that are step 7's "no answer" (T5-1): an AxiosError carrying one of these codes. Anything
+ * else thrown (the guard's GuardRefusedError, a TypeError, an AxiosError with another code) is the fork's own failure.
+ * ECONNABORTED and ETIMEDOUT: axios' timeout. ERR_BAD_RESPONSE: only a response stream aborted mid-body here
+ * (no maxContentLength is set, and no data: URL passes the guard).
+ */
+const TRANSPORT_CODES: ReadonlySet<string> = new Set([
+  "ECONNABORTED",
+  "ETIMEDOUT",
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "EPIPE",
+  "EHOSTUNREACH",
+  "EHOSTDOWN",
+  "ENETUNREACH",
+  "ENETDOWN",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ERR_BAD_RESPONSE",
+  "EPROTO",
+  "CERT_HAS_EXPIRED",
+  "CERT_NOT_YET_VALID",
+  "CERT_REVOKED",
+  "CERT_UNTRUSTED",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "UNABLE_TO_GET_ISSUER_CERT",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+  "ERR_TLS_HANDSHAKE_TIMEOUT",
+  "ERR_SSL_WRONG_VERSION_NUMBER",
+]);
+
+const isTransportFailure = (e: unknown): boolean =>
+  isObject(e) && e.isAxiosError === true && typeof e.code === "string" && TRANSPORT_CODES.has(e.code);
+
+/** The fork's own failure on a request (a guard refusal, a programming error): fork-error, never asked again. */
+const BROKEN: unique symbol = Symbol("broken");
+/** What one request brought back: a status and the body's text, null for no answer (step 7), or BROKEN. */
+type Answer = { status: number; text: string } | null | typeof BROKEN;
 /** One answer read by the mapping: a step-1 token, a step 2-6 failure (`refuse` for the realm rule), or step 7. */
 type Reading = { kind: "token"; token: Token } | { kind: "failure"; failure: Failure; refuse: boolean } | { kind: "unreachable" };
 
@@ -90,6 +129,7 @@ function readToken(body: unknown, key: string, kept: string | undefined, now: nu
 
 /** §2's Stacks mapping, steps 1-7, in order; the first that holds decides. */
 function read(answer: Answer, key: string, kept: string | undefined, now: number): Reading {
+  if (answer === BROKEN) return forkError();
   if (answer === null) return UNREACHABLE;
   const { status } = answer;
   const body = parse(answer.text);
@@ -198,7 +238,10 @@ export class StacksTokenClient {
     return { ok: true, token };
   }
 
-  /** One GET through the guarded instance, `X-Api-Key` its only credential; any status is an answer, no answer is null. */
+  /**
+   * One GET through the guarded instance, `X-Api-Key` its only credential. Any status is an answer; a transport
+   * failure is null (step 7); any other throw is BROKEN (fork-error, not retried). Nothing of the error is kept.
+   */
   private async ask(key: string): Promise<Answer> {
     try {
       const res = await guardedAxios()({
@@ -211,8 +254,8 @@ export class StacksTokenClient {
         transformResponse: [(data: unknown) => data],
       });
       return { status: res.status, text: String(res.data) };
-    } catch {
-      return null;
+    } catch (e) {
+      return isTransportFailure(e) ? null : BROKEN;
     }
   }
 }
