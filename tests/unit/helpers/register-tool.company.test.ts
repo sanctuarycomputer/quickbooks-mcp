@@ -113,6 +113,33 @@ describe("readTools' import check: a built tool or handler imports only the know
       fs.rmSync(dist, { recursive: true, force: true });
     }
   });
+
+  // T11-1: readTools' two dist rules, each decided with the cache already filled by a plain readTools().
+  it('a cached list never answers a copy: after readTools() filled the cache, a copy is still checked, and refused', async () => {
+    await readTools();
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-tool-imports-'));
+    try {
+      for (const dir of ['tools', 'handlers']) fs.cpSync(path.join(DIST, dir), path.join(dist, dir), { recursive: true });
+      fs.appendFileSync(path.join(dist, 'tools', 'get-company-info.tool.js'), 'import "../http-guard.js";\n');
+      await expect(readTools(dist)).rejects.toThrow(
+        new Error("readTools: tools/get-company-info.tool.js imports ../http-guard.js, outside readTools' known modules"),
+      );
+    } finally {
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  });
+
+  it('a copy is refused: a clean copy of the build, whose imports pass the check, is never loaded', async () => {
+    await readTools();
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-tool-imports-'));
+    try {
+      for (const dir of ['tools', 'handlers']) fs.cpSync(path.join(DIST, dir), path.join(dist, dir), { recursive: true });
+      expect(() => assertToolImports(dist, ['tools/get-company-info.tool.js'])).not.toThrow();
+      await expect(readTools(dist)).rejects.toThrow(new Error('readTools: only the build in dist/ is loaded'));
+    } finally {
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('A3.1: tools/list', () => {
