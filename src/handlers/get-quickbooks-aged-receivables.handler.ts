@@ -1,6 +1,8 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the input normalizer checks the report options before any request (A6.4).
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
+import { normalizeReport, refusal } from "../helpers/validate-input.js";
 
 export interface AgedReceivablesOptions {
   report_date?: string;
@@ -12,13 +14,16 @@ export interface AgedReceivablesOptions {
 
 export async function getQuickbooksAgedReceivables(options: AgedReceivablesOptions): Promise<ToolResponse<any>> {
   try {
+    const r = normalizeReport("get_aged_receivables", options);
+    if (!r.ok) return refusal(r.failure);
+    const o = r.options as AgedReceivablesOptions;
     const quickbooks = await QuickbooksClient.getInstance();
     const params: Record<string, any> = {};
-    if (options.report_date) params.report_date = options.report_date;
-    if (options.customer) params.customer = options.customer;
-    if (options.aging_method) params.aging_method = options.aging_method;
-    if (options.days_per_aging_period) params.days_per_aging_period = options.days_per_aging_period;
-    if (options.num_periods) params.num_periods = options.num_periods;
+    if (o.report_date) params.report_date = o.report_date;
+    if (o.customer) params.customer = o.customer;
+    if (o.aging_method) params.aging_method = o.aging_method;
+    if (o.days_per_aging_period) params.days_per_aging_period = o.days_per_aging_period;
+    if (o.num_periods) params.num_periods = o.num_periods;
 
     return new Promise((resolve) => {
       (quickbooks as any).reportAgedReceivables(params, (err: any, report: any) => {

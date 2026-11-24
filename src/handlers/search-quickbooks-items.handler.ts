@@ -1,14 +1,21 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the input normalizer checks the criteria before any request, and the
+// offset the request uses is kept for the call (A5.1-A5.3, A5.13, A6.3).
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
+import { normalizeSearch, refusal } from "../helpers/validate-input.js";
+import { setUsedOffset } from "../clients/call-context.js";
 import { buildQuickbooksSearchCriteria, QuickbooksSearchCriteriaInput } from "../helpers/build-quickbooks-search-criteria.js";
 
 export type ItemSearchCriteria = QuickbooksSearchCriteriaInput;
 
 export async function searchQuickbooksItems(criteria: ItemSearchCriteria): Promise<ToolResponse<any[]>> {
   try {
+    const r = normalizeSearch("search_items", buildQuickbooksSearchCriteria(criteria));
+    if (!r.ok) return refusal(r.failure);
+    setUsedOffset(r.usedOffset);
+    const normalizedCriteria = r.criteria;
     const quickbooks = await QuickbooksClient.getInstance();
-    const normalizedCriteria = buildQuickbooksSearchCriteria(criteria);
 
     return new Promise((resolve) => {
       (quickbooks as any).findItems(normalizedCriteria, (err: any, items: any) => {

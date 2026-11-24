@@ -1,3 +1,5 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286): report ids are digits now (A6.4's `^[0-9]{1,20}(,[0-9]{1,20})*$`);
+// each upstream non-numeric id has a twin below, refused with D6's sentence and no request.
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { mockQuickbooksClient, mockQuickbooksClientClass, mockQuickBooksInstance, resetAllMocks } from '../../mocks/quickbooks.mock';
 
@@ -93,11 +95,11 @@ describe('Report Handlers', () => {
       mockQuickBooksInstance.reportProfitAndLoss.mockImplementation((params: any, cb: any) => cb(null, {}));
 
       const result = await getQuickbooksProfitAndLoss({
-        customer: 'cust-1',
-        vendor: 'vendor-1',
-        item: 'item-1',
-        department: 'dept-1',
-        class: 'class-1'
+        customer: '101',
+        vendor: '201',
+        item: '301',
+        department: '401',
+        class: '501'
       });
 
       expect(result.isError).toBe(false);
@@ -271,7 +273,7 @@ describe('Report Handlers', () => {
       const mockReport = { Header: { ReportName: 'CustomerSales' } };
       mockQuickBooksInstance.reportCustomerSales.mockImplementation((params: any, cb: any) => cb(null, mockReport));
 
-      const result = await getQuickbooksCustomerSales({ customer: 'cust-1' });
+      const result = await getQuickbooksCustomerSales({ customer: '101' });
 
       expect(result.isError).toBe(false);
     });
@@ -283,7 +285,7 @@ describe('Report Handlers', () => {
       const result = await getQuickbooksCustomerSales({
         start_date: '2024-01-01',
         end_date: '2024-12-31',
-        customer: 'cust-1',
+        customer: '101',
         summarize_column_by: 'Month'
       });
 
@@ -330,7 +332,7 @@ describe('Report Handlers', () => {
       mockQuickBooksInstance.reportAgedReceivables.mockImplementation((params: any, cb: any) => cb(null, mockReport));
 
       const result = await getQuickbooksAgedReceivables({
-        customer: 'cust-123'
+        customer: '123'
       });
 
       expect(result.isError).toBe(false);
@@ -372,7 +374,7 @@ describe('Report Handlers', () => {
 
       const result = await getQuickbooksCustomerBalance({
         report_date: '2024-12-31',
-        customer: 'cust-1',
+        customer: '101',
         summarize_column_by: 'Month'
       });
 
@@ -404,7 +406,7 @@ describe('Report Handlers', () => {
       const mockReport = { Header: { ReportName: 'AgedPayables' } };
       mockQuickBooksInstance.reportAgedPayables.mockImplementation((params: any, cb: any) => cb(null, mockReport));
 
-      const result = await getQuickbooksAgedPayables({ vendor: 'vendor-1' });
+      const result = await getQuickbooksAgedPayables({ vendor: '201' });
 
       expect(result.isError).toBe(false);
     });
@@ -415,7 +417,7 @@ describe('Report Handlers', () => {
 
       const result = await getQuickbooksAgedPayables({
         report_date: '2024-12-31',
-        vendor: 'vendor-1',
+        vendor: '201',
         aging_method: 'Current',
         days_per_aging_period: 30,
         num_periods: 4
@@ -461,7 +463,7 @@ describe('Report Handlers', () => {
       const result = await getQuickbooksVendorExpenses({
         start_date: '2024-01-01',
         end_date: '2024-12-31',
-        vendor: 'vendor-1',
+        vendor: '201',
         summarize_column_by: 'Month',
         accounting_method: 'Accrual'
       });
@@ -505,7 +507,7 @@ describe('Report Handlers', () => {
 
       const result = await getQuickbooksVendorBalance({
         report_date: '2024-12-31',
-        vendor: 'vendor-1',
+        vendor: '201',
         summarize_column_by: 'Month'
       });
 
@@ -531,6 +533,30 @@ describe('Report Handlers', () => {
       expect(result.error).toContain('Auth failed');
     });
   });
+
+  // quickbooks-mcp-286 (A6.4, plan-5 U2): the ids upstream used, each refused before any request.
+  describe('non-numeric ids are refused before any request', () => {
+    const refused = (option: string) => `The report was refused before reaching QuickBooks: ${option} isn't a valid value.`;
+    const cases: Array<[string, () => Promise<any>, string, any]> = [
+      ['P&L all filters', () => getQuickbooksProfitAndLoss({ customer: 'cust-1', vendor: 'vendor-1', item: 'item-1', department: 'dept-1', class: 'class-1' }), 'customer', mockQuickBooksInstance.reportProfitAndLoss],
+      ['P&L vendor', () => getQuickbooksProfitAndLoss({ vendor: 'vendor-1' }), 'vendor', mockQuickBooksInstance.reportProfitAndLoss],
+      ['P&L item', () => getQuickbooksProfitAndLoss({ item: 'item-1' }), 'item', mockQuickBooksInstance.reportProfitAndLoss],
+      ['P&L department', () => getQuickbooksProfitAndLoss({ department: 'dept-1' }), 'department', mockQuickBooksInstance.reportProfitAndLoss],
+      ['P&L class', () => getQuickbooksProfitAndLoss({ class: 'class-1' }), 'class', mockQuickBooksInstance.reportProfitAndLoss],
+      ['customer sales', () => getQuickbooksCustomerSales({ customer: 'cust-1' }), 'customer', mockQuickBooksInstance.reportCustomerSales],
+      ['customer sales all options', () => getQuickbooksCustomerSales({ start_date: '2024-01-01', end_date: '2024-12-31', customer: 'cust-1', summarize_column_by: 'Month' }), 'customer', mockQuickBooksInstance.reportCustomerSales],
+      ['aged receivables customer', () => getQuickbooksAgedReceivables({ customer: 'cust-123' }), 'customer', mockQuickBooksInstance.reportAgedReceivables],
+      ['customer balance all options', () => getQuickbooksCustomerBalance({ report_date: '2024-12-31', customer: 'cust-1', summarize_column_by: 'Month' }), 'customer', mockQuickBooksInstance.reportCustomerBalance],
+      ['aged payables vendor', () => getQuickbooksAgedPayables({ vendor: 'vendor-1' }), 'vendor', mockQuickBooksInstance.reportAgedPayables],
+      ['aged payables all options', () => getQuickbooksAgedPayables({ report_date: '2024-12-31', vendor: 'vendor-1', aging_method: 'Current', days_per_aging_period: 30, num_periods: 4 }), 'vendor', mockQuickBooksInstance.reportAgedPayables],
+      ['vendor expenses all options', () => getQuickbooksVendorExpenses({ start_date: '2024-01-01', end_date: '2024-12-31', vendor: 'vendor-1', summarize_column_by: 'Month', accounting_method: 'Accrual' }), 'vendor', mockQuickBooksInstance.reportVendorExpenses],
+      ['vendor balance all options', () => getQuickbooksVendorBalance({ report_date: '2024-12-31', vendor: 'vendor-1', summarize_column_by: 'Month' }), 'vendor', mockQuickBooksInstance.reportVendorBalance],
+    ];
+    it.each(cases)('%s', async (_name, call, option, report) => {
+      const result = await call();
+      expect(result).toEqual({ result: null, isError: true, error: refused(option) });
+      expect(report).not.toHaveBeenCalled();
+      expect(mockQuickbooksClientClass.getInstance).not.toHaveBeenCalled();
+    });
+  });
 });
-
-

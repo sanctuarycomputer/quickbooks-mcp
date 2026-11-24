@@ -1,0 +1,456 @@
+// Sanctuary Computer (quickbooks-mcp-286): the input normalizer's unit tables (spec A5.2, A5.13's refusals, A6.3, A6.4;
+// D6's sentences, D9's count rules). Every refused case has an accepted twin at its boundary; the request half, each
+// handler inside a call with the QuickBooks fake, is tests/unit/handlers/search-requests.test.ts.
+import { describe, it, expect } from '@jest/globals';
+import {
+  normalizeReport,
+  normalizeSearch,
+  refusal,
+  reportRefusalText,
+  searchRefusalText,
+  type ReportTool,
+} from '../../../src/helpers/validate-input.js';
+import { currentCall, runInCall } from '../../../src/clients/call-context.js';
+
+const SENTENCE = (what: string) => `The search was refused before reaching QuickBooks: ${what}. Use limit up to 1000 and page with offset.`;
+const REPORT = (option: string) => `The report was refused before reaching QuickBooks: ${option} isn't a valid value.`;
+const refusedWith = (what: string) => ({ ok: false, failure: { reason: 'fork-error', text: SENTENCE(what) } });
+
+/** The refusal's `<what>`, or 'ok'. */
+function what(tool: string, criteria: unknown, top: Record<string, unknown> = {}): string {
+  const r = normalizeSearch(tool, criteria, top);
+  if (r.ok) return 'ok';
+  const text = r.failure.text as string;
+  expect(r.failure.reason).toBe('fork-error');
+  expect(text.startsWith('The search was refused before reaching QuickBooks: ')).toBe(true);
+  expect(text.endsWith('. Use limit up to 1000 and page with offset.')).toBe(true);
+  return text.slice('The search was refused before reaching QuickBooks: '.length, -'. Use limit up to 1000 and page with offset.'.length);
+}
+
+const BAD_NAME = "a field name isn't valid";
+const BAD_VALUE = (f: string) => `the value for ${f} isn't valid`;
+const SEP = (f: string) => `the value for ${f} holds a space other than a plain space`;
+const FROM = (f: string) => `the value for ${f} holds the word from`;
+const LIMIT = 'limit must be a whole number from 1 to 1000';
+const OFFSET = 'offset must be a whole number of at least 1';
+const FETCH_ALL = "fetchAll isn't supported";
+const COUNT_NO = "count isn't supported by this tool";
+const COUNT_ONLY = 'count is supported only as count: true with no other criterion and no page key';
+
+describe('D6 sentences', () => {
+  it('are the spec D6 texts', () => {
+    expect(searchRefusalText('x')).toBe(SENTENCE('x'));
+    expect(reportRefusalText('vendor')).toBe(REPORT('vendor'));
+  });
+});
+
+describe('refusal', () => {
+  it('records the failure on the call and answers the error path', async () => {
+    const f = { reason: 'fork-error', text: SENTENCE('x') };
+    await runInCall('garden3d', async () => {
+      expect(refusal(f)).toEqual({ result: null, isError: true, error: SENTENCE('x') });
+      expect(currentCall()!.failure).toEqual(f);
+    });
+  });
+
+  it('is a no-op on the store outside a call, and still answers the error path', () => {
+    expect(refusal({ reason: 'fork-error', text: 'y' })).toEqual({ result: null, isError: true, error: 'y' });
+  });
+});
+
+describe('A6.3 names: ^[A-Za-z][A-Za-z0-9.]{0,63}$ for a field, an object key, asc and desc', () => {
+  const name64 = 'A' + 'a'.repeat(63);
+  const name65 = 'A' + 'a'.repeat(64);
+  const cases: Array<[string, string]> = [
+    ['Name;', BAD_NAME],
+    ['1Id', BAD_NAME],
+    [name65, BAD_NAME],
+    ['', BAD_NAME],
+    ['.Name', BAD_NAME],
+    ['Na_me', BAD_NAME],
+    ['Na-me', BAD_NAME],
+    ['from', BAD_NAME],
+    ['a.from', BAD_NAME],
+    [name64, 'ok'],
+    ['A', 'ok'],
+    ['z', 'ok'],
+    ['Z9', 'ok'],
+    ['MetaData.CreateTime', 'ok'],
+    ['fromage', 'ok'],
+  ];
+  it.each(cases)('field %j -> %s', (name, expected) => {
+    expect(what('search_purchases', [{ field: name, value: 'x' }])).toBe(expected);
+    expect(what('search_accounts', { [name]: 'x' })).toBe(expected);
+    expect(what('search_accounts', [{ [name]: 'x' }])).toBe(expected);
+  });
+  it.each(cases)('asc and desc %j', (name, expected) => {
+    const sort = (k: string) => (expected === 'ok' ? 'ok' : `${k} must name a field`);
+    expect(what('search_purchases', [{ field: 'asc', value: name }])).toBe(sort('asc'));
+    expect(what('search_accounts', { desc: name })).toBe(sort('desc'));
+  });
+  it('a {field} that is not a string is refused', () => {
+    expect(what('search_purchases', [{ field: undefined, value: 'x' }])).toBe(BAD_NAME);
+    expect(what('search_purchases', [{ field: 5, value: 'x' }])).toBe(BAD_NAME);
+    expect(what('search_purchases', [{ field: 'asc', value: 5 }])).toBe('asc must name a field');
+  });
+});
+
+describe("A6.3 operators: node-quickbooks' QUERY_OPERATORS", () => {
+  it.each(['=', 'IN', '<', '>', '<=', '>=', 'LIKE'])('%s is accepted', (op) => {
+    expect(what('search_purchases', [{ field: 'Name', value: 'x', operator: op }])).toBe('ok');
+  });
+  it.each(['like', '!=', '<>', ' =', 'in', '', null, 1])('%j is refused', (op) => {
+    expect(what('search_purchases', [{ field: 'Name', value: 'x', operator: op }])).toBe("the operator isn't one of = IN < > <= >= LIKE");
+  });
+  it('an absent operator is accepted and stays absent', () => {
+    const r = normalizeSearch('search_purchases', [{ field: 'Name', value: 'x', operator: undefined }]);
+    expect(r).toMatchObject({ ok: true, criteria: [{ field: 'Name', value: 'x' }, { field: 'limit', value: 1000 }] });
+    expect(Object.keys((r as any).criteria[0])).toEqual(['field', 'value']);
+  });
+});
+
+describe('A6.3 values: a number, a boolean, a date, a string of at most 200 with no \\ and no control character, or an array of these', () => {
+  const s200 = 'a'.repeat(200);
+  const s201 = 'a'.repeat(201);
+  const cases: Array<[string, unknown, string]> = [
+    ['an integer', 5, 'ok'],
+    ['a decimal', 1.5, 'ok'],
+    ['a negative', -3, 'ok'],
+    ['true', true, 'ok'],
+    ['false', false, 'ok'],
+    ['a date', '2026-10-01', 'ok'],
+    ['200 characters', s200, 'ok'],
+    ['201 characters', s201, BAD_VALUE('Name')],
+    ['an empty string', '', 'ok'],
+    ['abc\\', 'abc\\', BAD_VALUE('Name')],
+    ['a\\b', 'a\\b', BAD_VALUE('Name')],
+    ['a\\nb (LF)', 'a\nb', BAD_VALUE('Name')],
+    ['U+0000', 'a\u0000', BAD_VALUE('Name')],
+    ['U+001F', 'a\u001f', BAD_VALUE('Name')],
+    ['U+0020 inner (a b)', 'a b', 'ok'],
+    ['U+007E', 'a~', 'ok'],
+    ['U+007F', 'a\u007f', BAD_VALUE('Name')],
+    ['U+0080', 'a\u0080', BAD_VALUE('Name')],
+    ['U+009F', 'a\u009f', BAD_VALUE('Name')],
+    ['U+00A1', 'a¡', 'ok'],
+    ['a quote', "O'Brien", 'ok'],
+    ['an object', { a: 1 }, BAD_VALUE('Name')],
+    ['null', null, BAD_VALUE('Name')],
+    ['undefined in an entry', undefined, BAD_VALUE('Name')],
+    ['NaN', NaN, BAD_VALUE('Name')],
+    ['Infinity', Infinity, BAD_VALUE('Name')],
+    ['a nested array', [['a']], BAD_VALUE('Name')],
+    ['an array of these', [1, 'a', true, '2026-10-01'], 'ok'],
+    ['an empty array', [], 'ok'],
+    ['an array holding an object', ['a', { b: 1 }], BAD_VALUE('Name')],
+    ['an array holding abc\\', ['ok', 'abc\\'], BAD_VALUE('Name')],
+    ['an array holding a no-break space', ['a b'], SEP('Name')],
+    ['an array holding from', ['x from y'], FROM('Name')],
+  ];
+  it.each(cases)('%s', (_label, value, expected) => {
+    expect(what('search_purchases', [{ field: 'Name', value }])).toBe(expected);
+  });
+  it.each(cases.filter(([label]) => label !== 'undefined in an entry'))('%s as an object key and a record in an array', (_label, value, expected) => {
+    expect(what('search_accounts', { Name: value })).toBe(expected);
+    expect(what('search_accounts', [{ Name: value }])).toBe(expected);
+  });
+  it('an undefined object key is absent, as node-quickbooks drops it', () => {
+    expect(normalizeSearch('search_accounts', { Name: undefined, Active: true })).toEqual({
+      ok: true, criteria: { Active: true, limit: 1000 }, usedOffset: 1, count: false, criteriaOffset: true,
+    });
+  });
+});
+
+describe("A6.3 from as a word, and Unicode spaces other than U+0020 (contract §6's query rule)", () => {
+  const cases: Array<[string, string]> = [
+    ['x from y', FROM('Name')],
+    ['FROM', FROM('Name')],
+    ['From', FROM('Name')],
+    ['(from)', FROM('Name')],
+    ['x-from', FROM('Name')],
+    ['from.', FROM('Name')],
+    ['fromage', 'ok'],
+    ['afrom', 'ok'],
+    ['Zfrom', 'ok'],
+    ['1from', 'ok'],
+    ['_from', 'ok'],
+    ['from_', 'ok'],
+    ['fromA', 'ok'],
+    ['from9', 'ok'],
+    ['fro m', 'ok'],
+    ['a b', 'ok'],
+    ['a b', SEP('Name')],
+    ['a　b', SEP('Name')],
+    ['a b', SEP('Name')],
+    ['a b', SEP('Name')],
+    ['a\u2028b', SEP('Name')],
+    ['a\u2029b', SEP('Name')],
+    ['a\u0085b', SEP('Name')],
+  ];
+  it.each(cases)('%j', (value, expected) => {
+    expect(what('search_purchases', [{ field: 'Name', value }])).toBe(expected);
+    expect(what('search_accounts', { Name: value })).toBe(expected);
+  });
+});
+
+describe('A5.2 and A6.3 limit: an integer 1..1000, in every shape and any case', () => {
+  const shapes: Array<[string, string, (v: unknown) => unknown, Record<string, unknown>?]> = [
+    ['an object key', 'search_accounts', (v) => ({ limit: v })],
+    ['an object key, any case', 'search_accounts', (v) => ({ LIMIT: v })],
+    ['a {field} entry', 'search_purchases', (v) => [{ field: 'limit', value: v }]],
+    ['a {field} entry, any case', 'search_purchases', (v) => [{ field: 'Limit', value: v }]],
+    ['a plain record in an array', 'search_accounts', (v) => [{ limit: v }]],
+    ['a plain record in an array, any case', 'search_accounts', (v) => [{ lImIt: v }]],
+    ['top level', 'search_classes', () => ({}), {}],
+  ];
+  const values: Array<[unknown, string]> = [
+    [0, LIMIT], [1001, LIMIT], [1.5, LIMIT], ['10 x', LIMIT], ['10', LIMIT], [null, LIMIT], [-1, LIMIT], [true, LIMIT],
+    [1, 'ok'], [1000, 'ok'], [999, 'ok'],
+  ];
+  for (const [label, tool, shape, top] of shapes) {
+    it.each(values)(`${label}: %j`, (v, expected) => {
+      if (top) expect(what(tool, shape(v), { limit: v })).toBe(expected);
+      else expect(what(tool, shape(v))).toBe(expected);
+    });
+  }
+  it('a missing or null criteria becomes limit 1000; so does every shape without one', () => {
+    for (const c of [undefined, null]) {
+      expect(normalizeSearch('search_accounts', c)).toEqual({ ok: true, criteria: { limit: 1000 }, usedOffset: 1, count: false, criteriaOffset: true });
+    }
+    expect(normalizeSearch('search_classes', {})).toEqual({ ok: true, criteria: { limit: 1000 }, usedOffset: 1, count: false, criteriaOffset: false });
+    expect(normalizeSearch('search_deposits', [])).toEqual({ ok: true, criteria: [{ field: 'limit', value: 1000 }], usedOffset: 1, count: false, criteriaOffset: false });
+  });
+  it('a given limit is passed under its exact name, in the shape it came in', () => {
+    expect(normalizeSearch('search_accounts', { Name: 'x', LIMIT: 5 })).toMatchObject({ criteria: { Name: 'x', limit: 5 } });
+    expect(normalizeSearch('search_purchases', [{ field: 'Limit', value: 5 }, { field: 'Name', value: 'x' }])).toMatchObject({
+      criteria: [{ field: 'Name', value: 'x' }, { field: 'limit', value: 5 }],
+    });
+    expect(normalizeSearch('search_accounts', [{ Limit: 5, Name: 'x' }])).toMatchObject({ criteria: [{ Name: 'x' }, { field: 'limit', value: 5 }] });
+    expect(normalizeSearch('search_classes', { Name: 'x' }, { limit: 7 })).toMatchObject({ criteria: { Name: 'x', limit: 7 } });
+  });
+});
+
+describe('A5.13 and A6.3 offset: an integer >= 1; usedOffset is the startposition the request carries', () => {
+  const shapes: Array<[string, string, (v: unknown) => unknown, boolean?]> = [
+    ['an object key', 'search_invoices', (v) => ({ offset: v })],
+    ['an object key, any case', 'search_invoices', (v) => ({ Offset: v })],
+    ['a {field} entry', 'search_purchases', (v) => [{ field: 'offset', value: v }]],
+    ['a {field} entry, any case', 'search_employees', (v) => [{ field: 'OFFSET', value: v }]],
+    ['a plain record in an array', 'search_items', (v) => [{ offset: v }]],
+    ['top level', 'search_transfers', () => [], true],
+  ];
+  const values: Array<[unknown, string]> = [[0, OFFSET], [1.5, OFFSET], ['2', OFFSET], [-1, OFFSET], [null, OFFSET], [1, 'ok'], [101, 'ok'], [1000001, 'ok']];
+  for (const [label, tool, shape, top] of shapes) {
+    it.each(values)(`${label}: %j`, (v, expected) => {
+      const r = top ? normalizeSearch(tool, shape(v), { offset: v }) : normalizeSearch(tool, shape(v));
+      if (expected === 'ok') expect(r).toMatchObject({ ok: true, usedOffset: v });
+      else expect(r).toEqual(refusedWith(expected));
+    });
+  }
+  it('no offset is usedOffset 1, and no offset is added', () => {
+    expect(normalizeSearch('search_purchases', [{ field: 'Name', value: 'x' }])).toEqual({
+      ok: true, criteria: [{ field: 'Name', value: 'x' }, { field: 'limit', value: 1000 }], usedOffset: 1, count: false, criteriaOffset: false,
+    });
+  });
+  it('a given offset is passed under its exact name, after limit', () => {
+    expect(normalizeSearch('search_invoices', { OFFSET: 101 })).toEqual({ ok: true, criteria: { limit: 1000, offset: 101 }, usedOffset: 101, count: false, criteriaOffset: true });
+    expect(normalizeSearch('search_purchases', [{ field: 'Offset', value: 101 }, { field: 'Limit', value: 21 }])).toMatchObject({
+      criteria: [{ field: 'limit', value: 21 }, { field: 'offset', value: 101 }],
+      usedOffset: 101,
+    });
+    expect(normalizeSearch('search_classes', {}, { offset: 3 })).toMatchObject({ criteria: { limit: 1000, offset: 3 }, usedOffset: 3 });
+  });
+  it.each([
+    ['search_accounts', true], ['search_invoices', true], ['search_items', true],
+    ['search_purchases', false], ['search_bills', false], ['search_classes', false], ['search_vendor_credits', false],
+  ])('criteriaOffset for %s is %s (the three take offset inside criteria)', (tool, inside) => {
+    expect(normalizeSearch(tool, {})).toMatchObject({ ok: true, criteriaOffset: inside });
+  });
+  it('asc and desc pass under their exact names', () => {
+    expect(normalizeSearch('search_accounts', { ASC: 'Name', Desc: 'Id' })).toMatchObject({ criteria: { asc: 'Name', desc: 'Id', limit: 1000 } });
+  });
+});
+
+describe('A5.2 a page key given twice is refused', () => {
+  const cases: Array<[string, string, string, unknown, Record<string, unknown>]> = [
+    ['limit twice in an array', 'limit', 'search_purchases', [{ field: 'limit', value: 5 }, { field: 'limit', value: 5 }], {}],
+    ['limit and Limit in an object', 'limit', 'search_accounts', { limit: 5, Limit: 5 }, {}],
+    ['limit in two records', 'limit', 'search_accounts', [{ limit: 5 }, { LIMIT: 6 }], {}],
+    ['top-level limit and a criteria limit', 'limit', 'search_classes', { limit: 5 }, { limit: 5 }],
+    ['offset twice', 'offset', 'search_purchases', [{ field: 'offset', value: 2 }, { field: 'Offset', value: 3 }], {}],
+    ['top-level offset and a criteria offset', 'offset', 'search_classes', [{ field: 'offset', value: 2 }], { offset: 2 }],
+    ['asc twice', 'asc', 'search_accounts', { asc: 'Name', ASC: 'Id' }, {}],
+    ['desc twice', 'desc', 'search_purchases', [{ field: 'desc', value: 'Name' }, { desc: 'Name' }], {}],
+  ];
+  it.each(cases)('%s', (_label, key, tool, criteria, top) => {
+    expect(what(tool, criteria, top)).toBe(`${key} is given more than once`);
+  });
+  it('each once is accepted', () => {
+    expect(what('search_purchases', [{ field: 'limit', value: 5 }, { field: 'offset', value: 2 }, { field: 'asc', value: 'Name' }, { field: 'desc', value: 'Id' }])).toBe('ok');
+  });
+});
+
+describe('A5.2 and A5.3 fetchAll is refused in any shape, case and value (D8)', () => {
+  const cases: Array<[string, string, unknown]> = [
+    ['an object key', 'search_accounts', { fetchAll: true }],
+    ['an object key, false', 'search_accounts', { fetchAll: false }],
+    ['an object key, lower case', 'search_invoices', { fetchall: true }],
+    ['an object key, upper case', 'search_items', { FETCHALL: true }],
+    ['a {field} entry', 'search_purchases', [{ field: 'fetchAll', value: true }]],
+    ['a {field} entry, false', 'search_journal_entries', [{ field: 'fetchAll', value: false }]],
+    ['a {field} entry, any case', 'search_bill_payments', [{ field: 'FetchAll', value: true }]],
+    ['a plain record in an array', 'search_accounts', [{ fetchAll: true }]],
+    ['a record beside a filter', 'search_bills', { DocNumber: '1', fetchAll: true }],
+  ];
+  it.each(cases)('%s', (_label, tool, criteria) => {
+    expect(what(tool, criteria)).toBe(FETCH_ALL);
+  });
+});
+
+describe('D9 count: only a lone count: true on search_bills, search_customers and search_vendors', () => {
+  it.each(['search_bills', 'search_customers', 'search_vendors'])('%s accepts top-level count and a folded {key} entry in any case', (tool) => {
+    const ok = { ok: true, criteria: { count: true }, usedOffset: 1, count: true, criteriaOffset: false };
+    expect(normalizeSearch(tool, { count: true })).toEqual(ok);
+    expect(normalizeSearch(tool, { Count: true })).toEqual(ok);
+    expect(normalizeSearch(tool, { COUNT: true })).toEqual(ok);
+    expect(normalizeSearch(tool, {}, { count: true })).toEqual(ok);
+  });
+  const refusedThree: Array<[string, unknown, Record<string, unknown>]> = [
+    ['count: false', { count: false }, {}],
+    ['Count: false', { Count: false }, {}],
+    ['count: "true"', { count: 'true' }, {}],
+    ['count: 1', { count: 1 }, {}],
+    ['top-level count: false', {}, { count: false }],
+    ['count beside a {key} criterion', { count: true, DisplayName: 'x' }, {}],
+    ['count beside a {field} criterion', [{ field: 'DisplayName', value: 'x' }, { field: 'count', value: true }], {}],
+    ['count beside limit: 10', { count: true, limit: 10 }, {}],
+    ['count beside offset', { count: true, offset: 2 }, {}],
+    ['count beside asc', { count: true, asc: 'Id' }, {}],
+    ['count beside desc', { count: true, desc: 'Id' }, {}],
+    ['count beside a top-level limit', { count: true }, { limit: 10 }],
+    ['top-level count beside a {field} entry', [{ field: 'DocNumber', value: '1' }], { count: true }],
+    ['a lone {field: count} entry', [{ field: 'count', value: true }], {}],
+    ['a lone {field: Count} entry', [{ field: 'Count', value: true }], {}],
+    ['count twice', { count: true, Count: true }, {}],
+    ['count in a record in an array', [{ count: true }], {}],
+  ];
+  it.each(refusedThree)('the three refuse %s', (_label, criteria, top) => {
+    for (const tool of ['search_bills', 'search_customers', 'search_vendors']) expect(what(tool, criteria, top)).toBe(COUNT_ONLY);
+  });
+  const seven = ['search_accounts', 'search_invoices', 'search_items', 'search_bill_payments', 'search_employees', 'search_journal_entries', 'search_purchases'];
+  const shapes: Array<[string, unknown]> = [
+    ['count: true', { count: true }],
+    ['Count: true', { Count: true }],
+    ['COUNT: true', { COUNT: true }],
+    ['a {field: count} entry', [{ field: 'count', value: true }]],
+    ['a {field: Count} entry', [{ field: 'Count', value: true }]],
+    ['a record in an array', [{ count: true }]],
+    ['count: false', { count: false }],
+  ];
+  it.each(shapes)('the seven refuse %s', (_label, criteria) => {
+    for (const tool of seven) expect(what(tool, criteria)).toBe(COUNT_NO);
+  });
+  it('the 8 fixed-schema tools refuse a top-level count reaching them', () => {
+    expect(what('search_classes', {}, { count: true })).toBe(COUNT_NO);
+  });
+});
+
+describe('A5.2 shapes: a criteria string, a function or any other non-object is refused', () => {
+  const NOT_OBJECT = 'criteria must be an object or an array';
+  it.each([
+    ['a string', "Name = 'x'"],
+    ['an empty string', ''],
+    ['a function', () => 1],
+    ['a number', 5],
+    ['a boolean', true],
+  ])('%s', (_label, criteria) => {
+    expect(what('search_accounts', criteria)).toBe(NOT_OBJECT);
+  });
+  it.each([
+    ['null', null],
+    ['a string', 'x'],
+    ['a nested array', [[{ field: 'Name', value: 'x' }]]],
+    ['a number', 5],
+  ])('an array element that is %s', (_label, el) => {
+    expect(what('search_accounts', [el])).toBe('each criterion must be an object');
+  });
+  it('a {field, value} entry with any other key is refused (node-quickbooks would read a count key there)', () => {
+    expect(what('search_purchases', [{ field: 'Name', value: 'x', count: true }])).toBe('a criterion has a key other than field, value and operator');
+    expect(what('search_purchases', [{ field: 'Name', value: 'x', key: 'y' }])).toBe('a criterion has a key other than field, value and operator');
+    expect(what('search_purchases', [{ field: 'Name', value: 'x', operator: '=' }])).toBe('ok');
+  });
+  it('a {field} without a value is a plain record, as toCriterion reads one: both keys make an entry', () => {
+    expect(normalizeSearch('search_accounts', [{ field: 'Name' }])).toMatchObject({ ok: true, criteria: [{ field: 'Name' }, { field: 'limit', value: 1000 }] });
+    expect(what('search_accounts', [{ field: 'Name', value: undefined }])).toBe(BAD_VALUE('Name'));
+  });
+  it('a record with only page keys leaves no empty record behind', () => {
+    expect(normalizeSearch('search_accounts', [{ limit: 5 }, { Name: 'x' }])).toMatchObject({ criteria: [{ Name: 'x' }, { field: 'limit', value: 5 }] });
+  });
+  it('an error that is not a refusal is thrown, not answered as one', () => {
+    const hostile = Object.defineProperty({}, 'Name', { enumerable: true, get: () => { throw new TypeError('boom'); } });
+    expect(() => normalizeSearch('search_accounts', hostile)).toThrow('boom');
+  });
+});
+
+describe('A6.4 report options: each key per report, refused with D6 and accepted at the boundary', () => {
+  const DATE_BAD = ['2026-10-01&x=1', '2026-1-01', '26-10-01', '2026-10-1', '2026-10-01 ', 'x2026-10-01', '', 20261001];
+  const DATE_OK = ['2026-10-01', '0000-00-00'];
+  const ID_BAD = ['5#', '1,', ',1', '1,,2', 'a b', '1 ', '-1', '123456789012345678901', '1,123456789012345678901', '', 5];
+  const ID_OK = ['1', '0', '1,2', '12345678901234567890', '1,12345678901234567890,3'];
+  const PERIOD_BAD = [0, 1000, 1.5, -1, '30', null];
+  const PERIOD_OK = [1, 999, 30];
+  const SORT_BAD = ['a b', 'a'.repeat(65), '', 'a1', 'a-b', 'a.b', 5];
+  const SORT_OK = ['Date', 'a'.repeat(64), '_', 'tx_date', 'Z'];
+  const TOOLS: Record<ReportTool, Record<string, 'date' | 'id' | 'period' | 'sort' | string[]>> = {
+    get_aged_payables: { report_date: 'date', vendor: 'id', aging_method: ['Current', 'Report_Date'], days_per_aging_period: 'period', num_periods: 'period' },
+    get_aged_receivables: { report_date: 'date', customer: 'id', aging_method: ['Current', 'Report_Date'], days_per_aging_period: 'period', num_periods: 'period' },
+    get_balance_sheet: { start_date: 'date', end_date: 'date', accounting_method: ['Cash', 'Accrual'], summarize_column_by: ['Total', 'Month', 'Week', 'Days'] },
+    get_cash_flow: { start_date: 'date', end_date: 'date', summarize_column_by: ['Total', 'Month', 'Week', 'Days'] },
+    get_customer_balance: { report_date: 'date', customer: 'id', summarize_column_by: ['Total', 'Month', 'Week', 'Days'] },
+    get_customer_sales: { start_date: 'date', end_date: 'date', customer: 'id', summarize_column_by: ['Total', 'Month', 'Week', 'Days'] },
+    get_general_ledger: { start_date: 'date', end_date: 'date', accounting_method: ['Cash', 'Accrual'], account: 'id', source_account: 'id', sort_by: 'sort' },
+    get_profit_and_loss: {
+      start_date: 'date', end_date: 'date', accounting_method: ['Cash', 'Accrual'], summarize_column_by: ['Total', 'Month', 'Week', 'Days', 'Classes'],
+      customer: 'id', vendor: 'id', item: 'id', department: 'id', class: 'id',
+    },
+    get_trial_balance: { start_date: 'date', end_date: 'date', accounting_method: ['Cash', 'Accrual'] },
+    get_vendor_balance: { report_date: 'date', vendor: 'id', summarize_column_by: ['Total', 'Month', 'Week', 'Days'] },
+    get_vendor_expenses: { start_date: 'date', end_date: 'date', vendor: 'id', summarize_column_by: ['Total', 'Month', 'Week', 'Days'], accounting_method: ['Cash', 'Accrual'] },
+  };
+  const valuesOf = (kind: 'date' | 'id' | 'period' | 'sort' | string[]): { bad: unknown[]; ok: unknown[] } => {
+    if (Array.isArray(kind)) return { bad: ['Bogus', kind[0].toLowerCase(), kind[0] + ' ', 'Classes&x=1', 5], ok: kind };
+    return { date: { bad: DATE_BAD, ok: DATE_OK }, id: { bad: ID_BAD, ok: ID_OK }, period: { bad: PERIOD_BAD, ok: PERIOD_OK }, sort: { bad: SORT_BAD, ok: SORT_OK } }[kind];
+  };
+  const rows: Array<[ReportTool, string, 'date' | 'id' | 'period' | 'sort' | string[]]> = [];
+  for (const [tool, keys] of Object.entries(TOOLS) as Array<[ReportTool, (typeof TOOLS)[ReportTool]]>) {
+    for (const [key, kind] of Object.entries(keys)) rows.push([tool, key, kind]);
+  }
+  it.each(rows)('%s %s', (tool, key, kind) => {
+    const { bad, ok } = valuesOf(kind);
+    for (const v of bad) {
+      expect([v, normalizeReport(tool, { [key]: v })]).toEqual([v, { ok: false, failure: { reason: 'fork-error', text: REPORT(key) } }]);
+    }
+    for (const v of ok) {
+      const options = { [key]: v };
+      expect([v, normalizeReport(tool, options)]).toEqual([v, { ok: true, options }]);
+    }
+  });
+  it("Classes is in get_profit_and_loss's summarize_column_by enum only", () => {
+    expect(normalizeReport('get_profit_and_loss', { summarize_column_by: 'Classes' })).toMatchObject({ ok: true });
+    expect(normalizeReport('get_balance_sheet', { summarize_column_by: 'Classes' })).toMatchObject({ ok: false });
+  });
+  it('a key that is not the report’s own is not checked (the handler drops it)', () => {
+    expect(normalizeReport('get_trial_balance', { vendor: '5#' })).toEqual({ ok: true, options: { vendor: '5#' } });
+  });
+  it('an undefined key is absent; missing options are {}; non-object options are refused', () => {
+    expect(normalizeReport('get_cash_flow', { start_date: undefined })).toEqual({ ok: true, options: { start_date: undefined } });
+    expect(normalizeReport('get_cash_flow', undefined)).toEqual({ ok: true, options: {} });
+    expect(normalizeReport('get_cash_flow', null)).toEqual({ ok: true, options: {} });
+    for (const o of ['start_date=2026-10-01', [], 5]) {
+      expect(normalizeReport('get_cash_flow', o)).toEqual({ ok: false, failure: { reason: 'fork-error', text: REPORT('options') } });
+    }
+  });
+  it('the first refused key in the report’s own order is named', () => {
+    expect(normalizeReport('get_profit_and_loss', { vendor: 'x', customer: 'y' })).toMatchObject({ failure: { text: REPORT('customer') } });
+  });
+});

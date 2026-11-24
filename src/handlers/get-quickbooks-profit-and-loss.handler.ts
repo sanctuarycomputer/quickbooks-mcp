@@ -1,6 +1,8 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the input normalizer checks the report options before any request (A6.4).
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
+import { normalizeReport, refusal } from "../helpers/validate-input.js";
 
 export interface ProfitAndLossOptions {
   start_date?: string;
@@ -16,17 +18,20 @@ export interface ProfitAndLossOptions {
 
 export async function getQuickbooksProfitAndLoss(options: ProfitAndLossOptions): Promise<ToolResponse<any>> {
   try {
+    const r = normalizeReport("get_profit_and_loss", options);
+    if (!r.ok) return refusal(r.failure);
+    const o = r.options as ProfitAndLossOptions;
     const quickbooks = await QuickbooksClient.getInstance();
     const params: Record<string, any> = {};
-    if (options.start_date) params.start_date = options.start_date;
-    if (options.end_date) params.end_date = options.end_date;
-    if (options.accounting_method) params.accounting_method = options.accounting_method;
-    if (options.summarize_column_by) params.summarize_column_by = options.summarize_column_by;
-    if (options.customer) params.customer = options.customer;
-    if (options.vendor) params.vendor = options.vendor;
-    if (options.item) params.item = options.item;
-    if (options.department) params.department = options.department;
-    if (options.class) params.class = options.class;
+    if (o.start_date) params.start_date = o.start_date;
+    if (o.end_date) params.end_date = o.end_date;
+    if (o.accounting_method) params.accounting_method = o.accounting_method;
+    if (o.summarize_column_by) params.summarize_column_by = o.summarize_column_by;
+    if (o.customer) params.customer = o.customer;
+    if (o.vendor) params.vendor = o.vendor;
+    if (o.item) params.item = o.item;
+    if (o.department) params.department = o.department;
+    if (o.class) params.class = o.class;
 
     return new Promise((resolve) => {
       (quickbooks as any).reportProfitAndLoss(params, (err: any, report: any) => {
