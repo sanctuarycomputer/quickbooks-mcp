@@ -38,10 +38,13 @@ class CheckedRequest {
 
   constructor(token: symbol, fields: Fields) {
     if (token !== TOKEN) throw new TypeError("a checked request is made by preSend only");
-    Object.assign(this, fields);
+    // Defined, not set, so no accessor on a prototype takes a field's place.
+    Object.defineProperties(this, Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, { value, enumerable: true }])));
     made.add(Object.freeze(this));
   }
 }
+Object.freeze(CheckedRequest);
+Object.freeze(CheckedRequest.prototype);
 
 export type { CheckedRequest };
 
@@ -64,7 +67,11 @@ const broken = (): never => refuse("fork-error");
 /** A rule's or a hook's answer: null goes on, a reason refuses, anything else is unexpected. */
 function apply(reason: unknown): void {
   if (reason === null) return;
-  if (typeof reason !== "string" || reason === "") broken();
+  if (typeof reason !== "string" || reason === "") {
+    // A promise's own rejection is handled, whatever it comes to: it is refused already.
+    new Promise((resolve) => resolve(reason)).catch(() => undefined);
+    broken();
+  }
   refuse(reason as string);
 }
 
@@ -145,7 +152,8 @@ async function checkRefs(call: CallStore, mode: Mode, accounts: unknown[], class
 
 async function check(input: PreSendInput, build: typeof buildBody): Promise<CheckedRequest> {
   // Each field read once, before anything waits, so a caller that changes its input changes nothing here.
-  const { company, entity, id, mode, lines, beforeFetch, afterLine } = input;
+  const { company, entity, id, mode, lines: given, beforeFetch, afterLine } = input;
+  const lines: unknown = Array.isArray(given) ? Array.from(given) : given;
   if (mode === "categorize" && Array.isArray(lines) && lines.length > MAX_LINES) refuse("write:size");
   const call = currentCall();
   if (call === undefined || call.company !== company) return broken();

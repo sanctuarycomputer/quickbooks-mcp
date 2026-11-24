@@ -220,7 +220,10 @@ describe('A3.3: the call store is the only holder and reader of company identity
       'src/helpers/register-tool.ts: currentCall()',
       'src/http-guard.ts: new AsyncLocalStorage<IssuedTicket>',
       'src/http-guard.ts: new AsyncLocalStorage<{ realm: string | undefined; record: CallRecord }>', // 291's default scope, replaced at start
+      'src/write/capability.ts: checked.company', // the checked request's, which the capability is bound to
       'src/write/client.ts: currentCall()', // the write client's GETs: the call's own token and realm
+      'src/write/client.ts: call.company', // the update's call, compared with the checked request's company
+      'src/write/client.ts: checked.company', // the same
       'src/write/guard-rules.ts: deps.company', // decideWrite's company callback (the call's), never a kept company
       'src/write/guard-rules.ts: deps.company', // decideDry's, the same
       'src/write/pre-send.ts: currentCall()', // the pre-send check's call, whose failure it reads

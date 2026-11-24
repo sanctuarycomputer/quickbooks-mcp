@@ -748,6 +748,22 @@ describe('the hooks (E1, E2)', () => {
       for (const input of inputs()) await refused({ ...input, afterLine }, 'fork-error', P_READS);
     }
   });
+  it('a promise from afterLine is fork-error, whatever it comes to, with no unhandled rejection (TF4)', async () => {
+    for (const input of inputs()) {
+      await refused({ ...input, afterLine: async () => { throw new Error('x'); } }, 'fork-error', P_READS);
+      for (const promise of [Promise.reject(new Error('x')), Promise.resolve(null), Promise.resolve('write:sweep')]) {
+        const then = jest.spyOn(promise, 'then');
+        await refused({ ...input, afterLine: () => promise }, 'fork-error', P_READS);
+        expect(then.mock.calls.map(([, onRejected]) => typeof onRejected)).toEqual(['function']);
+        await promise.catch(() => undefined);
+      }
+      const throwing = jest.fn(() => { throw new Error('x'); });
+      await refused({ ...input, afterLine: () => ({ then: throwing }) }, 'fork-error', P_READS);
+      expect(throwing).toHaveBeenCalledTimes(1);
+      await refused({ ...input, afterLine: () => Object.defineProperty({}, 'then', { get: throwing }) }, 'fork-error', P_READS);
+      expect(throwing).toHaveBeenCalledTimes(2);
+    }
+  });
 });
 
 describe('A2.15: a failed or unexpected read', () => {
@@ -912,6 +928,41 @@ describe('the call and the input', () => {
     expect(checked.changes).toEqual(P().lines);
   });
 
+  it('lines is copied once, before the size check (TF1)', async () => {
+    const proxied = (n: number, shown: number) => {
+      const lengths: number[] = [];
+      const lines = new Proxy(changesOf(n), {
+        get: (target, key) => {
+          if (key !== 'length') return Reflect.get(target, key);
+          lengths.push(0);
+          return lengths.length <= shown ? 1 : n;
+        },
+      });
+      return lines;
+    };
+    withLines(books['purchase/1001'] as Json, 21);
+    // However many times the length first reads 1, what is judged is what is copied.
+    for (let shown = 0; shown < 6; shown++) {
+      net.calls.length = 0;
+      const { out } = await ask({ ...P(), lines: proxied(21, shown) });
+      if (out.ok) expect(out.checked.changes.length).toBeLessThanOrEqual(20);
+      else expect([out.reason, gets()]).toEqual(['write:size', []]);
+    }
+    const first = jest.fn(() => changesOf(1));
+    const input = Object.defineProperty(P(), 'lines', { get: () => (first.mock.calls.length === 0 ? first() : changesOf(21)), enumerable: true });
+    await allowed(input);
+    expect(first).toHaveBeenCalledTimes(1);
+    // The elements too: each is read once.
+    const reads: string[] = [];
+    const counted = new Proxy(changesOf(2), { get: (target, key) => (/^[0-9]+$/.test(String(key)) && reads.push(String(key)), Reflect.get(target, key)) });
+    await (preSend as any)({ ...P(), lines: counted });
+    expect(reads).toEqual(['0', '1']);
+    for (const mode of ['categorize', 'undo']) {
+      const shifting = new Proxy(changesOf(1), { get: (target, key) => (key === Symbol.iterator ? () => [changesOf(2)[1]][Symbol.iterator]() : Reflect.get(target, key)) });
+      expect((await allowed({ ...P(), mode, lines: shifting })).changes.map((c: Json) => c.line_id)).toEqual(['2']);
+    }
+  });
+
   it('the input is never changed', async () => {
     const freeze = (value: any): any => (Object.values(Object(value)).forEach((v) => typeof v === 'object' && freeze(v)), Object.freeze(value));
     await allowed(freeze(P()));
@@ -982,6 +1033,30 @@ describe('A2.14: a checked request can\'t be forged', () => {
       expect(() => new Made(token, { ...checked })).toThrow(new TypeError('a checked request is made by preSend only'));
     }
     expect(isChecked(checked)).toBe(true);
+  });
+
+  it('its class can\'t be changed, and its fields are its own (TF2)', async () => {
+    const before = await allowed(P());
+    const proto = Object.getPrototypeOf(before);
+    expect([Object.isFrozen(proto), Object.isFrozen(proto.constructor)]).toEqual([true, true]);
+    const planted = { get: () => 'planted', set: () => undefined, configurable: true };
+    for (const key of ['bodyText', 'mode', 'other']) expect(() => Object.defineProperty(proto, key, planted)).toThrow(TypeError);
+    expect(() => Object.setPrototypeOf(proto, { bodyText: 'planted' })).toThrow(TypeError);
+    const KEYS = ['company', 'entity', 'mode', 'fetched', 'changes', 'body', 'bodyText'];
+    // An accessor above the frozen prototype takes no write either.
+    let checked: Json;
+    for (const key of ['bodyText', 'mode']) Object.defineProperty(Object.prototype, key, planted);
+    try {
+      checked = await allowed(P());
+    } finally {
+      for (const key of ['bodyText', 'mode']) delete (Object.prototype as any)[key];
+    }
+    for (const one of [before, checked]) {
+      expect(Object.keys(one).sort()).toEqual([...KEYS].sort());
+      for (const key of KEYS) {
+        expect(Object.getOwnPropertyDescriptor(one, key)).toEqual({ value: before[key], enumerable: true, writable: false, configurable: false });
+      }
+    }
   });
 
   it('pre-send.ts exports exactly these (SB2, E3)', () => {
