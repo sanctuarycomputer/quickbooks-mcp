@@ -263,7 +263,7 @@ describe("A4.7: the three criteria tools' own check, through the server", () => 
   });
 });
 
-// T8-4: the three through their own tool files: RUNTIME_CRITERIA_SCHEMA's three arms, the accounts coercion's three
+// T8-4: the three through their own tool files: RUNTIME_CRITERIA_SCHEMA's three arms, normalizeAccountCriteria's three
 // branches, the success label ("Found 1 accounts:", "Found 1 invoices") dropped, and the tool file's `Error searching …`
 // text answered as the call's recorded failure.
 describe('T8-4: search_accounts, search_invoices, search_items through their tool files', () => {
@@ -294,5 +294,75 @@ describe('T8-4: search_accounts, search_invoices, search_items through their too
   it.each([...CRITERIA_ONLY_TOOLS])('%s: no rows: the label alone gives the empty data item ""', async (tool) => {
     nextAnswer = { status: 200, body: JSON.stringify({ QueryResponse: {}, time: '2026-11-18T00:00:00.000Z' }) };
     expect(await call(tool, { criteria: {} })).toStrictEqual({ content: [{ type: 'text', text: '' }] });
+  });
+});
+
+// TB12-1, TB12-2: search_accounts' coercion runs after the normalizer has judged the values as sent, and converts only a
+// value's exact other spelling. Each value A6.3 refuses on a mapped field is refused in each of the tool file's three
+// shapes, with no request; each arm of the coercion has a case naming the statement it sends.
+describe('TB12-1, TB12-2: search_accounts checks the values as sent, then coerces only what keeps its meaning', () => {
+  /** `{ field: value }` in each of the tool file's three shapes. */
+  const shapes = (field: string, value: unknown): Array<[string, P]> => [
+    ['a plain record', { criteria: { [field]: value } }],
+    ['an array of records', { criteria: [{ [field]: value }] }],
+    ['advanced filters', { criteria: { filters: [{ field, value }] } }],
+  ];
+  const REFUSED: Array<[string, unknown]> = [
+    ['Active', null],
+    ['Active', { a: 1 }],
+    ['Active', [['true']]],
+    ['CurrentBalance', null],
+    ['CurrentBalance', { a: 1 }],
+    // 201 characters: refused as sent, though Number() would make it 5.
+    ['CurrentBalance', `${'0'.repeat(200)}5`],
+    ['Name', null],
+    ['Name', { a: 1 }],
+    ['Name', [['x']]],
+    ['MetaData.CreateTime', null],
+  ];
+  const CASES = REFUSED.flatMap(([field, value]) => shapes(field, value).map(([shape, params]) => [field, JSON.stringify(value).slice(0, 40), shape, params] as const));
+
+  it.each(CASES)('%s %s as %s is refused with no request', async (field, _value, _shape, params) => {
+    await expectRefused(call('search_accounts', params), `the value for ${field} isn't valid`);
+  });
+
+  const where = (clause: string) => `select * from account where ${clause} startposition 1 maxresults 1000`;
+  const ARMS: Array<[string, string, unknown, string]> = [
+    ['boolean', 'Active', 'true', 'Active = true'],
+    ['boolean', 'Active', '1', 'Active = true'],
+    ['boolean', 'Active', 1, 'Active = true'],
+    ['boolean', 'Active', true, 'Active = true'],
+    ['boolean', 'Active', 'false', 'Active = false'],
+    ['boolean', 'Active', '0', 'Active = false'],
+    ['boolean', 'Active', 0, 'Active = false'],
+    ['boolean, another spelling passed as given', 'Active', 'yes', "Active = 'yes'"],
+    ['boolean, another number passed as given', 'Active', 2, 'Active = 2'],
+    ['number', 'CurrentBalance', '5', 'CurrentBalance = 5'],
+    ['number', 'CurrentBalance', '-2.5', 'CurrentBalance = -2.5'],
+    ['number, a number given', 'CurrentBalance', 7, 'CurrentBalance = 7'],
+    ['number, an empty string passed as given', 'CurrentBalance', '', "CurrentBalance = ''"],
+    ['number, a boolean passed as given', 'CurrentBalance', true, 'CurrentBalance = true'],
+    ['number, not a number passed as given', 'CurrentBalance', '5x', "CurrentBalance = '5x'"],
+    ['string, a number given', 'Name', 5, "Name = '5'"],
+    ['string', 'Name', 'Cash', "Name = 'Cash'"],
+    ['string, a boolean passed as given', 'Name', true, 'Name = true'],
+    ['date', 'MetaData.CreateTime', '2026-10-01', "MetaData.CreateTime = '2026-10-01'"],
+    ['date, a number given', 'MetaData.CreateTime', 20261001, "MetaData.CreateTime = '20261001'"],
+    ['date, a boolean passed as given', 'MetaData.CreateTime', false, 'MetaData.CreateTime = false'],
+  ];
+  const ARM_CASES = ARMS.flatMap(([arm, field, value, clause]) => shapes(field, value).map(([shape, params]) => [arm, field, JSON.stringify(value), shape, params, clause] as const));
+
+  it.each(ARM_CASES)('%s arm: %s %s as %s sends exactly its filter', async (_arm, _field, _value, _shape, params, clause) => {
+    expect(await call('search_accounts', params)).toStrictEqual({ content: [{ type: 'text', text: ROW_LINE }] });
+    expect(oneQuery()).toBe(where(clause));
+  });
+
+  it.each([
+    ['a plain record', { criteria: { Active: ['true', '0', 1] } }],
+    ['an array of records', { criteria: [{ Active: ['true', '0', 1] }] }],
+    ['advanced filters', { criteria: { filters: [{ field: 'Active', value: ['true', '0', 1], operator: 'IN' }] } }],
+  ])('an array value as %s is converted element by element', async (_shape, params) => {
+    await call('search_accounts', params);
+    expect(oneQuery()).toBe(where('Active IN (true,false,true)'));
   });
 });

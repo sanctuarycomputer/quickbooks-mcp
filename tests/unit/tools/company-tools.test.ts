@@ -75,12 +75,18 @@ afterEach(async () => {
 afterAll(() => {
   expect(network.trap.reached).toEqual([]);
   network.restore();
-  // A4.10: every fixture in the directory, produced by a case here. Skipped only under a name filter (`-t`); otherwise
-  // every registered case must have run, or the check fails (T11-2).
-  if (directoryCheckDue(ran, registered, nameFiltered())) expect([...produced].sort()).toEqual(fs.readdirSync(fakePath(INFO_DIR)).sort());
+  fixtureDirectoryCheck();
   // A1.8: the three company fixtures A4.9 is named for, each served by its cases.
   expectServedBy('A4.9', ['200-sanctuary-computer.json', '200-index-space.json', '200-usb-club.json']);
 });
+
+/**
+ * A4.10, as the afterAll runs it: every fixture in the directory, produced by a case here. Skipped only under a name
+ * filter (`-t`); otherwise every registered case must have run, or the check fails (T11-2). TB12-3's case runs it early.
+ */
+function fixtureDirectoryCheck(): void {
+  if (directoryCheckDue(ran, registered, nameFiltered())) expect([...produced].sort()).toEqual(fs.readdirSync(fakePath(INFO_DIR)).sort());
+}
 
 /** The directory check is due unless jest was given a name filter; with none, a case registered and not run fails it. */
 function directoryCheckDue(ranCount: number, registeredCount: number, filtered: boolean): boolean {
@@ -107,6 +113,13 @@ describe("T11-2: the fixture-directory check's skip", () => {
     const { testNamePattern } = circusState();
     expect(testNamePattern === null || testNamePattern instanceof RegExp).toBe(true);
     expect(nameFiltered()).toBe(testNamePattern !== null);
+  });
+
+  // TB12-3: the afterAll's check itself, run before every case has: unfiltered, this case has not yet counted as run, so
+  // the counters differ and it must fail (not skip); under a name filter it must skip.
+  it("the afterAll's check, run before every case ran: it fails on the counters with no name filter, and skips under one", async () => {
+    if (nameFiltered()) expect(() => fixtureDirectoryCheck()).not.toThrow();
+    else expect(() => fixtureDirectoryCheck()).toThrow(/^A4\.10's fixture-directory check: \d+ cases ran, \d+ were registered$/);
   });
 });
 

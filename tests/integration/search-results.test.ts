@@ -117,8 +117,12 @@ describe.each(SEARCHES)('%s', (tool) => {
 // 30 × 1,000 + the marker), and the next offset is 5 + 29 = 34.
 describe('U4: the next offset a cut search names, one case per accepted offset shape', () => {
   const LINE = 999;
-  const pad = LINE - JSON.stringify({ Id: '0000', Memo: '', depth: 0 }).length;
-  const BIG = Array.from({ length: 100 }, (_, i) => ({ Id: String(i + 1).padStart(4, '0'), Memo: 'x'.repeat(pad) }));
+  // Built once for the file, in beforeAll (TB12-5).
+  let BIG: Array<{ Id: string; Memo: string }> = [];
+  beforeAll(() => {
+    const pad = LINE - JSON.stringify({ Id: '0000', Memo: '', depth: 0 }).length;
+    BIG = Array.from({ length: 100 }, (_, i) => ({ Id: String(i + 1).padStart(4, '0'), Memo: 'x'.repeat(pad) }));
+  });
   const MARKER = 'truncated: 21 of 50 rows left out. Next page: pass offset 34.';
   const MARKER_CRITERIA = 'truncated: 21 of 50 rows left out. Next page: pass offset 34 inside criteria.';
   const filter = { field: 'Id', value: '1' };
@@ -131,6 +135,10 @@ describe('U4: the next offset a cut search names, one case per accepted offset s
       [t, 'criteria object', { criteria: { offset: 5, limit: 50 } }, MARKER_CRITERIA],
       [t, 'criteria object with filters', { criteria: { filters: [filter], offset: 5, limit: 50 } }, MARKER_CRITERIA],
       [t, 'criteria {field,value} entries', { criteria: [{ field: 'offset', value: 5 }, { field: 'limit', value: 50 }] }, MARKER_CRITERIA],
+      // TB12-4: the three other forms the criteria tools accept.
+      [t, 'criteria an array of plain records', { criteria: [{ offset: 5 }, { limit: 50 }] }, MARKER_CRITERIA],
+      [t, 'criteria one criterion object with page keys beside it', { criteria: { ...filter, offset: 5, limit: 50 } }, MARKER_CRITERIA],
+      [t, 'criteria the criteria alias list with page keys', { criteria: { criteria: [filter], offset: 5, limit: 50 } }, MARKER_CRITERIA],
     ] as Array<[string, string, Record<string, unknown>, string]>),
     ...['search_bill_payments', 'search_employees', 'search_journal_entries', 'search_purchases'].flatMap((t) => [
       [t, 'top level', { offset: 5, limit: 50 }, MARKER],
