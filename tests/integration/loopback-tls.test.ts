@@ -80,7 +80,7 @@ afterAll(() => {
 });
 
 
-type Local = { port: number; readonly connections: number; close(): Promise<void> };
+type Local = { port: number; readonly connections: number; remotes: (number | undefined)[]; close(): Promise<void> };
 /** Closes `s`, destroying any socket still open (the guard's agent may keep one alive). */
 function closeServer(s: net.Server): Promise<void> {
   const open = (s as net.Server & { sockets?: Set<net.Socket> }).sockets ?? new Set();
@@ -103,6 +103,7 @@ function listen(server: net.Server, remotes: (number | undefined)[]): Promise<Lo
     server.listen(0, '127.0.0.1', () =>
       resolve({
         port: (server.address() as net.AddressInfo).port,
+        remotes,
         get connections() {
           return remotes.filter((p) => p !== undefined && ours.has(p)).length;
         },
@@ -186,9 +187,16 @@ describe("291's guard and backstop on a real socket: the identity check runs (lo
     // The stranger: a plain-text probe on a socket that skips this file's connect trap, as another process's would.
     const stranger = new net.Socket();
     const gone = new Promise((r) => stranger.on('close', r));
+    let from: number | undefined;
     stranger.on('error', () => undefined).resume();
-    (saved.connect as (...a: unknown[]) => net.Socket).call(stranger, local.port, '127.0.0.1', () => stranger.write('HEAD / HTTP/1.1\r\nHost: probe.example.test\r\n\r\n'));
+    (saved.connect as (...a: unknown[]) => net.Socket).call(stranger, local.port, '127.0.0.1', () => {
+      from = stranger.localPort;
+      stranger.write('HEAD / HTTP/1.1\r\nHost: probe.example.test\r\n\r\n');
+    });
     await gone;
+    // It reached the server (by its own port: the host's probes may be there too), and is not one of ours.
+    expect(from).toBeDefined();
+    expect(local.remotes).toContain(from);
     const got = await rig!.runtime.stacks.get('garden3d');
     expect(got.ok && got.token.access_token).toBe(fixtureToken('garden3d'));
     expect(local.connections).toBe(1);
