@@ -1,4 +1,5 @@
 // Sanctuary Computer (quickbooks-mcp-291): start: the transport refusals (contract §3), secureStart in process, and the built entry in a process.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the built entry runs with the five start keys (e2e helpers' startEnv).
 import { describe, it, expect, beforeAll, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
 import { trapNetwork } from '../../fakes/no-network.js';
 import { spawn, spawnSync } from 'child_process';
@@ -9,7 +10,7 @@ import path from 'path';
 import { createRequire } from 'module';
 import { pathToFileURL } from 'url';
 import { installStubNetwork, type StubAnswer, type StubCall } from '../../fakes/stub-network.js';
-import { assertFreshBuild, ROOT } from '../../e2e/helpers.js';
+import { assertFreshBuild, ROOT, startEnv } from '../../e2e/helpers.js';
 import {
   BACKSTOP_MARK,
   checkStartEnv,
@@ -286,12 +287,12 @@ const INITIALIZE =
 
 type Run = { code: number | null; killed: boolean; stdout: string; stderr: string };
 
-/** Runs node <nodeArgs> dist/index.js with exactly env (plus PATH, SystemRoot), writes initialize, and kills it once `until` is seen on stdout or after the timeout. */
+/** Runs node <nodeArgs> dist/index.js with exactly env (plus PATH, SystemRoot, the five start keys), writes initialize, and kills it once `until` is seen on stdout or after the timeout. */
 function runEntry(nodeArgs: string[], env: Record<string, string>, until?: string, timeoutMs = 15000, entryArgs: string[] = []): Promise<Run> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [...nodeArgs, ENTRY, ...entryArgs], {
       cwd: ROOT,
-      env: { PATH: process.env.PATH ?? '', ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}), ...env },
+      env: { PATH: process.env.PATH ?? '', ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}), ...startEnv(), ...env },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';

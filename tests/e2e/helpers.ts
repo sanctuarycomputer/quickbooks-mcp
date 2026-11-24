@@ -1,4 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-285): spawn the built server, raw or through the SDK client, for end-to-end checks.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): every spawned server gets the five start keys and an entities file
+// (startEnv), and the company reserve is 0: the real `company` enum is in tools/list now (A5.14).
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -9,9 +11,23 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'dist', 'index.js');
 
-// What 286's `company` property adds to each of the 31 listed tools in tools/list:
-// the property's value (167 characters) plus its key, comma and `required` entry (21), 188 × 31.
-export const COMPANY_RESERVE = 5828;
+// 286's `company` property is in tools/list itself now, with the enum QBO_COMPANIES loaded, so nothing is reserved for it.
+export const COMPANY_RESERVE = 0;
+
+/**
+ * The five start keys (contract §3) for a spawned server: tests/fakes/entities.json, and a Stacks origin on the loopback
+ * port 1, where nothing listens, so a token fetch fails at once (stacks-unreachable) and no host is reached. The key is
+ * built at runtime: no secret-shaped literal sits in the tree.
+ */
+export function startEnv(): Record<string, string> {
+  return {
+    STACKS_QBO_URL: 'https://127.0.0.1:1',
+    STACKS_QBO_TOKEN: ['stacks', 'e2e', 'key', 'value'].join('-'),
+    QUICKBOOKS_ENVIRONMENT: 'production',
+    QBO_COMPANIES: path.join(ROOT, 'tests', 'fakes', 'entities.json'),
+    QBO_MODE: 'read',
+  };
+}
 
 function newestMtime(dir: string): number {
   let newest = 0;
@@ -31,13 +47,13 @@ export function assertFreshBuild(): void {
 }
 
 function baseEnv(): Record<string, string> {
-  const env: Record<string, string> = { PATH: process.env.PATH ?? '' };
+  const env: Record<string, string> = { PATH: process.env.PATH ?? '', ...startEnv() };
   // Windows needs SystemRoot for Node's own startup.
   if (process.platform === 'win32' && process.env.SystemRoot) env.SystemRoot = process.env.SystemRoot;
   return env;
 }
 
-/** Runs dist/index.js with exactly the given env (plus PATH, and SystemRoot on Windows), stdin closed. */
+/** Runs dist/index.js with exactly the given env (plus PATH, the five start keys, and SystemRoot on Windows), stdin closed. */
 export function spawnRaw(
   env: Record<string, string>,
   timeoutMs = 10000,

@@ -1,4 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-285): the built server lists only the allowlist, fits the size bound and refuses sign-in keys.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): the server starts with the five keys (helpers' startEnv); R10's
+// call names a company and answers the Stacks client's failure.
 import { describe, it, expect, beforeAll, afterEach, jest } from '@jest/globals';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -82,12 +84,17 @@ describe('spawned server', () => {
     expect(stdout).not.toContain(sentinel);
   });
 
-  // 286 T7: until T10 runs each tool in a call, getInstance answers its outside-a-call error.
-  it('R10: a listed tool answers getInstance\'s outside-a-call error and the server stays up', async () => {
+  // 286 T10: each tool runs in a call for its company, and its token fetch fails. Nothing listens at startEnv's Stacks
+  // origin, but no socket is opened: 291's backstop hands Node `checkServerIdentity: undefined` as an own key, which
+  // https.request rejects synchronously (ERR_INVALID_ARG_TYPE, Node 22 and 24), so the Stacks client reads a fork failure.
+  // Found in T10 and reported to the supervisor; a fix to the backstop turns this into stacks-unreachable.
+  it('R10: a listed tool answers the token failure and the server stays up', async () => {
     const { client } = await connect();
-    const result = await client.callTool({ name: 'get_company_info', arguments: { params: {} } });
-    const text = (result.content as Array<{ type: string; text: string }>).map((c) => c.text).join('\n');
-    expect(text).toContain('getInstance outside a tool call');
+    const result = await client.callTool({ name: 'get_company_info', arguments: { company: 'garden3d', params: {} } });
+    expect(result).toEqual({
+      isError: true,
+      content: [{ type: 'text', text: 'reason: fork-error\n\nThe server failed before it could read QuickBooks.' }],
+    });
     const { tools } = await client.listTools();
     expect(tools).toHaveLength(32);
   });
