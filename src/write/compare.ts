@@ -1,6 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-293): the digests and the compare, contract 1.1 §17 (docs/contracts/quickbooks.md in
 // Stacksbot). Names what differs between the fetched transaction (or an intent's digests) and the stored one. Pure: no
-// network, no state. A stored copy of any JSON shape is read without throwing, and what it can't match it names.
+// network, no state. A stored copy of any JSON shape is read without throwing, and what it can't match or tell apart it names.
 import { canonicalJson, sha256Hex } from "./canonical.js";
 
 /** A transaction as QuickBooks' JSON, out of its envelope. */
@@ -12,16 +12,19 @@ export type ResolvedChange = { line_id: string; account_id: string; class_id: st
 export type CompareResult = { same: true } | { same: false; fields: string[] };
 
 const hash = (value: unknown): string => sha256Hex(canonicalJson(value));
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const prop = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
 
+const isLineKey = (key: string): boolean => key.startsWith("Line:");
 const linesOf = (txn: Transaction): unknown[] => (Array.isArray(txn.Line) ? txn.Line : []);
 const refOf = (line: unknown, ref: "AccountRef" | "ClassRef"): unknown => prop(prop(line, "AccountBasedExpenseLineDetail"), ref);
 const accountOf = (line: unknown): unknown => prop(refOf(line, "AccountRef"), "value");
-/** A line's class: an absent `ClassRef` reads as `null`; one with no `value` isn't absent, and matches no class. */
+/** A line's class: an absent `ClassRef` reads as `null`; a present one with no string `value` matches no class. */
 const classOf = (line: unknown): unknown => {
   const ref = refOf(line, "ClassRef");
-  return ref === undefined || ref === null ? null : prop(ref, "value");
+  if (ref === undefined) return null;
+  const value = prop(ref, "value");
+  return typeof value === "string" ? value : undefined;
 };
 
 /** The line without its account-based detail's two refs; the rest of it, own keys of any name included, as it was. */
@@ -50,37 +53,54 @@ export function digests(txn: Transaction, named: Iterable<string>): Record<strin
     const id = prop(line, "Id");
     if (typeof id === "string") entries.push([`Line:${id}`, hash(namedIds.has(id) ? withoutRefs(line) : line)]);
   }
-  // Fields go last, so one that shares a line's key shows instead of being lost. `fromEntries` defines each own key, `__proto__` too.
+  // Fields go last, so one that shares a line's key shows instead of being lost; no QuickBooks field has such a name, and its
+  // hash is made one no line can have. `fromEntries` defines each own key, `__proto__` too.
   for (const [key, value] of Object.entries(txn)) {
-    if (key !== "SyncToken" && key !== "MetaData" && key !== "sparse" && key !== "Line") entries.push([key, hash(value)]);
+    if (key !== "SyncToken" && key !== "MetaData" && key !== "sparse" && key !== "Line") entries.push([key, hash(isLineKey(key) ? [key, value] : value)]);
   }
   return Object.fromEntries(entries);
 }
 
 /** §17 "Compare", against an intent's digests (made with the same named lines). */
-export function compareDigests(stored: Transaction, intentDigests: Record<string, string>, changes: readonly ResolvedChange[]): CompareResult {
+export function compareDigests(stored: unknown, intentDigests: Record<string, string>, changes: readonly ResolvedChange[]): CompareResult {
+  // A stored copy that is no object has nothing.
+  const txn: Transaction = isRecord(stored) ? stored : {};
+  const lines = linesOf(txn);
   // Maps, so a key is read only if it is an own one.
   const before = new Map(Object.entries(intentDigests));
-  const after = new Map(Object.entries(digests(stored, changes.map((change) => change.line_id))));
+  const after = new Map(Object.entries(digests(txn, changes.map((change) => change.line_id))));
   const names = new Set<string>();
   const oneSided = (key: string) => before.has(key) !== after.has(key);
   const keys = [...before.keys(), ...after.keys()].filter((key) => key !== "Line");
   for (const key of keys) if (before.get(key) !== after.get(key)) names.add(key);
+  // A field with a line's key could hide that line, so it is named, and it is no line below.
+  const fieldKeys = new Set(Object.keys(txn).filter(isLineKey));
+  for (const key of fieldKeys) names.add(key);
   // A missing or extra line accounts for differing line ids; anything else that changed them is named Line.
-  if (before.get("Line") !== after.get("Line") && !keys.some((key) => key.startsWith("Line:") && oneSided(key))) names.add("Line");
+  const accounted = keys.some((key) => isLineKey(key) && !fieldKeys.has(key) && oneSided(key));
+  if (before.get("Line") !== after.get("Line") && !accounted) names.add("Line");
+  // A line with no string Id, or sharing one, has no digest of its own to tell a change in it.
+  const ids = lines.map((line) => prop(line, "Id"));
+  if (ids.some((id) => typeof id !== "string") || new Set(ids).size !== ids.length) names.add("Line");
 
+  let missing = accounted;
   for (const change of changes) {
-    const copies = linesOf(stored).filter((line) => prop(line, "Id") === change.line_id);
-    if (copies.length === 0) names.add(`Line:${change.line_id}`);
+    const copies = lines.filter((line) => prop(line, "Id") === change.line_id);
+    if (copies.length === 0) {
+      names.add(`Line:${change.line_id}`);
+      missing = true;
+    }
     for (const line of copies) {
       if (accountOf(line) !== change.account_id) names.add(`Line:${change.line_id}.AccountRef`);
       if (classOf(line) !== change.class_id) names.add(`Line:${change.line_id}.ClassRef`);
     }
   }
+  // No list of lines at all, and no missing line named to say so.
+  if (!Array.isArray(txn.Line) && !missing) names.add("Line");
   return names.size === 0 ? { same: true } : { same: false, fields: [...names].sort() };
 }
 
 /** §17 "Compare", against the fetched transaction in memory: the same names as through its digests. */
-export function compare(stored: Transaction, fetched: Transaction, changes: readonly Change[]): CompareResult {
+export function compare(stored: unknown, fetched: Transaction, changes: readonly Change[]): CompareResult {
   return compareDigests(stored, digests(fetched, changes.map((change) => change.line_id)), resolveChanges(fetched, changes));
 }

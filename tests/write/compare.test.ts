@@ -191,9 +191,16 @@ describe('compare and compareDigests', () => {
     const changes: Change[] = [{ line_id: '1', account_id: '84' }];
     expect(names(() => {}, FETCHED, changes)).toEqual(['Line:1.ClassRef']);
     expect(names((t) => delete detail(t.Line[0]).ClassRef, FETCHED, changes)).toEqual([]);
-    expect(names((t) => (detail(t.Line[0]).ClassRef = null), FETCHED, changes)).toEqual([]);
-    // A ref with no value isn't an absent one.
-    expect(names((t) => (detail(t.Line[0]).ClassRef = { name: 'x' }), FETCHED, changes)).toEqual(['Line:1.ClassRef']);
+  });
+
+  it.each([null, {}, { name: 'x' }, { value: null, name: 'x' }, { value: 12 }, [], 'x'])('TA2: a present ClassRef with no string value matches no class: %j', (ref) => {
+    for (const class_id of [null, '12']) {
+      expect(names((t) => (detail(t.Line[0]).ClassRef = ref), FETCHED, [{ line_id: '1', account_id: '84', class_id }])).toEqual(['Line:1.ClassRef']);
+    }
+  });
+
+  it.each([null, {}, { value: null }, { value: 84 }, '84'])('TA2, TA5: an AccountRef with no string value matches no account: %j', (ref) => {
+    expect(names((t) => (detail(t.Line[0]).AccountRef = ref))).toEqual(['Line:1.AccountRef']);
   });
 
   it('A4.4: a named line whose class is another than the given one', () => {
@@ -284,8 +291,63 @@ describe('compare and compareDigests', () => {
     ).toEqual(['Line:1.AccountRef', 'Line:2', 'Line:2.AccountRef', 'PaymentType', 'TxnDate', 'ZField', 'aField']);
   });
 
-  it('a top-level field named as a line key is not lost behind the line', () => {
+  it('TA3: a stored top-level field named as a line key is named, on one side or both', () => {
     expect(names((t) => (t['Line:2'] = 'x'))).toEqual(['Line:2']);
+    const fetched = { ...FETCHED, 'Line:2': 'x', 'Line:9': 'x' };
+    const fields = (t: Txn) => Object.assign(t, { 'Line:2': 'x', 'Line:9': 'x' });
+    expect(names(fields, fetched)).toEqual(['Line:2', 'Line:9']);
+    expect(names((t) => (fields(t), (t.Line[1].Amount = 500)), fetched)).toEqual(['Line:2', 'Line:9']);
+  });
+
+  it('TA3: such a field does not stop Line being named', () => {
+    expect(names((t) => (t.Line.reverse(), (t['Line:9'] = 'x')))).toEqual(['Line', 'Line:9']);
+    expect(names((t) => (t.Line.reverse(), (t['Line:9'] = 'x')), { ...FETCHED, 'Line:9': 'x' })).toEqual(['Line', 'Line:9']);
+  });
+
+  it('TA3: such a field on the fetched side only does not stand in for its line', () => {
+    const line = { ...copy(SENT.Line[1]), Amount: 500 };
+    expect(names((t) => (t.Line[1] = line), { ...FETCHED, 'Line:2': line })).toEqual(['Line:2']);
+  });
+
+  it.each([{}, 'x', null, 0, undefined])('TA3, TA5: a stored Line that is no array names Line, unless a line is named as missing: %j', (Line) => {
+    const empty = { ...FETCHED, Line: [] };
+    const set = (t: Txn) => (t.Line = Line);
+    expect(names(set, empty, [])).toEqual(['Line']);
+    expect(names(set, empty, CHANGES)).toEqual(['Line:1']);
+    expect(names(set)).toEqual(['Line:1', 'Line:2']);
+    expect(names(set, FETCHED, [])).toEqual(['Line:1', 'Line:2']);
+    expect(digests({ Line }, [])).toEqual({ Line: sha256Hex('[]') });
+  });
+
+  it('a transaction with no lines is the same as itself', () => {
+    const empty = { ...FETCHED, Line: [] };
+    expect(names(() => {}, empty, [], empty)).toEqual([]);
+  });
+
+  const line = (Id: unknown, Amount: number, account = '84') => ({ Id, Amount, AccountBasedExpenseLineDetail: { AccountRef: { value: account } } });
+  it.each<[string, unknown[], unknown[]]>([
+    ['no Id', [{ Amount: 5 }], [{ Amount: 500 }]],
+    ['a numeric Id', [line(3, 5)], [line(3, 500, '91')]],
+    ['a null Id', [line(null, 5)], [line(null, 500)]],
+    ['a repeated unnamed id', [line('3', 5), line('3', 6)], [line('3', 500), line('3', 6)]],
+    ['a repeated named id', [{ ...SENT.Line[0], Amount: 5 }, SENT.Line[0]], [{ ...SENT.Line[0], Amount: 500 }, SENT.Line[0]]],
+    ['a line that is no object', ['x'], ['y']],
+    ['a line that is an array', [['x']], [['y']]],
+  ])('TA1: a stored line no digest tells apart names Line, whatever the fetched side holds: %s', (_name, was, is) => {
+    const fetched = { ...FETCHED, Line: [...FETCHED.Line, ...was] };
+    expect(names((t) => t.Line.push(...is), fetched)).toEqual(['Line']);
+    // Even unchanged, and beside a line on one side only, which by itself would account for the order.
+    expect(names((t) => t.Line.push(...was), fetched)).toEqual(['Line']);
+    expect(names((t) => t.Line.push(...is, { Id: '7', Amount: 1 }), fetched)).toEqual(['Line', 'Line:7']);
+  });
+
+  it.each([null, undefined, 'x', 5, [FETCHED]])('TA4: a stored copy that is no plain object has nothing, so all the fetched side has is named: %j', (stored) => {
+    expect(both(stored as unknown as Txn, FETCHED, CHANGES)).toEqual({ same: false, fields: ['Id', 'Line:1', 'Line:2', 'PaymentType', 'TotalAmt', 'TxnDate'] });
+    expect(both(stored as unknown as Txn, {}, [])).toEqual({ same: false, fields: ['Line'] });
+  });
+
+  it('a named line whose detail became an array is named', () => {
+    expect(names((t) => (t.Line[0].AccountBasedExpenseLineDetail = []))).toEqual(['Line:1', 'Line:1.AccountRef', 'Line:1.ClassRef']);
   });
 
   it('own keys named as Object.prototype members are named on either side', () => {
