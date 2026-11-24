@@ -74,11 +74,21 @@ async function withHandler(handler: () => Promise<unknown>, name = 'get_preferen
   return (await readTools()).map((t) => (t.name === name ? ({ name, description: 'd', schema: z.object({}), handler } as unknown as ReadTool) : t));
 }
 
-/** A search handler over node-quickbooks' own fetchAll: findBills pages by `limit`, its next page asked from a bluebird handler. */
+/** Each fetchAllBills callback: the company of the call that asked, and of the call whose store the callback ran in. */
+const callbacks: Array<{ asked: string | undefined; ranIn: string | undefined }> = [];
+/**
+ * A search handler over node-quickbooks' own fetchAll: findBills pages by `limit`, its next page asked from a bluebird
+ * handler, and its callback run from bluebird's queue (module.query's outer promise is settled later, so bluebird runs its
+ * handlers from one shared drain). The callback notes the call it ran in.
+ */
 const fetchAllBills = async () => {
   const qb: any = await QuickbooksClient.getInstance();
+  const asked = currentCall()?.company;
   const rows = await new Promise((resolve, reject) =>
-    qb.findBills({ fetchAll: true, limit: 2 }, (err: unknown, data: any) => (err ? reject(new Error('find failed')) : resolve(data.QueryResponse.Bill))),
+    qb.findBills({ fetchAll: true, limit: 2 }, (err: unknown, data: any) => {
+      callbacks.push({ asked, ranIn: currentCall()?.company });
+      return err ? reject(new Error('find failed')) : resolve(data.QueryResponse.Bill);
+    }),
   );
   return { content: [{ type: 'text', text: 'Bills:' }, { type: 'text', text: JSON.stringify(rows) }] };
 };
@@ -152,6 +162,34 @@ describe('the wiring: realm store, Stacks client, company state, guard callbacks
     expect(textOf(r)).toBe('reason: http-400\n\nQuickBooks answered 400. QuickBooks said: Bad: echo [redacted] and [redacted]');
   });
 
+  it("the secrets read the call's token when the fault is recorded: a newer token than the failed request's own is redacted too", async () => {
+    // Two preferences reads in one call, both sent with token a. The first gets a 401 and is resent with b; the second's
+    // 400 then arrives, its fault echoing b, the call's token by then (not the bearer that request carried).
+    let releaseSecond: () => void = () => {};
+    const second = new Promise<void>((resolve) => (releaseSecond = resolve));
+    let reads = 0;
+    let newer = '';
+    const route = (c: StubCall): ReturnType<NonNullable<StartOpts['route']>> => {
+      if (!(c.path ?? '').includes('/preferences?')) return undefined;
+      reads++;
+      if (reads === 1) return json(401, {});
+      if (reads === 2) return second.then(() => json(400, { Fault: { Error: [{ Message: 'Bad', Detail: `echo ${newer}` }] } }));
+      newer = bearer(c).replace('Bearer ', '');
+      setTimeout(releaseSecond, 20);
+      return json(200, { Preferences: {} });
+    };
+    const handler = async () => {
+      const qb: any = await QuickbooksClient.getInstance();
+      const read = () => new Promise((resolve) => qb.getPreferences((err: unknown) => resolve(err)));
+      await Promise.all([read(), read()]);
+      return { content: [{ type: 'text', text: '{}' }] };
+    };
+    const { client } = await start({ tools: await withHandler(handler), stacks: { sequence: [tokenBody(access('a')), tokenBody(access('b'))] }, route });
+    const r = await client.callTool({ name: 'get_preferences', arguments: { company: 'garden3d', params: {} } });
+    expect(newer).toBe(access('b'));
+    expect(textOf(r)).toBe('reason: http-400\n\nQuickBooks answered 400. QuickBooks said: Bad: echo [redacted]');
+  });
+
   it("reacquire is the Stacks client's forced get: a 401 fetches a new token and the resend carries it", async () => {
     let queries = 0;
     const { client, stacks } = await start({
@@ -163,6 +201,51 @@ describe('the wiring: realm store, Stacks client, company state, guard callbacks
     expect(textOf(r)).toBe('{"Id":"1","depth":0}');
     expect(stacks.requests).toHaveLength(2);
     expect(net.calls.filter(isQuery).map(bearer)).toEqual([`Bearer ${access('a')}`, `Bearer ${access('b')}`]);
+  });
+
+  it("mark and sentAt (A1.3b): a 401 on a request sent after another call's forced fetch began makes its own fetch, not a join", async () => {
+    // Two garden3d calls, both with token a. The first's 401 starts a forced fetch (b, held); only then does the second send
+    // its request, which also gets a 401: it was sent after that fetch began, so that fetch may carry a token no newer than
+    // its own, and it makes a new fetch (c) instead of joining.
+    let began: () => void = () => {};
+    const forcedBegan = new Promise<void>((resolve) => (began = resolve));
+    let releaseB: () => void = () => {};
+    const holdB = new Promise<void>((resolve) => (releaseB = resolve));
+    // A mutant that joins never asks Stacks a third time; this lets it finish (and fail) instead of hanging.
+    const fallback = setTimeout(() => releaseB(), 1500);
+    let stacksAsked = 0;
+    let queries = 0;
+    const route = (c: StubCall) => {
+      if (c.hostname !== QBO_HOST) {
+        stacksAsked++;
+        if (stacksAsked === 2) began();
+        if (stacksAsked === 3) releaseB();
+        return undefined;
+      }
+      return isQuery(c) && ++queries <= 2 ? json(401, {}) : undefined;
+    };
+    let invoked = 0;
+    const handler = async () => {
+      if (++invoked === 2) await forcedBegan;
+      const qb: any = await QuickbooksClient.getInstance();
+      const rows = await new Promise((resolve, reject) => qb.findBills({ Id: '1' }, (err: unknown, data: any) => (err ? reject(new Error('find failed')) : resolve(data.QueryResponse.Bill))));
+      return { content: [{ type: 'text', text: 'Bills:' }, { type: 'text', text: JSON.stringify(rows) }] };
+    };
+    try {
+      const { client, stacks } = await start({
+        tools: await withHandler(handler, 'search_bills'),
+        qbo: { rows: [{ Id: '1' }] },
+        stacks: { sequence: [tokenBody(access('a')), { answer: tokenBody(access('b')), hold: holdB }, tokenBody(access('c'))] },
+        route,
+      });
+      const call = () => client.callTool({ name: 'search_bills', arguments: { company: 'garden3d', params: {} } });
+      const results = await Promise.all([call(), call()]);
+      for (const r of results) expect(textOf(r)).toBe('{"Id":"1","depth":0}');
+      expect(stacks.requests).toHaveLength(3);
+      expect(net.calls.filter(isQuery).map(bearer).sort()).toEqual([access('a'), access('a'), access('b'), access('c')].map((t) => `Bearer ${t}`).sort());
+    } finally {
+      clearTimeout(fallback);
+    }
   });
 
   it("U3: the Stacks client reads the injected clock: at the fixtures' expires_at the token is refused", async () => {
@@ -272,25 +355,33 @@ const queryRefusals = () => stderr.filter((l) => l.startsWith('qbo-guard: refuse
 describe("T4-3: createRuntime binds node-quickbooks' bluebird before any call", () => {
   it("two overlapping calls for different companies through fetchAll: each next page is asked in its own call and refused there by D8", async () => {
     captureStderr();
-    // Both first pages are answered together, once both were asked, so both calls' bluebird handlers share one drain.
-    const held: Array<() => void> = [];
-    const box: { rig?: Rig } = {};
-    const route = (c: StubCall) => {
-      if (!isQuery(c)) return undefined;
-      return new Promise<StubAnswer>((resolve) => {
-        held.push(() => resolve(box.rig!.qbo.handler(c) as StubAnswer));
-        if (held.length === 2) for (const go of held) go();
-      });
-    };
-    const rig = (box.rig = await start({ tools: await withHandler(fetchAllBills, 'search_bills'), qbo: { rows: THREE }, route }));
+    callbacks.length = 0;
+    const rig = await start({ tools: await withHandler(fetchAllBills, 'search_bills'), qbo: { rows: THREE } });
     const watch = watchRequests();
+    // Both first pages' answers are handed on together, once both arrived, so both calls' node-quickbooks promises
+    // settle in one microtask run and their bluebird handlers share one drain (bluebird schedules it on process.nextTick).
+    const ax = guardedAxios() as any;
+    let open: () => void = () => {};
+    const both = new Promise<void>((resolve) => (open = resolve));
+    let firstPages = 0;
+    const gate = ax.interceptors.response.use(async (response: any) => {
+      if (!/startposition 1 /i.test(String(response.config?.params?.query ?? decodeURIComponent(String(response.config?.url)).replace(/\+/g, ' ')))) return response;
+      if (++firstPages === 2) open();
+      await both;
+      return response;
+    });
     try {
       const call = (company: string) => rig.client.callTool({ name: 'search_bills', arguments: { company, params: {} } });
       const results = await Promise.all([call('garden3d'), call('usb-club')]);
       for (const r of results) expect(textOf(r)).toBe('reason: fork-error\n\nThe server failed before it could read QuickBooks.');
     } finally {
       watch.eject();
+      ax.interceptors.response.eject(gate);
     }
+    expect(firstPages).toBe(2);
+    // Both callbacks ran from one bluebird drain; each in the call that asked.
+    expect(callbacks.map((c) => c.asked).sort()).toEqual(['garden3d', 'usb-club']);
+    for (const c of callbacks) expect(c.ranIn).toBe(c.asked);
     const byRealm = Object.fromEntries(Object.entries(REALMS).map(([k, v]) => [v, k]));
     expect(watch.seen.map((q) => q.start).sort()).toEqual(['1', '1', '3', '3']);
     for (const q of watch.seen) {
