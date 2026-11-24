@@ -83,6 +83,15 @@ function started(server: McpServer, tools: ReadTool[]): void {
 
 const sentinel = () => 'sentinel-' + process.pid + '-' + Date.now();
 
+// First in the file: 291's guard has never started in this module registry, so configureGuard still throws.
+describe('before 291\'s start', () => {
+  it('createRuntime fails, and startReadServer answers it as one refusal, registering nothing', () => {
+    const { server, calls } = fakeServer();
+    expect(() => startReadServer(testEnv(), server, fullTools())).toThrow(new Error('refused to start: qbo-guard: not started'));
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe('allowlist', () => {
   it("A1: READ_ALLOWLIST is the fork review's list", () => {
     expect([...READ_ALLOWLIST]).toEqual(APPENDIX_A);
@@ -190,6 +199,16 @@ describe('start refusal', () => {
     expect(startRefusal({ QUICKBOOKS_DISABLE_WRITE: 'true', QUICKBOOKS_ENVIRONMENT: 'production' })).toBeNull();
     const inherited = Object.create({ [KEYS[0]]: 'x' }) as Record<string, string | undefined>;
     expect(startRefusal(inherited)).toBeNull();
+  });
+
+  it('the companies tool is handed the call\'s arguments and the runtime', async () => {
+    const { server, calls } = fakeServer();
+    const handler = jest.fn(async (_args: unknown, _runtime: unknown) => ({ content: [] }));
+    const tools = fullTools().map((t) => (t === QboCompaniesTool ? { ...QboCompaniesTool, handler } : t));
+    registerReadTools(server, tools, RUNTIME);
+    const registered = calls.find((c) => c[0] === 'qbo_companies')!;
+    await registered[3]({ a: 1 });
+    expect(handler).toHaveBeenCalledWith({ a: 1 }, RUNTIME);
   });
 
   it('startReadServer registers when nothing refuses', () => {

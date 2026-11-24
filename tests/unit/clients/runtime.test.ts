@@ -24,6 +24,8 @@ import { guardedAxios } from '../../../src/http-guard.js';
 import { clearFailure, currentCall } from '../../../src/clients/call-context.js';
 import { QuickbooksClient } from '../../../src/clients/quickbooks-client.js';
 import { REFUSED_KEYS, type ReadTool } from '../../../src/allowlist.js';
+import { runInCall } from '../../../src/clients/call-context.js';
+import { createRuntime } from '../../../src/clients/runtime.js';
 
 const network = installNetwork();
 const { net } = network;
@@ -172,6 +174,28 @@ describe('the wiring: realm store, Stacks client, company state, guard callbacks
   });
 });
 
+describe('createRuntime without deps', () => {
+  it("the Stacks client's clock is Date.now", async () => {
+    const r = await start();
+    const runtime = createRuntime(r.runtime.cfg);
+    try {
+      const get = () => runInCall('garden3d', () => runtime.stacks.get('garden3d'));
+      jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-11-18T12:00:00Z'));
+      expect(await get()).toEqual({ ok: false, failure: { reason: 'fork-error' } });
+    } finally {
+      runtime.close();
+    }
+    jest.spyOn(Date, 'now').mockReturnValue(NOW);
+    const fresh = createRuntime(r.runtime.cfg);
+    try {
+      const got = await runInCall('garden3d', () => fresh.stacks.get('garden3d'));
+      expect(got.ok).toBe(true);
+    } finally {
+      fresh.close();
+    }
+  });
+});
+
 describe("close() and U1: the interceptors come off", () => {
   it('close() ejects both interceptors', async () => {
     const r = await start();
@@ -250,18 +274,18 @@ describe("T4-3: createRuntime binds node-quickbooks' bluebird before any call", 
     captureStderr();
     // Both first pages are answered together, once both were asked, so both calls' bluebird handlers share one drain.
     const held: Array<() => void> = [];
-    let rig: Rig | undefined;
+    const box: { rig?: Rig } = {};
     const route = (c: StubCall) => {
       if (!isQuery(c)) return undefined;
       return new Promise<StubAnswer>((resolve) => {
-        held.push(() => resolve(rig!.qbo.handler(c) as StubAnswer));
+        held.push(() => resolve(box.rig!.qbo.handler(c) as StubAnswer));
         if (held.length === 2) for (const go of held) go();
       });
     };
-    rig = await start({ tools: await withHandler(fetchAllBills, 'search_bills'), qbo: { rows: THREE }, route });
+    const rig = (box.rig = await start({ tools: await withHandler(fetchAllBills, 'search_bills'), qbo: { rows: THREE }, route }));
     const watch = watchRequests();
     try {
-      const call = (company: string) => rig!.client.callTool({ name: 'search_bills', arguments: { company, params: {} } });
+      const call = (company: string) => rig.client.callTool({ name: 'search_bills', arguments: { company, params: {} } });
       const results = await Promise.all([call('garden3d'), call('usb-club')]);
       for (const r of results) expect(textOf(r)).toBe('reason: fork-error\n\nThe server failed before it could read QuickBooks.');
     } finally {

@@ -2,6 +2,7 @@
 // 291's secureStart, then 285's startReadServer with a test environment (the five keys, an entities file) and the Stacks
 // client's clock held at 2026-11-18T11:00:00Z, an hour before the fixtures' expires_at; an in-memory MCP client on it.
 // The stub network routes QuickBooks' host to the QuickBooks fake and every other host to the Stacks fake.
+import { jest } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,6 +16,7 @@ import { stacksFake, type StacksFakeOpts } from '../fakes/stacks-token.js';
 import { secureStart } from '../../src/http-guard.js';
 import { startReadServer, type ReadTool } from '../../src/allowlist.js';
 import type { Runtime } from '../../src/clients/runtime.js';
+import { assertFreshBuild } from '../e2e/helpers.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const fakePath = (name: string) => path.join(ROOT, 'tests', 'fakes', name);
@@ -61,13 +63,23 @@ export function companyInfos(): Record<string, object> {
 }
 
 let toolList: ReadTool[] | undefined;
-/** The tool list as src/index.ts builds it (its `./tools/*.tool.js` imports, in order), loaded from src. */
+/**
+ * The tool list as src/index.ts builds it (its `./tools/*.tool.js` imports, in order), loaded from the build (dist/, what
+ * ships), as 291's A1.9 loaded it: the tools and handlers are upstream code these tests exercise but do not cover, so
+ * loading their sources would count them in the coverage report. The build's call store and client are mapped to the
+ * sources', so a built handler runs in the call the source runtime opened (one AsyncLocalStorage, not two).
+ */
 export async function readTools(): Promise<ReadTool[]> {
   if (toolList !== undefined) return toolList;
+  assertFreshBuild();
+  const callContext = await import('../../src/clients/call-context.js');
+  const client = await import('../../src/clients/quickbooks-client.js');
+  jest.unstable_mockModule('../../dist/clients/call-context.js', () => callContext);
+  jest.unstable_mockModule('../../dist/clients/quickbooks-client.js', () => client);
   const index = fs.readFileSync(path.join(ROOT, 'src', 'index.ts'), 'utf8');
   const list: ReadTool[] = [];
   for (const [, name, file] of index.matchAll(/^import \{ (\w+) \} from "\.\/tools\/([\w-]+\.tool)\.js";$/gm)) {
-    const mod = await import(`../../src/tools/${file}.js`);
+    const mod = await import(`../../dist/tools/${file}.js`);
     list.push(mod[name]);
   }
   toolList = list;
