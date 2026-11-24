@@ -1,7 +1,7 @@
 // Sanctuary Computer (quickbooks-mcp-286): results in contract 1.1 §5's grammar at unit level (spec A4.7's text forms,
 // A5.4, A5.5, A5.5b, A5.6, A5.10, A5.11, A5.12; D6, D9). Every render and cut fixture in tests/fakes is produced exactly;
 // the nothing-fits cases of A5.10 are one built case each. The through-the-server half is T12's.
-import { describe, it, expect, beforeAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, jest } from '@jest/globals';
 import { readdirSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -794,6 +794,25 @@ describe('T9-2: an empty data item, or no room at all, is never cut and never th
     expect(cut('rows', lines, ROOM(room), 1, false, [1, 1, 1]).lines).toEqual([ROWS(1, 3, 3), lines[0], lines[1]]);
     expect(cut('rows', lines, ROOM(room), 1, false, [3]).lines).toEqual([LINES(2, 2, 0, 1, 2), lines[0]]);
     expect(cut('rows', lines, ROOM(room), 1, false, [1, 2]).lines).toEqual([ROWS(1, 2, 2), lines[0]]);
+  });
+
+  // T10-5: shapeResult always hands cut its own sizes, so only a broken check reaches the refusal through it. Number.isInteger
+  // is read by cut's size check alone in tool-result.ts; answering false for the call makes cut refuse render's own sizes.
+  it('T10-5: a cut that refuses the sizes is caught by shapeResult: fork-error, then the warnings; it never throws', () => {
+    const spy = jest.spyOn(Number, 'isInteger').mockReturnValue(false);
+    let r: CallToolResult;
+    try {
+      r = shapeResult(raw('Found 1 bills:', '{"Id":"1"}', 'WARNING: w'), call({ warnings: ['WARNING: c'] }), 'search_bills');
+      expect(() => cut('rows', ['{"Id":"1","depth":0}'], [], 1, false, [1])).toThrow(TypeError);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(r).toStrictEqual({
+      isError: true,
+      content: [item('reason: fork-error\n\nThe server failed before it could read QuickBooks.'), item('WARNING: c'), item('WARNING: w')],
+    });
+    // The same call without the broken check: the row.
+    expect(dataOf(shapeResult(raw('Found 1 bills:', '{"Id":"1"}'), call(), 'search_bills'))).toBe('{"Id":"1","depth":0}');
   });
 
   it('shapeResult never throws: each data kind under warnings over 30,000', () => {

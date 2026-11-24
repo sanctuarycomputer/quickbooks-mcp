@@ -2,6 +2,9 @@
 // tool call (spec A2.7, A3.1, A3.2; T7-4; the unknown-key warning after the first item). Through the started server:
 // 291's secureStart, 285's startReadServer, an in-memory MCP client; the stub network answers below the guard.
 import { describe, it, expect, afterEach, afterAll, jest } from '@jest/globals';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
@@ -16,6 +19,8 @@ import {
   startServer,
   testEnv,
   textOf,
+  assertToolImports,
+  ROOT,
   type Rig,
   type StartOpts,
 } from '../../helpers/server.js';
@@ -56,6 +61,30 @@ const named = (name: string) => ({
 async function withHandler(name: string, handler: (...a: any[]) => Promise<unknown>): Promise<ReadTool[]> {
   return (await readTools()).map((t) => (t.name === name ? ({ name, description: 'd', schema: z.object({ a: z.string().optional() }), handler } as unknown as ReadTool) : t));
 }
+
+describe("readTools' import check: a built tool or handler imports only the known modules (T10-6)", () => {
+  it('the build as it is: no fault, following each tool into its handlers', () => {
+    expect(() => assertToolImports(path.join(ROOT, 'dist'), ['tools/search-bills.tool.js', 'tools/get-preferences.tool.js'])).not.toThrow();
+  });
+
+  it('a handler that imports another module (the guard, the allowlist) is named, through the tool that imports it', () => {
+    const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-tool-imports-'));
+    try {
+      fs.mkdirSync(path.join(dist, 'tools'));
+      fs.mkdirSync(path.join(dist, 'handlers'));
+      fs.writeFileSync(path.join(dist, 'tools', 'x.tool.js'), 'import { h } from "../handlers/x.handler.js";\nimport { f } from "../helpers/format-error.js";\n');
+      fs.writeFileSync(path.join(dist, 'handlers', 'x.handler.js'), 'import { q } from "../clients/quickbooks-client.js";\nimport * as g from "../http-guard.js";\nconst a = await import("../allowlist.js");\n');
+      expect(() => assertToolImports(dist, ['tools/x.tool.js'])).toThrow(
+        new Error(
+          "readTools: handlers/x.handler.js imports ../http-guard.js, outside readTools' known modules; " +
+            "handlers/x.handler.js imports ../allowlist.js, outside readTools' known modules",
+        ),
+      );
+    } finally {
+      fs.rmSync(dist, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('A3.1: tools/list', () => {
   it('every tool but qbo_companies requires company and params, its enum the loaded keys in order; qbo_companies has no company', async () => {
@@ -160,6 +189,33 @@ describe('a handler that throws (T7-4)', () => {
     const { client } = await start({ tools });
     const r = await client.callTool({ name: 'search_bills', arguments: { company: 'garden3d', params: {} } });
     expect(r).toEqual({ isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThe server failed before it could read QuickBooks.' }] });
+  });
+
+  // T10-1: the catch keeps the call's warnings too (contract §5: they follow the first item on errors).
+  const UNKNOWN = /^WARNING: search_bills does not support this parameter: b\. It was IGNORED/;
+  it('with an unknown key, after recording a failure: the error item, then the warning', async () => {
+    const tools = await withHandler('search_bills', async () => {
+      recordFailure({ reason: 'http-503', intuitTid: 'tid-1' });
+      throw new Error('boom');
+    });
+    const { client } = await start({ tools });
+    const r: any = await client.callTool({ name: 'search_bills', arguments: { company: 'garden3d', params: { a: 'x', b: 'y' } } });
+    expect(r.isError).toBe(true);
+    expect(r.content).toHaveLength(2);
+    expect(r.content[0]).toEqual({ type: 'text', text: 'reason: http-503\nintuit_tid: tid-1\n\nQuickBooks answered 503.' });
+    expect(r.content[1].text).toMatch(UNKNOWN);
+  });
+
+  it('with an unknown key and nothing recorded: fork-error, then the warning', async () => {
+    const tools = await withHandler('search_bills', async () => {
+      throw new Error('boom');
+    });
+    const { client } = await start({ tools });
+    const r: any = await client.callTool({ name: 'search_bills', arguments: { company: 'garden3d', params: { a: 'x', b: 'y' } } });
+    expect(r.isError).toBe(true);
+    expect(r.content).toHaveLength(2);
+    expect(r.content[0]).toEqual({ type: 'text', text: 'reason: fork-error\n\nThe server failed before it could read QuickBooks.' });
+    expect(r.content[1].text).toMatch(UNKNOWN);
   });
 
   it('a prepare failure is answered from prepareCall: the handler never runs', async () => {

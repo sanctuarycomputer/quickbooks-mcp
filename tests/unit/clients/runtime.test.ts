@@ -426,6 +426,44 @@ describe("T6-4: inside a call each request reads the call's token when it is sen
   });
 });
 
+describe("T6-4's budget half: a later request runs outside the earlier one's resend lineage, with its own 401 resend", () => {
+  it('findBills (401, resent with b), then getPreferences (401, resent with c): the data, Stacks asked three times, bearers a, b, b, c', async () => {
+    let queries = 0;
+    let prefs = 0;
+    const isPrefs = (c: StubCall) => c.hostname === QBO_HOST && (c.path ?? '').includes('/preferences?');
+    const route = (c: StubCall) => {
+      if (isQuery(c) && queries++ === 0) return json(401, {});
+      if (isPrefs(c)) return prefs++ === 0 ? json(401, {}) : json(200, { Preferences: {} });
+      return undefined;
+    };
+    const handler = async () => {
+      const qb: any = await QuickbooksClient.getInstance();
+      const bills = await new Promise((resolve, reject) =>
+        qb.findBills({ Id: '1' }, (err: unknown, data: any) => (err ? reject(new Error('find failed')) : resolve(data.QueryResponse.Bill))),
+      );
+      const preferences = await new Promise((resolve, reject) =>
+        qb.getPreferences((err: unknown, data: any) => (err ? reject(new Error('preferences failed')) : resolve(data))),
+      );
+      return { content: [{ type: 'text', text: JSON.stringify({ bills, preferences: preferences !== undefined }) }] };
+    };
+    const { client, stacks } = await start({
+      tools: await withHandler(handler),
+      qbo: { rows: [{ Id: '1' }] },
+      stacks: { sequence: [tokenBody(access('a')), tokenBody(access('b')), tokenBody(access('c'))] },
+      route,
+    });
+    const r = await client.callTool({ name: 'get_preferences', arguments: { company: 'garden3d', params: {} } });
+    expect(textOf(r)).toBe('{"bills":[{"Id":"1"}],"preferences":true}');
+    expect(stacks.requests).toHaveLength(3);
+    expect(net.calls.filter((c) => isQuery(c) || isPrefs(c)).map((c) => [isQuery(c) ? 'query' : 'preferences', bearer(c)])).toEqual([
+      ['query', `Bearer ${access('a')}`],
+      ['query', `Bearer ${access('b')}`],
+      ['preferences', `Bearer ${access('b')}`],
+      ['preferences', `Bearer ${access('c')}`],
+    ]);
+  });
+});
+
 describe('TB6: a handler that throws the error the interceptors rethrew', () => {
   it("answers the recorded failure; neither the result nor stderr nor the console holds the token or the key", async () => {
     captureStderr();

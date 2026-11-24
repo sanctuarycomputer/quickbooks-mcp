@@ -130,6 +130,8 @@ describe('removals', () => {
     expect(networkLoads(GUARD_FILE, 'ax.getAdapter("http"); require("http")')).toEqual(['"http"']);
     expect(networkLoads('src/index.ts', 'import a from "node:https"; ax.getAdapter("http")')).toEqual(['"node:https"', '"http"']);
     expect(read(GUARD_FILE)).toContain('"node:https"');
+    // node:tls is loaded for one value (T10-4): the guard's text names `tls.` only as tls.checkServerIdentity.
+    expect([...new Set(read(GUARD_FILE).match(/\btls\.[\w$]*/g))]).toEqual(['tls.checkServerIdentity']);
   });
 
   it('A7: no QUICKBOOKS_DISABLE text in src', () => {

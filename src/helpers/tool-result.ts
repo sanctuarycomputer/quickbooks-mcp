@@ -286,7 +286,7 @@ function cutReport(lines: string[], room: number): string[] {
  * render's row structure (`searchRowSizes`), for every other kind null. Sizes that don't describe the lines (not an
  * array, a hole, an element that isn't a positive integer, a sum other than the line count), or sizes given for another
  * kind, are refused: cut throws a TypeError, before any cut and whatever the length (TB9-1, TB9-2). `shapeResult` is its
- * only caller and always passes its own sizes; were one refused, the tool's handler answers fork-error.
+ * only caller and always passes its own sizes; were one refused, `shapeResult` catches it and answers fork-error (T10-5).
  */
 export function cut(
   kind: DataKind,
@@ -307,7 +307,8 @@ export function cut(
 
 /**
  * A tool's result: the call's recorded failure first, whatever the handler answered; else D9's classification, the
- * data item rendered and cut, then the warnings (the call's own, then the handler's WARNING: items).
+ * data item rendered and cut, then the warnings (the call's own, then the handler's WARNING: items). It never throws:
+ * a refused cut (sizes that don't describe the lines) answers fork-error with the warnings (TB9-1, TB9-2, T10-5).
  */
 export function shapeResult(raw: unknown, call: CallStore, tool: string): CallToolResult {
   const classified = classify(raw, toolKind(tool));
@@ -316,6 +317,11 @@ export function shapeResult(raw: unknown, call: CallStore, tool: string): CallTo
   if (!classified.ok) return errorResult(FORK_ERROR, warnings);
   const lines = render(classified.kind, classified.value);
   const sizes = classified.kind === "rows" ? searchRowSizes(classified.value) : null;
-  const out = cut(classified.kind, lines, warnings, call.usedOffset ?? 1, CRITERIA_ONLY_TOOLS.includes(tool), sizes);
+  let out: { lines: string[]; warnings: string[] };
+  try {
+    out = cut(classified.kind, lines, warnings, call.usedOffset ?? 1, CRITERIA_ONLY_TOOLS.includes(tool), sizes);
+  } catch {
+    return errorResult(FORK_ERROR, warnings);
+  }
   return { content: [text(out.lines.join("\n")), ...out.warnings.map(text)] };
 }

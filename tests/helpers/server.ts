@@ -62,6 +62,37 @@ export function companyInfos(): Record<string, object> {
   return out;
 }
 
+/**
+ * The modules a built tool or handler may import besides other tools and handlers (T10-6): readTools maps the first two
+ * (the only ones with state) to the sources; the rest hold none, so a second, built copy of each is harmless.
+ */
+export const TOOL_IMPORTS = ['call-context', 'quickbooks-client', 'validate-input', 'format-error', 'tool-lists'];
+const RELATIVE = /(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["'](\.{1,2}\/[^"']+)["']/g;
+
+/**
+ * Throws unless the built tools' relative imports, from the tool files given (paths under `dist`) and following every
+ * import of a tool or handler, stay within TOOL_IMPORTS; the error names each importing file and the module.
+ */
+export function assertToolImports(dist: string, files: string[]): void {
+  const faults: string[] = [];
+  const seen = new Set<string>();
+  const queue = files.map((f) => path.join(dist, f));
+  while (queue.length > 0) {
+    const file = queue.shift()!;
+    if (seen.has(file)) continue;
+    seen.add(file);
+    const text = fs.readFileSync(file, 'utf8');
+    for (const [, spec] of text.matchAll(RELATIVE)) {
+      const target = path.resolve(path.dirname(file), spec);
+      const dir = path.relative(dist, path.dirname(target));
+      const base = path.basename(target).replace(/\.js$/, '');
+      if ((dir === 'tools' && base.endsWith('.tool')) || (dir === 'handlers' && base.endsWith('.handler'))) queue.push(target);
+      else if (!TOOL_IMPORTS.includes(base)) faults.push(`${path.relative(dist, file)} imports ${spec}, outside readTools' known modules`);
+    }
+  }
+  if (faults.length > 0) throw new Error(`readTools: ${faults.join('; ')}`);
+}
+
 let toolList: ReadTool[] | undefined;
 /**
  * The tool list as src/index.ts builds it (its `./tools/*.tool.js` imports, in order), loaded from the build (dist/, what
@@ -77,8 +108,11 @@ export async function readTools(): Promise<ReadTool[]> {
   jest.unstable_mockModule('../../dist/clients/call-context.js', () => callContext);
   jest.unstable_mockModule('../../dist/clients/quickbooks-client.js', () => client);
   const index = fs.readFileSync(path.join(ROOT, 'src', 'index.ts'), 'utf8');
+  const tools = [...index.matchAll(/^import \{ (\w+) \} from "\.\/tools\/([\w-]+\.tool)\.js";$/gm)];
+  // A built module outside the known list would load as a second copy beside its source, with no error (T10-6).
+  assertToolImports(path.join(ROOT, 'dist'), tools.map(([, , file]) => `tools/${file}.js`));
   const list: ReadTool[] = [];
-  for (const [, name, file] of index.matchAll(/^import \{ (\w+) \} from "\.\/tools\/([\w-]+\.tool)\.js";$/gm)) {
+  for (const [, name, file] of tools) {
     const mod = await import(`../../dist/tools/${file}.js`);
     list.push(mod[name]);
   }
