@@ -13,11 +13,11 @@ export type QuickbooksFakeOpts = {
   report?: object;
   /** every answer waits for this */
   holdUntil?: Promise<void>;
-  /** fail the connection instead of answering */
-  fail?: 'reset' | 'refused' | 'tls';
+  /** fail the connection instead of answering (T6: a socket's own ETIMEDOUT and ECONNABORTED too) */
+  fail?: 'reset' | 'refused' | 'tls' | 'socket-timeout' | 'socket-aborted';
 };
 
-const FAIL_CODES = { reset: 'ECONNRESET', refused: 'ECONNREFUSED', tls: 'CERT_HAS_EXPIRED' } as const;
+const FAIL_CODES = { reset: 'ECONNRESET', refused: 'ECONNREFUSED', tls: 'CERT_HAS_EXPIRED', 'socket-timeout': 'ETIMEDOUT', 'socket-aborted': 'ECONNABORTED' } as const;
 
 const json = (status: number, body: unknown): StubAnswer => ({ status, body: JSON.stringify(body) });
 
