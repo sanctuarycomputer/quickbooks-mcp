@@ -73,8 +73,47 @@ afterEach(async () => {
 afterAll(() => {
   expect(network.trap.reached).toEqual([]);
   network.restore();
-  // A4.10: every fixture in the directory, produced by a case here; only when every case ran, so a `-t` run passes.
-  if (ran === registered) expect([...produced].sort()).toEqual(fs.readdirSync(fakePath(INFO_DIR)).sort());
+  // A4.10: every fixture in the directory, produced by a case here. Skipped only under a name filter (`-t`); otherwise
+  // every registered case must have run, or the check fails (T11-2).
+  if (directoryCheckDue(ran, registered, nameFiltered())) expect([...produced].sort()).toEqual(fs.readdirSync(fakePath(INFO_DIR)).sort());
+});
+
+/** jest-circus' state (it keeps the run's name filter there), under its unregistered symbol. */
+function circusState(): { testNamePattern: RegExp | null } {
+  const sym = Object.getOwnPropertySymbols(globalThis).find((s) => s.description === 'JEST_STATE_SYMBOL');
+  if (sym === undefined) throw new Error("jest-circus' state isn't on globalThis");
+  return (globalThis as Record<symbol, { testNamePattern: RegExp | null }>)[sym];
+}
+/** True when jest was given a name filter (`-t` / `--testNamePattern`). */
+function nameFiltered(state: { testNamePattern: RegExp | null } = circusState()): boolean {
+  return state.testNamePattern !== null && state.testNamePattern !== undefined;
+}
+/** The directory check is due unless jest was given a name filter; with none, a case registered and not run fails it. */
+function directoryCheckDue(ranCount: number, registeredCount: number, filtered: boolean): boolean {
+  if (filtered) return false;
+  if (ranCount !== registeredCount) throw new Error(`A4.10's fixture-directory check: ${ranCount} cases ran, ${registeredCount} were registered`);
+  return true;
+}
+
+describe("T11-2: the fixture-directory check's skip", () => {
+  it('under a name filter it is skipped, whatever the counters', async () => {
+    expect(directoryCheckDue(3, 5, true)).toBe(false);
+    expect(directoryCheckDue(5, 5, true)).toBe(false);
+  });
+
+  it('with no name filter it is due when the counters agree, and fails when they differ', async () => {
+    expect(directoryCheckDue(5, 5, false)).toBe(true);
+    expect(() => directoryCheckDue(4, 5, false)).toThrow(new Error("A4.10's fixture-directory check: 4 cases ran, 5 were registered"));
+    expect(() => directoryCheckDue(6, 5, false)).toThrow(new Error("A4.10's fixture-directory check: 6 cases ran, 5 were registered"));
+  });
+
+  it("the filter is read from jest-circus' state: a pattern is a filter, null is none; the state holds one or null", async () => {
+    expect(nameFiltered({ testNamePattern: /A4\.10/ })).toBe(true);
+    expect(nameFiltered({ testNamePattern: null })).toBe(false);
+    const { testNamePattern } = circusState();
+    expect(testNamePattern === null || testNamePattern instanceof RegExp).toBe(true);
+    expect(nameFiltered()).toBe(testNamePattern !== null);
+  });
 });
 
 const isQbo = (c: StubCall) => c.hostname === QBO_HOST;
@@ -143,6 +182,7 @@ describe('A4.9: get_company_info', () => {
   it("company_id naming another company's realm is ignored too: garden3d's data, usb-club's realm never asked", async () => {
     const r = await start();
     const out: any = await r.client.callTool({ name: 'get_company_info', arguments: { company: 'garden3d', params: { company_id: REALMS['usb-club'] } } });
+    expect(out.content).toHaveLength(2);
     expect(out.content[0]).toStrictEqual(readFake(`${INFO_DIR}/ok-garden3d.json`).content[0]);
     expect(out.content[1].text).toMatch(/^WARNING: get_company_info does not support this parameter: company_id\./);
     expect(qboCalls().map(pathOf)).toEqual([infoPath(REALMS.garden3d), infoPath(REALMS.garden3d)]);
