@@ -1,5 +1,6 @@
 // Changed by Sanctuary Computer (quickbooks-mcp-286): the input normalizer checks the criteria before any request, and the
 // offset the request uses is kept for the call (A5.1-A5.3, A5.13, A6.3).
+// T12 fix 1b: a string filter given as "" is passed on as that filter, never dropped.
 import { QuickbooksClient } from "../clients/quickbooks-client.js";
 import { ToolResponse } from "../types/tool-response.js";
 import { formatError } from "../helpers/format-error.js";
@@ -18,13 +19,13 @@ export async function searchQuickbooksCreditMemos(data: SearchCreditMemosInput):
   try {
     const criteria: Array<Record<string, any>> = [];
 
-    if (data.customer_ref) {
+    if (data.customer_ref !== undefined) {
       criteria.push({ field: "CustomerRef", value: data.customer_ref, operator: "=" });
     }
-    if (data.txn_date_from) {
+    if (data.txn_date_from !== undefined) {
       criteria.push({ field: "TxnDate", value: data.txn_date_from, operator: ">=" });
     }
-    if (data.txn_date_to) {
+    if (data.txn_date_to !== undefined) {
       criteria.push({ field: "TxnDate", value: data.txn_date_to, operator: "<=" });
     }
 

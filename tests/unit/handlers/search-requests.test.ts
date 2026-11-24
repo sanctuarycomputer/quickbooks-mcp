@@ -596,3 +596,28 @@ afterAll(() => {
   net.restore();
   trap.restore();
 });
+
+// T12 fix 1b, at the tool file: a list mixing {field} and {key} criteria is refused before any request, and an empty
+// string on a fixed-schema tool's string field is passed on as that filter.
+describe('T12 fix 1b at the tool files', () => {
+  const MIXED = "give every criterion as {field, value} or every one as {key, value}, not both";
+  it.each([
+    ['search_bills', SearchBillsTool],
+    ['search_customers', SearchCustomersTool],
+    ['search_vendors', SearchVendorsTool],
+  ] as const)('%s: a mixed list, either order, is refused with no request', async (_tool, def) => {
+    for (const criteria of [
+      [{ field: 'Id', value: '1' }, { key: 'DocNumber', value: '9' }],
+      [{ key: 'DocNumber', value: '9' }, { field: 'Id', value: '1' }],
+    ]) {
+      const r = await inCall(() => viaTool(def)({ criteria }));
+      expectRefused(r, MIXED);
+      expect((r.out as any).content[0].text).toMatch(/^Error searching (bills|customers|vendors): The search was refused/);
+    }
+  });
+
+  it.each(SEARCHES.filter((c) => c.family === 'fixed'))('$tool: "" on $field is that filter in the query', async (c) => {
+    const q = expectOneQuery(await inCall(() => c.run({ [c.field]: '' })), c.entity);
+    expect(q).toContain(`${fixedField(c)} ${c.field === 'txn_date_from' ? '>=' : '='} ''`);
+  });
+});

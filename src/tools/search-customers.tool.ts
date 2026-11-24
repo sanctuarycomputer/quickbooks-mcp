@@ -1,4 +1,6 @@
+// Changed by Sanctuary Computer (quickbooks-mcp-286, T12 fix 1b): a list mixing {field} and {key} criteria is refused.
 import { searchQuickbooksCustomers } from "../handlers/search-quickbooks-customers.handler.js";
+import { refusal, searchRefusalText } from "../helpers/validate-input.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 
@@ -58,6 +60,13 @@ const toolHandler = async (args: any) => {
 
   // Build criteria to send to SDK. If user provided the advanced array with field/operator/value
   // we pass it straight through. Otherwise we transform legacy {key,value} pairs to object.
+  // Sanctuary Computer (quickbooks-mcp-286, T12 fix 1b): a list that mixes the two forms is refused, never folded by its
+  // first element's form (the other form's entries would go out as other filters), and nothing is sent.
+  if (Array.isArray(criteria) && criteria.some((c: any) => "field" in c) && criteria.some((c: any) => !("field" in c))) {
+    const text = searchRefusalText("give every criterion as {field, value} or every one as {key, value}, not both");
+    refusal({ reason: "fork-error", text });
+    return { content: [{ type: "text" as const, text: `Error searching customers: ${text}` }] };
+  }
   let criteriaToSend: any;
   if (Array.isArray(criteria) && criteria.length > 0) {
     const first = criteria[0] as any;

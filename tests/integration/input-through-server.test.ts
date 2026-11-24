@@ -366,3 +366,57 @@ describe('TB12-1, TB12-2: search_accounts checks the values as sent, then coerce
     expect(oneQuery()).toBe(where('Active IN (true,false,true)'));
   });
 });
+
+// T12 fix 1b: on the 8 fixed-schema searches, a string filter given as "" reaches the request as that filter, written in
+// the query's quoted form as a non-empty string is; and on the three count tools a list mixing {field} and {key}
+// criteria is refused (the tool file folded it by its first element's form, so the other form's entries went out as
+// other filters).
+describe('T12 fix 1b: an empty-string filter on the 8 fixed-schema searches reaches the request, never dropped', () => {
+  const EMPTY: Array<[string, string, string]> = [
+    ['search_classes', 'name', "Name = ''"],
+    ['search_departments', 'name', "Name = ''"],
+    ['search_credit_memos', 'customer_ref', "CustomerRef = ''"],
+    ['search_credit_memos', 'txn_date_from', "TxnDate >= ''"],
+    ['search_credit_memos', 'txn_date_to', "TxnDate <= ''"],
+    ['search_payments', 'customer_ref', "CustomerRef = ''"],
+    ['search_payments', 'txn_date_from', "TxnDate >= ''"],
+    ['search_payments', 'txn_date_to', "TxnDate <= ''"],
+    ['search_sales_receipts', 'customer_ref', "CustomerRef = ''"],
+    ['search_sales_receipts', 'txn_date_from', "TxnDate >= ''"],
+    ['search_sales_receipts', 'txn_date_to', "TxnDate <= ''"],
+    ['search_deposits', 'txn_date_from', "TxnDate >= ''"],
+    ['search_deposits', 'txn_date_to', "TxnDate <= ''"],
+    ['search_transfers', 'txn_date_from', "TxnDate >= ''"],
+    ['search_transfers', 'txn_date_to', "TxnDate <= ''"],
+    ['search_vendor_credits', 'vendor_ref', "VendorRef = ''"],
+  ];
+
+  it('the table names every string field of the 8 fixed-schema tools', () => {
+    const fixed = Object.keys(TOOLS).filter((t) => TOOLS[t].family === 'fixed');
+    const strings = fixed.flatMap((t) => TOOLS[t].keys!.split(', ').filter((k) => !['active', 'limit', 'offset'].includes(k)).map((k) => `${t} ${k}`));
+    expect(EMPTY.map(([t, f]) => `${t} ${f}`).sort()).toEqual(strings.sort());
+  });
+
+  it.each(EMPTY)('%s %s: "" sends exactly the filter %s', async (tool, field, clause) => {
+    expect(await call(tool, { [field]: '' })).toStrictEqual({ content: [{ type: 'text', text: ROW_LINE }] });
+    expect(oneQuery()).toBe(`select * from ${TOOLS[tool].entity} where ${clause} startposition 1 maxresults 1000`);
+  });
+
+  it.each(['search_classes', 'search_departments'])('%s: active false sends exactly Active = false', async (tool) => {
+    await call(tool, { active: false });
+    expect(oneQuery()).toBe(`select * from ${TOOLS[tool].entity} where Active = false startposition 1 maxresults 1000`);
+  });
+});
+
+describe('T12 fix 1b: a list mixing {field} and {key} criteria on the three count tools is refused', () => {
+  const MIXED = "give every criterion as {field, value} or every one as {key, value}, not both";
+  it.each(['search_bills', 'search_customers', 'search_vendors'])('%s: either order is refused with no request', async (tool) => {
+    await expectRefused(call(tool, { criteria: [{ field: 'Id', value: '1' }, { key: 'DocNumber', value: '9' }] }), MIXED);
+    await expectRefused(call(tool, { criteria: [{ key: 'DocNumber', value: '9' }, { field: 'Id', value: '1' }] }), MIXED);
+  });
+
+  it.each(['search_bills', 'search_customers', 'search_vendors'])('%s: a {key} list with an empty value sends it as that filter', async (tool) => {
+    await call(tool, { criteria: [{ key: 'DocNumber', value: '' }] });
+    expect(oneQuery()).toBe(`select * from ${TOOLS[tool].entity} where DocNumber = '' startposition 1 maxresults 1000`);
+  });
+});
