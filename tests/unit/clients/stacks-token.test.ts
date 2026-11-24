@@ -1,6 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-286): the Stacks token client, contract 1.1 §2 (A1.1-A1.7, A1.3b, A2.2, A2.6's Stacks
 // path, A3.6 (a)-(d), A3.7's Stacks half). Every request goes through 291's guard to the stub network below it.
-import { describe, it, expect, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
+import { describe, it as jestIt, expect, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { trapNetwork } from '../../fakes/no-network.js';
@@ -13,6 +13,14 @@ import { runInCall, type Failure } from '../../../src/clients/call-context.js';
 import type { Config } from '../../../src/clients/config.js';
 import { cleanName } from '../../../src/helpers/name-fold.js';
 import { createRealmStore, StacksTokenClient, type RealmStore, type TokenResult } from '../../../src/clients/stacks-token.js';
+
+/** Every case is registered through this, so the afterAll can tell an unfiltered run (all ran) from a `-t` run. */
+let registered = 0;
+let ran = 0;
+const it = (name: string, fn: () => unknown): void => {
+  registered++;
+  jestIt(name, fn as () => Promise<void>);
+};
 
 // Order matters: the trap, then the stub (so the guard's backstop wraps the stub), then the guard in beforeEach.
 const trap = trapNetwork();
@@ -102,13 +110,17 @@ afterEach(() => {
   expect(trap.reached).toEqual([]);
   for (const s of stderr) for (const secret of [KEY, ACCESS, ACCESS_B, FIXTURE_ACCESS]) expect(s).not.toContain(secret);
   net.calls.length = 0;
+  ran++;
 });
-// Secrets (T5-5): after every case has run, no failure any case watched holds an access token or the key.
+// Secrets (T5-5): no failure any case watched holds an access token or the key. The floor and the `reported` check
+// apply only when every registered case ran (T5-2-2), so a `-t` run of one case passes.
 afterAll(() => {
-  expect(seenFailures.length).toBeGreaterThan(60);
   const text = JSON.stringify(seenFailures);
   for (const secret of [KEY, ACCESS, ACCESS_B, FIXTURE_ACCESS]) expect(text).not.toContain(secret);
-  expect(seenFailures.some((f) => f.reported !== undefined)).toBe(true);
+  if (ran === registered) {
+    expect(seenFailures.length).toBeGreaterThan(60);
+    expect(seenFailures.some((f) => f.reported !== undefined)).toBe(true);
+  }
 });
 
 describe('createRealmStore', () => {
@@ -406,10 +418,19 @@ describe('T5-1: only a transport failure is step 7; any other throw is fork-erro
   /** A table whose every request fails at the connection with `code` (the adapter wraps it in an AxiosError). */
   const failing = (code: string): StubTable => () => Promise.reject(Object.assign(new Error(`connect ${code}`), { code }));
   const TRANSPORT = [
-    'ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'EHOSTUNREACH', 'EHOSTDOWN', 'ENETUNREACH', 'ENETDOWN', 'ENOTFOUND',
-    'EAI_AGAIN', 'ERR_BAD_RESPONSE', 'EPROTO', 'CERT_HAS_EXPIRED', 'CERT_NOT_YET_VALID', 'CERT_REVOKED', 'CERT_UNTRUSTED',
-    'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'UNABLE_TO_GET_ISSUER_CERT', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
-    'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'ERR_TLS_CERT_ALTNAME_INVALID', 'ERR_TLS_HANDSHAKE_TIMEOUT', 'ERR_SSL_WRONG_VERSION_NUMBER',
+    'ECONNABORTED', 'ETIMEDOUT', 'ERR_SOCKET_CONNECTION_TIMEOUT',
+    'ECONNRESET', 'ECONNREFUSED', 'EPIPE', 'ENOTCONN', 'EADDRNOTAVAIL', 'EHOSTUNREACH', 'EHOSTDOWN', 'ENETUNREACH', 'ENETDOWN',
+    'ENOTFOUND', 'EAI_AGAIN', 'EAI_FAIL',
+    'ERR_BAD_RESPONSE', 'Z_DATA_ERROR', 'Z_BUF_ERROR',
+    'EPROTO', 'ERR_TLS_CERT_ALTNAME_INVALID', 'ERR_TLS_HANDSHAKE_TIMEOUT', 'ERR_SSL_WRONG_VERSION_NUMBER',
+    'UNABLE_TO_GET_ISSUER_CERT', 'UNABLE_TO_GET_CRL', 'UNABLE_TO_DECRYPT_CERT_SIGNATURE', 'UNABLE_TO_DECRYPT_CRL_SIGNATURE',
+    'UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY', 'CERT_SIGNATURE_FAILURE', 'CRL_SIGNATURE_FAILURE', 'CERT_NOT_YET_VALID', 'CERT_HAS_EXPIRED',
+    'CRL_NOT_YET_VALID', 'CRL_HAS_EXPIRED', 'ERROR_IN_CERT_NOT_BEFORE_FIELD', 'ERROR_IN_CERT_NOT_AFTER_FIELD',
+    'ERROR_IN_CRL_LAST_UPDATE_FIELD', 'ERROR_IN_CRL_NEXT_UPDATE_FIELD', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN',
+    'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'CERT_CHAIN_TOO_LONG', 'CERT_REVOKED', 'INVALID_CA',
+    'PATH_LENGTH_EXCEEDED', 'INVALID_PURPOSE', 'CERT_UNTRUSTED', 'CERT_REJECTED', 'HOSTNAME_MISMATCH',
+    // Node's HTTP parser, by prefix: garbage in place of a status line, a bad chunk size, and a code no list names.
+    'HPE_INVALID_CONSTANT', 'HPE_INVALID_CHUNK_SIZE', 'HPE_SOMETHING_NEW',
   ];
 
   for (const code of TRANSPORT) {
@@ -421,7 +442,8 @@ describe('T5-1: only a transport failure is step 7; any other throw is fork-erro
     });
   }
 
-  for (const code of ['ERR_BAD_REQUEST', 'ERR_SOMETHING_ELSE']) {
+  // HPE without its underscore, and HPE_ not at the start: neither is the parser's prefix.
+  for (const code of ['ERR_BAD_REQUEST', 'ERR_SOMETHING_ELSE', 'HPE', 'X_HPE_INVALID_CONSTANT']) {
     it(`a connection failure with an unlisted code ${code}: fork-error after one request`, async () => {
       const { client, realms } = rig({});
       table = failing(code);
@@ -444,9 +466,20 @@ describe('T5-1: only a transport failure is step 7; any other throw is fork-erro
     expect(reason(await client.get('usb-club'))).toBe('token');
   });
 
+  it('an answer that isn’t HTTP (garbage where the status line goes, as Node’s parser reports it): stacks-unreachable after two attempts', async () => {
+    // The stub replaces the socket, so the parser's error is given as Node raises it on the request.
+    const { client } = rig({});
+    table = () => Promise.reject(Object.assign(new Error('Parse Error: Expected HTTP/, RTSP/ or ICE/'), { code: 'HPE_INVALID_CONSTANT', bytesParsed: 0 }));
+    expect(watch(await client.get('garden3d'))).toEqual({ ok: false, failure: { reason: 'stacks-unreachable' } });
+    expect(net.calls).toHaveLength(2);
+  });
+
   for (const [label, thrown] of [
     ['a TypeError', () => new TypeError('broken')],
     ['an Error carrying a transport code but not from axios', () => Object.assign(new Error('x'), { code: 'ECONNRESET' })],
+    ['a thrown null (T5-2-3)', () => null],
+    ['a thrown undefined', () => undefined],
+    ['a thrown string', () => 'ECONNRESET'],
   ] as const) {
     it(`a non-transport throw (${label}): fork-error, asked once, no request`, async () => {
       const ax = guardedAxios();
@@ -767,6 +800,15 @@ describe('A3.6: the realm is kept only after the Stacks name check passes', () =
 
   it('a kept realm, then another realm with a sixth key: plain fork-error, nothing refused, the next good reply accepted (T5-4)', async () => {
     const { client, realms } = rig({ sequence: [ok200(body()), ok200(body({ realm_id: REALM_OTHER, extra: 'x' })), ok200(body())] });
+    await client.get('garden3d');
+    expect(watch(await client.get('garden3d', { force: true }))).toEqual({ ok: false, failure: { reason: 'fork-error' } });
+    expect(realms.refused('garden3d')).toBeUndefined();
+    expect(reason(await client.get('garden3d', { force: true }))).toBe('token');
+    expect(realms.kept('garden3d')).toBe(REALM);
+  });
+
+  it('a kept realm, then another realm under another enterprise: plain fork-error, nothing refused (T5-2-4)', async () => {
+    const { client, realms } = rig({ sequence: [ok200(body()), ok200(body({ realm_id: REALM_OTHER, enterprise: 'usb-club' })), ok200(body())] });
     await client.get('garden3d');
     expect(watch(await client.get('garden3d', { force: true }))).toEqual({ ok: false, failure: { reason: 'fork-error' } });
     expect(realms.refused('garden3d')).toBeUndefined();

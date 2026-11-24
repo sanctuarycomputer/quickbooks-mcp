@@ -45,38 +45,70 @@ const CODE = /^[A-Za-z0-9_-]{1,64}$/;
  * The transport failures that are step 7's "no answer" (T5-1): an AxiosError carrying one of these codes. Anything
  * else thrown (the guard's GuardRefusedError, a TypeError, an AxiosError with another code) is the fork's own failure.
  * ECONNABORTED and ETIMEDOUT: axios' timeout. ERR_BAD_RESPONSE: only a response stream aborted mid-body here
- * (no maxContentLength is set, and no data: URL passes the guard).
+ * (no maxContentLength is set, and no data: URL passes the guard). Z_DATA_ERROR, Z_BUF_ERROR: a corrupt compressed
+ * body (axios decompresses). The certificate codes are Node's X509 verification codes (OpenSSL's names).
  */
 const TRANSPORT_CODES: ReadonlySet<string> = new Set([
+  // timeouts
   "ECONNABORTED",
   "ETIMEDOUT",
+  "ERR_SOCKET_CONNECTION_TIMEOUT",
+  // the connection
   "ECONNRESET",
   "ECONNREFUSED",
   "EPIPE",
+  "ENOTCONN",
+  "EADDRNOTAVAIL",
   "EHOSTUNREACH",
   "EHOSTDOWN",
   "ENETUNREACH",
   "ENETDOWN",
+  // DNS
   "ENOTFOUND",
   "EAI_AGAIN",
+  "EAI_FAIL",
+  // the response cut or corrupt
   "ERR_BAD_RESPONSE",
+  "Z_DATA_ERROR",
+  "Z_BUF_ERROR",
+  // TLS
   "EPROTO",
-  "CERT_HAS_EXPIRED",
-  "CERT_NOT_YET_VALID",
-  "CERT_REVOKED",
-  "CERT_UNTRUSTED",
-  "DEPTH_ZERO_SELF_SIGNED_CERT",
-  "SELF_SIGNED_CERT_IN_CHAIN",
-  "UNABLE_TO_GET_ISSUER_CERT",
-  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
-  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
   "ERR_TLS_CERT_ALTNAME_INVALID",
   "ERR_TLS_HANDSHAKE_TIMEOUT",
   "ERR_SSL_WRONG_VERSION_NUMBER",
+  "UNABLE_TO_GET_ISSUER_CERT",
+  "UNABLE_TO_GET_CRL",
+  "UNABLE_TO_DECRYPT_CERT_SIGNATURE",
+  "UNABLE_TO_DECRYPT_CRL_SIGNATURE",
+  "UNABLE_TO_DECODE_ISSUER_PUBLIC_KEY",
+  "CERT_SIGNATURE_FAILURE",
+  "CRL_SIGNATURE_FAILURE",
+  "CERT_NOT_YET_VALID",
+  "CERT_HAS_EXPIRED",
+  "CRL_NOT_YET_VALID",
+  "CRL_HAS_EXPIRED",
+  "ERROR_IN_CERT_NOT_BEFORE_FIELD",
+  "ERROR_IN_CERT_NOT_AFTER_FIELD",
+  "ERROR_IN_CRL_LAST_UPDATE_FIELD",
+  "ERROR_IN_CRL_NEXT_UPDATE_FIELD",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "SELF_SIGNED_CERT_IN_CHAIN",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "CERT_CHAIN_TOO_LONG",
+  "CERT_REVOKED",
+  "INVALID_CA",
+  "PATH_LENGTH_EXCEEDED",
+  "INVALID_PURPOSE",
+  "CERT_UNTRUSTED",
+  "CERT_REJECTED",
+  "HOSTNAME_MISMATCH",
 ]);
+/** Node's HTTP parser codes (HPE_INVALID_CONSTANT, HPE_INVALID_CHUNK_SIZE, …): an answer that isn't HTTP. */
+const PARSER_PREFIX = "HPE_";
 
 const isTransportFailure = (e: unknown): boolean =>
-  isObject(e) && e.isAxiosError === true && typeof e.code === "string" && TRANSPORT_CODES.has(e.code);
+  isObject(e) && e.isAxiosError === true && typeof e.code === "string" && (TRANSPORT_CODES.has(e.code) || e.code.startsWith(PARSER_PREFIX));
 
 /** The fork's own failure on a request (a guard refusal, a programming error): fork-error, never asked again. */
 const BROKEN: unique symbol = Symbol("broken");
