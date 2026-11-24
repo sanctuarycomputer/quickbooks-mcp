@@ -1,4 +1,5 @@
 // Sanctuary Computer (quickbooks-mcp-291): the backstop: no socket opens unless the guard issued a ticket for exactly that request.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): Node gets tls.checkServerIdentity, and a real request reaches the socket layer.
 import { describe, it, expect, beforeEach, afterEach, afterAll, jest } from '@jest/globals';
 import { trapNetwork } from '../../fakes/no-network.js';
 import { AsyncLocalStorage } from 'async_hooks';
@@ -7,6 +8,7 @@ import http from 'http';
 import http2 from 'http2';
 import https from 'https';
 import path from 'path';
+import tls from 'tls';
 import { createRequire } from 'module';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { installStubNetwork, type StubAnswer, type StubCall } from '../../fakes/stub-network.js';
@@ -158,8 +160,8 @@ describe('the backstop in place (A1.8)', () => {
     runIssued(TICKET, () => (f.https.request as any)(P));
     restore();
     expect(seen).toEqual([
-      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', insecureHTTPParser: false, agent: GUARD_AGENT, headers: Object.assign(Object.create(null), { Accept: 'application/json' }), family: 4 }, cb],
-      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', insecureHTTPParser: false, agent: GUARD_AGENT }],
+      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', checkServerIdentity: tls.checkServerIdentity, insecureHTTPParser: false, agent: GUARD_AGENT, headers: Object.assign(Object.create(null), { Accept: 'application/json' }), family: 4 }, cb],
+      [{ protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', checkServerIdentity: tls.checkServerIdentity, insecureHTTPParser: false, agent: GUARD_AGENT }],
     ]);
     expect((seen[0] as unknown[])[0]).not.toBe(caller);
   });
@@ -360,7 +362,7 @@ describe('installBackstop on given modules (A1.10(d), its backstop arm)', () => 
     const out = runIssued(TICKET, () => (f.https.request as any).call(f.https, { ...OPTIONS }));
     restore();
     expect(out).toBe('sent');
-    expect(seen).toEqual([f.https, { protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', insecureHTTPParser: false, agent: GUARD_AGENT }]);
+    expect(seen).toEqual([f.https, { protocol: 'https:', hostname: 'quickbooks.api.intuit.com', port: 443, path: PATH, method: 'GET', checkServerIdentity: tls.checkServerIdentity, insecureHTTPParser: false, agent: GUARD_AGENT }]);
   });
 });
 
@@ -379,6 +381,20 @@ describe('ESM imports under plain Node (A1.8, syncBuiltinESMExports)', () => {
   });
 });
 
+describe('a real request reaches the socket layer (286 T10 step 6)', () => {
+  it('through the built guard and backstop, a request to a closed local port fails with ECONNREFUSED, not a synchronous throw', () => {
+    assertFreshBuild();
+    // A separate process: this file's trap and stub replace the socket layer this case must reach.
+    const r = spawnSync(process.execPath, [path.join(HERE, '..', '..', 'fixtures', 'socket-reach.mjs')], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: { PATH: process.env.PATH ?? '', ...(process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {}) },
+      timeout: 20000,
+    });
+    expect({ status: r.status, stdout: r.stdout, stderr: r.stderr }).toEqual({ status: 0, stdout: 'axios true ECONNREFUSED\n', stderr: '' });
+  });
+});
+
 describe('task-3 pass 2: what Node gets, and cases only one condition decides (TE1-TE5)', () => {
   /** Installs on fakes, runs fn under the ticket, returns what the replaced https.request got. */
   const sent = (call: (req: (...a: unknown[]) => unknown) => unknown, ticket = TICKET) => {
@@ -393,16 +409,19 @@ describe('task-3 pass 2: what Node gets, and cases only one condition decides (T
     return seen;
   };
 
-  it('TE1, TE5: Node always gets the guard agent, the strict parser, and every connection key as an own undefined', () => {
+  it("TE1, TE5: Node always gets the guard agent, the strict parser, every connection key as an own undefined, and Node's own identity check", () => {
     const [[viaUrl], [viaOptions]] = [...sent((req) => req(P)), ...sent((req) => req({ ...OPTIONS }))] as unknown as Array<[Record<string, unknown>]>;
     for (const o of [viaUrl, viaOptions]) {
       expect(o.agent).toBeInstanceOf(https.Agent);
       expect(o.agent).not.toBe(https.globalAgent);
       expect((o.agent as any).options.rejectUnauthorized).toBe(true);
       expect(o.insecureHTTPParser).toBe(false);
-      for (const k of ['createConnection', 'lookup', 'socketPath', 'defaultPort', 'localAddress', 'servername', 'setHost', 'rejectUnauthorized', 'ca', 'checkServerIdentity']) {
+      for (const k of ['createConnection', 'lookup', 'socketPath', 'defaultPort', 'localAddress', 'servername', 'setHost', 'rejectUnauthorized', 'ca']) {
         expect({ k, own: Object.prototype.hasOwnProperty.call(o, k), value: o[k] }).toEqual({ k, own: true, value: undefined });
       }
+      // Node type-checks an own checkServerIdentity as a function (286 T10 step 6): Node's default check, never undefined.
+      expect(Object.prototype.hasOwnProperty.call(o, 'checkServerIdentity')).toBe(true);
+      expect(o.checkServerIdentity).toBe(tls.checkServerIdentity);
     }
   });
 

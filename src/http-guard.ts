@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import http from "node:http";
 import http2 from "node:http2";
 import https from "node:https";
+import tls from "node:tls";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import type { AxiosStatic } from "axios";
 import { decide, newCallRecord, type CallRecord, type GuardContext } from "./clients/guard-decide.js";
@@ -369,11 +370,14 @@ const isOptionsObject = (v: unknown): v is object =>
 
 /**
  * What Node gets for a read call: the compared values, always the guard's agent, the lenient parser off, and every
- * connection key set own and undefined (an own key shadows a polluted Object.prototype, as axios does for its keys).
+ * connection key set own and undefined (an own key shadows a polluted Object.prototype, as axios does for its keys),
+ * except `checkServerIdentity`: Node type-checks it as a function when it is an own key, so an own undefined made every
+ * request throw before a socket opened. It is Node's own default check, `tls.checkServerIdentity` (286 T10 step 6).
  */
 function nodeOptions(hostname: string, port: string, path: string, method: string): Record<string, unknown> {
   const send: Record<string, unknown> = { protocol: "https:", hostname, port: port === "" ? 443 : Number(port), path, method };
   for (const key of UNSET_KEYS) send[key] = undefined;
+  send.checkServerIdentity = tls.checkServerIdentity;
   send.insecureHTTPParser = false;
   send.agent = AGENT;
   return send;

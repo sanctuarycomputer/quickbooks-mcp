@@ -1,5 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-285): the removed sign-in flow, token store, upload and switches stay gone.
 // Changed by Sanctuary Computer (quickbooks-mcp-291): src/http-guard.ts may load http, https and http2 (it pins and wraps them), and nothing else on the network list.
+// Changed by Sanctuary Computer (quickbooks-mcp-286): and node:tls, for the one value it reads (tls.checkServerIdentity, the identity check it hands Node).
 import { describe, it, expect } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
@@ -59,11 +60,12 @@ function moduleLoad(names: string): RegExp {
 }
 
 const NETWORK_IMPORT = moduleLoad('open|http|https|http2|net|tls|dns|dgram|child_process|worker_threads');
-// The guard (quickbooks-mcp-291) is the one file that loads network modules, and only these three, each by its node: name.
+// The guard (quickbooks-mcp-291) is the one file that loads network modules, and only these four, each by its node: name
+// (node:tls for tls.checkServerIdentity only: 286 T10 step 6).
 const GUARD_FILE = 'src/http-guard.ts';
-const GUARD_LOADS = ['"node:http"', '"node:https"', '"node:http2"'];
+const GUARD_LOADS = ['"node:http"', '"node:https"', '"node:http2"', '"node:tls"'];
 
-/** The network-module loads a file's text spells; for the guard file only, its own three and axios' adapter name (`getAdapter("http")`) are left out. */
+/** The network-module loads a file's text spells; for the guard file only, its own four and axios' adapter name (`getAdapter("http")`) are left out. */
 function networkLoads(f: string, text: string): string[] {
   const t = f === GUARD_FILE ? text.split('getAdapter("http")').join('getAdapter()') : text;
   const all = t.match(new RegExp(NETWORK_IMPORT.source, 'g')) ?? [];
@@ -116,13 +118,15 @@ describe('removals', () => {
     expect(hits).toEqual([]);
   });
 
-  it("R3: the guard's exemption covers its three modules in that file only", () => {
-    expect(networkLoads(GUARD_FILE, 'import a from "node:https"; import b from "node:http"; import c from "node:http2";')).toEqual([]);
-    expect(networkLoads(GUARD_FILE, 'import a from "node:net"; import b from "https"; import c from \'node:http\';')).toEqual([
+  it("R3: the guard's exemption covers its four modules in that file only", () => {
+    expect(networkLoads(GUARD_FILE, 'import a from "node:https"; import b from "node:http"; import c from "node:http2"; import d from "node:tls";')).toEqual([]);
+    expect(networkLoads(GUARD_FILE, 'import a from "node:net"; import b from "https"; import c from \'node:http\'; import d from "tls";')).toEqual([
       '"node:net"',
       '"https"',
       "'node:http'",
+      '"tls"',
     ]);
+    expect(networkLoads('src/index.ts', 'import t from "node:tls"')).toEqual(['"node:tls"']);
     expect(networkLoads(GUARD_FILE, 'ax.getAdapter("http"); require("http")')).toEqual(['"http"']);
     expect(networkLoads('src/index.ts', 'import a from "node:https"; ax.getAdapter("http")')).toEqual(['"node:https"', '"http"']);
     expect(read(GUARD_FILE)).toContain('"node:https"');

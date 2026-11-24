@@ -84,16 +84,14 @@ describe('spawned server', () => {
     expect(stdout).not.toContain(sentinel);
   });
 
-  // 286 T10: each tool runs in a call for its company, and its token fetch fails. Nothing listens at startEnv's Stacks
-  // origin, but no socket is opened: 291's backstop hands Node `checkServerIdentity: undefined` as an own key, which
-  // https.request rejects synchronously (ERR_INVALID_ARG_TYPE, Node 22 and 24), so the Stacks client reads a fork failure.
-  // Found in T10 and reported to the supervisor; a fix to the backstop turns this into stacks-unreachable.
+  // 286 T10: each tool runs in a call for its company; nothing listens at startEnv's Stacks origin, so the token fetch is
+  // refused at the socket, asked again once, and answers stacks-unreachable.
   it('R10: a listed tool answers the token failure and the server stays up', async () => {
     const { client } = await connect();
     const result = await client.callTool({ name: 'get_company_info', arguments: { company: 'garden3d', params: {} } });
     expect(result).toEqual({
       isError: true,
-      content: [{ type: 'text', text: 'reason: fork-error\n\nThe server failed before it could read QuickBooks.' }],
+      content: [{ type: 'text', text: 'reason: stacks-unreachable\n\nStacks gave no answer the server knows, twice.' }],
     });
     const { tools } = await client.listTools();
     expect(tools).toHaveLength(32);
