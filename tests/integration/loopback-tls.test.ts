@@ -35,6 +35,8 @@ afterEach(() => setDefaultCA(defaultCA));
 
 // ---- loopback only ----
 const outside: string[] = [];
+/** The local port of each socket this process connected: a server counts those alone (hosts probe new ports). */
+const ours = new Set<number>();
 const saved = { connect: net.Socket.prototype.connect, lookup: dns.lookup, promisesLookup: dns.promises.lookup };
 /** The host a Socket#connect names: its options' host (or a port, host pair); a pipe ('pipe') has none. */
 function hostOf(args: unknown[]): string | undefined {
@@ -56,6 +58,7 @@ beforeAll(() => {
       outside.push(String(host));
       throw new Error('outside-host');
     }
+    this.once('connect', () => ours.add(this.localPort as number));
     return (saved.connect as (...a: unknown[]) => net.Socket).apply(this, args);
   } as typeof net.Socket.prototype.connect;
   // server.listen looks up its own '127.0.0.1'; any other name is refused.
@@ -77,7 +80,7 @@ afterAll(() => {
 });
 
 
-type Local = { port: number; connections: number; close(): Promise<void> };
+type Local = { port: number; readonly connections: number; close(): Promise<void> };
 /** Closes `s`, destroying any socket still open (the guard's agent may keep one alive). */
 function closeServer(s: net.Server): Promise<void> {
   const open = (s as net.Server & { sockets?: Set<net.Socket> }).sockets ?? new Set();
@@ -94,30 +97,43 @@ function track(s: net.Server): void {
   });
 }
 
+/** Listens on 127.0.0.1, port 0; `connections` counts the accepted remote ports this process opened, and no other. */
+function listen(server: net.Server, remotes: (number | undefined)[]): Promise<Local> {
+  return new Promise((resolve) =>
+    server.listen(0, '127.0.0.1', () =>
+      resolve({
+        port: (server.address() as net.AddressInfo).port,
+        get connections() {
+          return remotes.filter((p) => p !== undefined && ours.has(p)).length;
+        },
+        close: () => closeServer(server),
+      }),
+    ),
+  );
+}
+
 /** An HTTPS server on 127.0.0.1 answering every request with garden3d's Stacks 200, under a certificate for `alt`. */
 function stacksServer(cert: { key: string; cert: string }): Promise<Local> {
   const body = JSON.stringify({ enterprise: 'garden3d', realm_id: REALMS.garden3d, access_token: fixtureToken('garden3d'), expires_at: '2026-11-18T12:00:00Z', company_name: 'garden3d, LLC' });
-  const local = { port: 0, connections: 0 } as Local;
+  const remotes: (number | undefined)[] = [];
   const server = https.createServer({ key: cert.key, cert: cert.cert }, (_req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(body);
   });
-  server.on('connection', () => local.connections++);
+  server.on('connection', (socket: net.Socket) => remotes.push(socket.remotePort));
   track(server);
-  local.close = () => closeServer(server);
-  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(Object.assign(local, { port: (server.address() as net.AddressInfo).port }))));
+  return listen(server, remotes);
 }
 
 /** A TLS server on 127.0.0.1 that, once the handshake is done, writes text that isn't HTTP and closes. */
 function garbageServer(cert: { key: string; cert: string }): Promise<Local> {
-  const local = { port: 0, connections: 0 } as Local;
+  const remotes: (number | undefined)[] = [];
   const server = tls.createServer({ key: cert.key, cert: cert.cert }, (socket) => {
-    local.connections++;
+    remotes.push(socket.remotePort);
     socket.end('this is not HTTP at all\r\n\r\n');
   });
   track(server);
-  local.close = () => closeServer(server);
-  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(Object.assign(local, { port: (server.address() as net.AddressInfo).port }))));
+  return listen(server, remotes);
 }
 
 let rig: Rig | undefined;
@@ -127,6 +143,7 @@ afterEach(async () => {
   await local?.close();
   rig = undefined;
   local = undefined;
+  ours.clear();
 });
 
 /** Trusts `cert` alone, starts the read server with Stacks at the local port, and records the guard's allowed sends. */
@@ -160,6 +177,21 @@ describe("291's guard and backstop on a real socket: the identity check runs (lo
     expect(identity).toHaveBeenCalledTimes(1);
     expect(identity.mock.calls[0][0]).toBe('127.0.0.1');
     expect(identity.mock.results[0].value).toBeUndefined();
+  });
+
+  it("a connection this process didn't open (a platform's port probe) is not counted", async () => {
+    const cert = selfSigned(RIGHT);
+    local = await stacksServer(cert);
+    await start(cert, local.port);
+    // The stranger: a plain-text probe on a socket that skips this file's connect trap, as another process's would.
+    const stranger = new net.Socket();
+    const gone = new Promise((r) => stranger.on('close', r));
+    stranger.on('error', () => undefined).resume();
+    (saved.connect as (...a: unknown[]) => net.Socket).call(stranger, local.port, '127.0.0.1', () => stranger.write('HEAD / HTTP/1.1\r\nHost: probe.example.test\r\n\r\n'));
+    await gone;
+    const got = await rig!.runtime.stacks.get('garden3d');
+    expect(got.ok && got.token.access_token).toBe(fixtureToken('garden3d'));
+    expect(local.connections).toBe(1);
   });
 
   it('a certificate for another name is refused by the identity check: no token, stacks-unreachable after two attempts, each reaching the socket', async () => {
