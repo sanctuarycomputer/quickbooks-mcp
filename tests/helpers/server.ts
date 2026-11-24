@@ -88,7 +88,7 @@ export function assertToolImports(dist: string, files: string[]): void {
       const dir = path.relative(dist, path.dirname(target));
       const base = path.basename(target).replace(/\.js$/, '');
       if ((dir === 'tools' && base.endsWith('.tool')) || (dir === 'handlers' && base.endsWith('.handler'))) queue.push(target);
-      else if (!TOOL_IMPORTS.includes(path.relative(dist, target).split(path.sep).join('/'))) faults.push(`${path.relative(dist, file)} imports ${spec}, outside readTools' known modules`);
+      else if (!TOOL_IMPORTS.includes(path.relative(dist, target).split(path.sep).join('/'))) faults.push(`${path.relative(dist, file).split(path.sep).join('/')} imports ${spec}, outside readTools' known modules`);
     }
   }
   if (faults.length > 0) throw new Error(`readTools: ${faults.join('; ')}`);

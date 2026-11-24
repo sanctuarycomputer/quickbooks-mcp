@@ -32,16 +32,18 @@ describe('copied fixtures', () => {
   });
 
   it('every fixture file is 2-space JSON with a trailing newline', () => {
+    // A Windows checkout may hold CRLF line ends: the format is what is checked, not the checkout's line ends.
+    const readText = (f: string) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
     for (const d of ['stacks-token', 'tool-calls', 'tool-results', 'render', 'sequences']) {
       const walk = (p: string): string[] =>
         readdirSync(p, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${p}/${e.name}`) : [`${p}/${e.name}`]));
       for (const f of walk(dir(d)).filter((x) => x.endsWith('.json'))) {
-        const text = readFileSync(f, 'utf8');
+        const text = readText(f);
         expect(JSON.stringify(JSON.parse(text), null, 2) + '\n').toBe(text);
       }
     }
     for (const f of ['name-fold.json', 'entities.json', 'entities-two.json']) {
-      const text = readFileSync(dir(f), 'utf8');
+      const text = readText(dir(f));
       expect(JSON.stringify(JSON.parse(text), null, 2) + '\n').toBe(text);
     }
   });
