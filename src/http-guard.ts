@@ -1,4 +1,5 @@
 // Sanctuary Computer (quickbooks-mcp-291): the HTTP guard on the CommonJS axios instance node-quickbooks calls (contract 1.0 §6 in Stacksbot's docs/contracts/quickbooks.md).
+// Changed by Sanctuary Computer (quickbooks-mcp-293): write mode's extra rules (contract 1.1 §16), fixed when the guard is made; read mode gives none.
 import { AsyncLocalStorage } from "node:async_hooks";
 import http from "node:http";
 import http2 from "node:http2";
@@ -6,7 +7,9 @@ import https from "node:https";
 import tls from "node:tls";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import type { AxiosStatic } from "axios";
-import { decide, newCallRecord, type CallRecord, type GuardContext } from "./clients/guard-decide.js";
+import { decide, newCallRecord, type CallRecord, type GuardContext, type GuardRequest } from "./clients/guard-decide.js";
+// Types only: read mode never loads src/write.
+import type { Unmatched, WriteDecision } from "./write/guard-rules.js";
 
 /** A request the guard refused; the message names the rule only, never the URL or a header. */
 export class GuardRefusedError extends Error {
@@ -102,9 +105,10 @@ export function createCallScope(): CallScope {
 /** The one holder: the guard reads its context through it, so configureGuard reaches it. createGuard sets `ctx`; secureStart sets `scope`. */
 const holder: { ctx: GuardContext | undefined; scope: CallScope | undefined } = { ctx: undefined, scope: undefined };
 
-/** Replaces any of `keys`, `allowedRealm`, `callRecord`; never `stacksUrl`. */
+/** Replaces any of `keys`, `allowedRealm`, `callRecord`; never `stacksUrl`, nor the extra rules (asking throws). */
 export function configureGuard(part: Partial<Pick<GuardContext, "keys" | "allowedRealm" | "callRecord">>): void {
   if (holder.ctx === undefined) throw new Error("qbo-guard: not started");
+  if ("extraRules" in part) throw new TypeError("qbo-guard: extraRules are fixed at start");
   const next = { ...holder.ctx };
   for (const k of ["keys", "allowedRealm", "callRecord"] as const) {
     if (!Object.prototype.hasOwnProperty.call(part, k)) continue;
@@ -135,10 +139,31 @@ function headerObject(headers: unknown): Record<string, unknown> {
   return Object.fromEntries(Object.entries(guardedAxios().AxiosHeaders.from(headers as any).toJSON() as object));
 }
 
+/** The config fields sent as given, read once. */
+function keptFields(config: any): Record<string, unknown> {
+  const kept: Record<string, unknown> = {};
+  for (const k of KEPT) if (k !== "method" && k !== "headers" && ownProp(config, k)) kept[k] = config[k];
+  return kept;
+}
+
+/** What is sent to `url`, on the guard's transport, and the ticket for exactly that. */
+function outgoing(kept: Record<string, unknown>, method: unknown, headers: Record<string, unknown>, url: string): { send: Record<string, unknown>; ticket: Ticket } {
+  const send = { ...kept, method, headers, url, maxRedirects: 0, proxy: false, httpsAgent: AGENT };
+  const w = new URL(url);
+  return { send, ticket: { method: String(method).toUpperCase(), hostname: w.hostname, port: w.port, path: w.pathname + w.search } };
+}
+
 export type Guard = { adapter: (config: any) => Promise<any> };
 
-/** Builds the guard: decide, check the composed text against getUri, send W with the guard's transport, under a ticket. */
-export function createGuard(ctx: GuardContext): Guard {
+/** Write mode's rules (src/write/guard-rules.ts): asked first; 291's `decide` answers what they don't match. */
+export type ExtraRules = { decide(request: GuardRequest, context: GuardContext): Unmatched | WriteDecision };
+
+/**
+ * Builds the guard: decide, check the composed text against getUri, send W with the guard's transport, under a ticket.
+ * An allow by `extraRules` has consumed its capability, so whatever could still refuse or throw runs before they are asked.
+ */
+export function createGuard(ctx: GuardContext, options: { extraRules?: ExtraRules } = {}): Guard {
+  const extra = options.extraRules === undefined ? undefined : options.extraRules.decide.bind(options.extraRules);
   holder.ctx = { ...ctx };
   const adapter = async function qboGuardAdapter(config: any): Promise<any> {
     let send: Record<string, unknown>;
@@ -152,22 +177,34 @@ export function createGuard(ctx: GuardContext): Guard {
       method = config.method;
       url = config.url;
       const headers = headerObject(config.headers);
-      const decision = decide({ method: method as string | undefined, url: url as string | undefined, params: config.params, headers, data: config.data }, holder.ctx!);
-      if (!decision.allow) throw refusal(method, url, decision.rule);
+      const request = { method: method as string | undefined, url: url as string | undefined, params: config.params, headers, data: config.data };
       const ax = guardedAxios();
-      if (ax.getUri(config) !== decision.text) throw refusal(method, url, "guard-error");
-      send = {};
-      for (const k of KEPT) if (k !== "method" && k !== "headers" && ownProp(config, k)) send[k] = config[k];
-      send.method = method;
-      send.headers = headers;
-      send.url = decision.url;
-      send.maxRedirects = 0;
-      send.proxy = false;
-      send.httpsAgent = AGENT;
-      const w = new URL(decision.url);
-      ticket = { method: String(method).toUpperCase(), hostname: w.hostname, port: w.port, path: w.pathname + w.search };
-      httpAdapter = ax.getAdapter("http") as (c: any) => Promise<any>;
-      if (decision.entity !== undefined) {
+      let kept: Record<string, unknown> | undefined;
+      let ready: { send: Record<string, unknown>; ticket: Ticket; httpAdapter: (c: any) => Promise<any> } | undefined;
+      let own: Unmatched | WriteDecision = { match: false };
+      if (extra !== undefined) {
+        kept = keptFields(config);
+        // The backstop refuses a Host header, which would be after the capability is consumed.
+        if (Object.keys(headers).some((k) => k.trim().toLowerCase() === "host")) throw new Error("host header");
+        if (request.params === undefined || request.params === null) {
+          if (ax.getUri(config) !== url) throw new Error("url");
+          ready = { ...outgoing(kept, method, headers, url as string), httpAdapter: ax.getAdapter("http") as (c: any) => Promise<any> };
+        }
+        own = extra(request, holder.ctx!);
+      }
+      const decision = "match" in own ? decide(request, holder.ctx!) : own;
+      if (!decision.allow) throw refusal(method, url, decision.rule);
+      if ("match" in own) {
+        if (ax.getUri(config) !== decision.text) throw refusal(method, url, "guard-error");
+        ({ send, ticket } = outgoing(kept ?? keptFields(config), method, headers, decision.url));
+        httpAdapter = ax.getAdapter("http") as (c: any) => Promise<any>;
+      } else {
+        // The extra rules allow no request with params; one that did would not have been made ready.
+        if (ready === undefined) throw new Error("params");
+        ({ send, ticket, httpAdapter } = ready);
+        if (decision.rule === "write-update") send.data = request.data;
+      }
+      if ("entity" in decision && decision.entity !== undefined) {
         const record = holder.ctx!.callRecord();
         if (record === undefined) throw new Error("no call record");
         entry = { entity: decision.entity, url: decision.url, status: null };
@@ -610,9 +647,9 @@ export function checkStartEnv(env: NodeJS.ProcessEnv, execArgv: readonly string[
 /**
  * Refuses an unsafe environment, then installs the guard on the CommonJS instance, then the backstop.
  * All or nothing: any throw while installing puts back what was installed and throws `qbo-guard: install failed`.
- * Returns a restore of both (for tests; the entry ignores it).
+ * Returns a restore of both (for tests; the entry ignores it). `deps.extraRules` (write mode only) go to the guard made here.
  */
-export function secureStart(env: NodeJS.ProcessEnv, execArgv: readonly string[], deps?: { resolveAxios?: () => unknown }): () => void {
+export function secureStart(env: NodeJS.ProcessEnv, execArgv: readonly string[], deps?: { resolveAxios?: () => unknown; extraRules?: ExtraRules }): () => void {
   const check = checkStartEnv(env, execArgv);
   if (!check.ok) throw new Error(`qbo-guard: start refused: ${check.key}`);
   // The effect itself, whatever turned it on (a config-file flag after the script name is in neither execArgv nor
@@ -627,12 +664,15 @@ export function secureStart(env: NodeJS.ProcessEnv, execArgv: readonly string[],
     const ax = (deps?.resolveAxios ?? guardedAxios)() as Partial<AxiosStatic> | undefined;
     if (typeof ax?.getAdapter !== "function" || typeof ax.getUri !== "function") throw new Error("axios");
     const scope = createCallScope();
-    const guard = createGuard({
-      stacksUrl: env.STACKS_QBO_URL,
-      keys: () => [],
-      allowedRealm: (realm) => scope.allowedRealm(realm),
-      callRecord: () => scope.callRecord(),
-    });
+    const guard = createGuard(
+      {
+        stacksUrl: env.STACKS_QBO_URL,
+        keys: () => [],
+        allowedRealm: (realm) => scope.allowedRealm(realm),
+        callRecord: () => scope.callRecord(),
+      },
+      { extraRules: deps?.extraRules },
+    );
     const guardRestore = installGuard(guard);
     restoreGuard = guardRestore;
     const restoreBackstop = installBackstop();
