@@ -30,6 +30,8 @@ function hostOf(args: unknown[]): string | undefined {
   return typeof b === 'string' ? b : 'localhost';
 }
 beforeAll(() => {
+  // Every file that traps the network puts it back when done (jest shares built-ins across a worker's files): start clean.
+  for (const f of [saved.connect, tls.connect, saved.lookup, saved.promisesLookup]) expect(f.name).not.toBe('trapped');
   net.Socket.prototype.connect = function (this: net.Socket, ...args: unknown[]) {
     const host = hostOf(args);
     if (host !== '127.0.0.1') {

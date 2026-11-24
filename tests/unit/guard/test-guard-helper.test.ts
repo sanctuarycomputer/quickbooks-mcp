@@ -1,5 +1,5 @@
 // Sanctuary Computer (quickbooks-mcp-286): tests/helpers/guard.ts starts 291's guard wired to the per-call store (keys, realm, record), and restores it.
-import { describe, it, expect, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, afterEach, afterAll, jest } from '@jest/globals';
 import { trapNetwork } from '../../fakes/no-network.js';
 import { installStubNetwork } from '../../fakes/stub-network.js';
 import { guardedAxios } from '../../../src/http-guard.js';
@@ -52,4 +52,11 @@ describe('startTestGuard', () => {
     const again = startTestGuard({ stacksUrl: STACKS, keys: [] });
     again();
   });
+});
+
+// T13: jest shares node's built-ins across the files a worker runs, so the stub and the trap are put back once this file
+// is done (declared last: it runs after every other afterAll here); a later file opening a real socket gets the real ones.
+afterAll(() => {
+  net.restore();
+  trap.restore();
 });

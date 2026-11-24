@@ -48,7 +48,7 @@ import { getQuickbooksVendorExpenses } from '../../../src/handlers/get-quickbook
 // Order matters: the trap, then the stub (so the guard's backstop wraps the stub), then the guard.
 const trap = trapNetwork();
 let fake = quickbooksFake();
-installStubNetwork((call) => fake.handler(call));
+const net = installStubNetwork((call) => fake.handler(call));
 
 const STACKS = 'https://stacks.example.test';
 const REALM = '9990000000000002'; // garden3d's, in 200-garden3d.json
@@ -590,3 +590,9 @@ describe.each(REPORTS)('A6.4 %s', (_tool, name, handler, keys) => {
   });
 });
 
+// T13: jest shares node's built-ins across the files a worker runs, so the stub and the trap are put back once this file
+// is done (declared last: it runs after every other afterAll here); a later file opening a real socket gets the real ones.
+afterAll(() => {
+  net.restore();
+  trap.restore();
+});

@@ -28,7 +28,8 @@ export function createRuntime(cfg: Config, deps: { now?: () => number } = {}): R
     reacquire: (company, sentAt) => stacks.get(company, { force: true, sentAt }),
     mark: () => stacks.mark(),
     // Every token the call held, not only its current one: after a 401's resend a fault may echo the old one (T13, A5.7).
-    secrets: () => [...(currentCall()?.held ?? []), cfg.stacksKey],
+    // Outside a call concat adds one undefined, which answerFailure drops with the other non-strings.
+    secrets: () => ([] as Array<string | undefined>).concat(currentCall()?.held, cfg.stacksKey),
   });
   return { cfg, stacks, companies, close: () => interceptors.eject() };
 }

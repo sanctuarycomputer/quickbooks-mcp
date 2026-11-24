@@ -971,3 +971,9 @@ describe('the token path', () => {
   });
 });
 
+// T13: jest shares node's built-ins across the files a worker runs, so the stub and the trap are put back once this file
+// is done (declared last: it runs after every other afterAll here); a later file opening a real socket gets the real ones.
+afterAll(() => {
+  net.restore();
+  trap.restore();
+});
