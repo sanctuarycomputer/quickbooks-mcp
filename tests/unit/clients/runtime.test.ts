@@ -464,6 +464,52 @@ describe("T6-4's budget half: a later request runs outside the earlier one's res
   });
 });
 
+// T10-3: the guard counts one 401 resend per call (contract §6's per-call record), while the interceptors' budget is per
+// request lineage. A call reading two entities by query, each answered 401 once, gets the first entity's resend through
+// and the second's refused at the guard as (query): the call answers fork-error. No listed tool reads two entities by
+// query in one call (each search reads its own entity once; the report and get tools read no query), so this is a
+// built handler's case only.
+describe("T10-3: a second entity's 401 resend in one call is refused by the guard's per-call count", () => {
+  it('findBills (401, resent with b, the data), then findVendors (401): its resend refused as (query), never sent; fork-error', async () => {
+    captureStderr();
+    const isEntity = (c: StubCall, entity: string) => isQuery(c) && new RegExp(`from ${entity} `, 'i').test(decodeURIComponent(c.path ?? '').replace(/\+/g, ' '));
+    const first = { bill: true, vendor: true };
+    const route = (c: StubCall) => {
+      for (const entity of ['bill', 'vendor'] as const) {
+        if (isEntity(c, entity) && first[entity]) {
+          first[entity] = false;
+          return json(401, {});
+        }
+      }
+      return undefined;
+    };
+    const handler = async () => {
+      const qb: any = await QuickbooksClient.getInstance();
+      const ask = (method: string) => new Promise((resolve, reject) => qb[method]({ Id: '1' }, (err: unknown, data: unknown) => (err ? reject(new Error(`${method} failed`)) : resolve(data))));
+      await ask('findBills');
+      await ask('findVendors');
+      return { content: [{ type: 'text', text: '{}' }] };
+    };
+    const { client, stacks } = await start({
+      tools: await withHandler(handler),
+      qbo: { rows: [{ Id: '1' }] },
+      stacks: { sequence: [tokenBody(access('a')), tokenBody(access('b')), tokenBody(access('c'))] },
+      route,
+    });
+    const r = await client.callTool({ name: 'get_preferences', arguments: { company: 'garden3d', params: {} } });
+    expect(r).toEqual({ isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThe server failed before it could read QuickBooks.' }] });
+    // On the wire: the bill query (401), its resend (the data), the vendor query (401); the vendor resend was never sent.
+    expect(net.calls.filter(isQuery).map((c) => [isEntity(c, 'bill') ? 'bill' : 'vendor', bearer(c)])).toEqual([
+      ['bill', `Bearer ${access('a')}`],
+      ['bill', `Bearer ${access('b')}`],
+      ['vendor', `Bearer ${access('b')}`],
+    ]);
+    // The vendor 401 did fetch a new token (c); the guard refused the resend that would have carried it.
+    expect(stacks.requests).toHaveLength(3);
+    expect(queryRefusals()).toEqual([`qbo-guard: refused GET https://quickbooks.api.intuit.com/v3/company/${REALMS.garden3d}/query (query)\n`]);
+  });
+});
+
 describe('TB6: a handler that throws the error the interceptors rethrew', () => {
   it("answers the recorded failure; neither the result nor stderr nor the console holds the token or the key", async () => {
     captureStderr();

@@ -1,12 +1,14 @@
 // Sanctuary Computer (quickbooks-mcp-285): the built server lists only the allowlist, fits the size bound and refuses sign-in keys.
 // Changed by Sanctuary Computer (quickbooks-mcp-286): the server starts with the five keys (helpers' startEnv); R10's
-// call names a company and answers the Stacks client's failure; qbo_companies answers its contract fixtures (A3.8).
+// call names a company and answers the Stacks client's failure; qbo_companies answers its contract fixtures (A3.8);
+// T13: A6.1's behaviour test, every ignored key hostile, and A5.14's tools/list gate on the real enum.
 import { describe, it, expect, beforeAll, afterEach, jest } from '@jest/globals';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { READ_ALLOWLIST } from '../../src/allowlist';
 import { assertFreshBuild, connectClient, spawnRaw, COMPANY_RESERVE, ROOT } from './helpers';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 const fixture = (name: string): any => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fakes', name), 'utf8'));
@@ -44,6 +46,14 @@ describe('spawned server', () => {
     const result = await client.listTools();
     const toolsChars = JSON.stringify(result.tools).length;
     const responseChars = JSON.stringify({ jsonrpc: '2.0', id: 1, result }).length;
+    // A5.14: measured on the real `company` enum (entities.json's keys, in its order) and the 8 new `offset` properties.
+    const keys = fixture('entities.json').companies.map((c: { stacks_key: string }) => c.stacks_key);
+    const listed = result.tools.filter((t) => t.name !== 'qbo_companies');
+    expect(listed).toHaveLength(31);
+    for (const t of listed) expect([t.name, (t.inputSchema as any).properties.company.enum]).toEqual([t.name, keys]);
+    const offsets = listed.filter((t) => JSON.stringify((t.inputSchema as any).properties.params.properties?.offset) === '{"type":"integer","minimum":1,"maximum":9007199254740991}');
+    expect(offsets).toHaveLength(8);
+    expect(COMPANY_RESERVE).toBe(0);
     const margin = 28800 - (Math.max(toolsChars, responseChars) + COMPANY_RESERVE);
     console.log(`tools/list: tools ${toolsChars}, response ${responseChars}, reserve ${COMPANY_RESERVE}, margin ${margin}`);
     expect(toolsChars + COMPANY_RESERVE).toBeLessThanOrEqual(28800);
@@ -72,6 +82,45 @@ describe('spawned server', () => {
     expect(absent).toEqual(empty);
     // 286 T11: the success, exactly sdk-absent-arguments.json (equal to ok.json).
     expect(absent).toStrictEqual(fixture('tool-results/qbo_companies/sdk-absent-arguments.json'));
+  });
+
+  // A6.1: contract §3's ignored rows, each set to a hostile value, change nothing: tools/list and a get_company_info call
+  // answer exactly as without them, and the file QUICKBOOKS_TOKEN_STORE_PATH names is untouched.
+  it('A6.1: every ignored key set to a hostile value: tools/list and get_company_info answer as without them; the named file is untouched', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qbo-a61-'));
+    try {
+      const store = path.join(dir, 'tokens.json');
+      fs.writeFileSync(store, 'untouched\n');
+      const before = fs.statSync(store);
+      const hostile: Record<string, string> = {
+        QUICKBOOKS_REDIRECT_URI: 'https://attacker.invalid/callback',
+        QUICKBOOKS_TOKEN_STORE_PATH: store,
+        ['QUICKBOOKS_' + 'DISABLE_WRITE']: 'true',
+        ['QUICKBOOKS_' + 'DISABLE_UPDATE']: 'true',
+        ['QUICKBOOKS_' + 'DISABLE_DELETE']: 'true',
+        QUICKBOOKS_ATTACHABLE_BASE_DIR: dir,
+        QBO_PDF_OUTPUT_DIR: dir,
+      };
+      const answers = async (env: Record<string, string>) => {
+        const { client } = await connectClient(env);
+        try {
+          const list = await client.listTools();
+          const info = await client.callTool({ name: 'get_company_info', arguments: { company: 'garden3d', params: {} } });
+          return { list, info };
+        } finally {
+          await client.close();
+        }
+      };
+      const plain = await answers({});
+      const withHostile = await answers(hostile);
+      expect(withHostile).toEqual(plain);
+      expect(plain.info).toEqual({ isError: true, content: [{ type: 'text', text: 'reason: stacks-unreachable\n\nStacks gave no answer the server knows, twice.' }] });
+      expect(fs.readFileSync(store, 'utf8')).toBe('untouched\n');
+      expect(fs.statSync(store).mtimeMs).toBe(before.mtimeMs);
+      expect(fs.readdirSync(dir)).toEqual(['tokens.json']);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it.each(KEYS)('R7: each refused key stops the server (%s)', async (k) => {
