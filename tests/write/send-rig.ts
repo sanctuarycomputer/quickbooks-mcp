@@ -39,6 +39,8 @@ export function sendRig() {
     clock: 0,
     registry: createRegistry(),
     books: {} as Record<string, Json>,
+    /** An answer to every GET, in place of the books. */
+    read: undefined as StubAnswer | undefined,
     /** QuickBooks' answer to a POST. */
     answer: ((): StubAnswer => ({ status: 200 })) as (call: StubCall) => StubAnswer | Promise<StubAnswer>,
     /** Each request write mode's rules were asked about, with the guard's context. */
@@ -63,6 +65,7 @@ export function sendRig() {
     },
   };
   function book(call: StubCall): StubAnswer {
+    if (rig.read !== undefined) return rig.read;
     const path = /^\/v3\/company\/[0-9]+\/(.*)\?minorversion=75$/.exec(call.path!)![1];
     return { status: 200, body: JSON.stringify(rig.books[path]) };
   }
@@ -104,6 +107,7 @@ export function sendRig() {
     rig.seen = [];
     rig.limits = [];
     rig.failing = undefined;
+    rig.read = undefined;
     rig.books = { preferences: fixture('preferences/book-close-date.json') };
     for (const [id, body] of byId('accounts')) rig.books[`account/${id}`] = body;
     for (const [id, body] of byId('classes')) rig.books[`class/${id}`] = body;

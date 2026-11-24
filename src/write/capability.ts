@@ -20,7 +20,7 @@ type Entry = { key: Key; at: number };
 
 const LIFE_MS = 60_000;
 
-/** A registry of its own. `now` is in ms; the default never goes back, so a changed wall clock lengthens no life. */
+/** A registry of its own: each `register` makes an entry, each `take` uses one up. `now` is in ms; the default never goes back, so a changed wall clock lengthens no life. */
 export function createRegistry({ now = () => performance.now() }: { now?: () => number } = {}): Registry {
   let entries: Entry[] = [];
   const live = (entry: Entry, at: number): boolean => {
@@ -28,24 +28,28 @@ export function createRegistry({ now = () => performance.now() }: { now?: () => 
     return age >= 0 && age < LIFE_MS; // false for NaN
   };
   const is = ({ key }: Entry, asked: Key): boolean => key.every((part, i) => part === asked[i]);
-  /** Drops the expired and the one asked for; answers whether that one was live. */
-  const drop = (asked: Key, at: number): boolean => {
-    const kept = entries.filter((entry) => live(entry, at));
-    entries = kept.filter((entry) => !is(entry, asked));
-    return entries.length < kept.length;
+  const dropExpired = (at: number): void => {
+    entries = entries.filter((entry) => live(entry, at));
   };
   return Object.freeze({
     register(checked: CheckedRequest): void {
       if (!isChecked(checked) || (checked.mode !== "categorize" && checked.mode !== "undo")) throw new CapabilityError();
       const entry: Entry = { key: [checked.company, checked.entity, sha256Hex(checked.bodyText)], at: now() };
-      drop(entry.key, entry.at);
+      dropExpired(entry.at);
       entries.push(entry);
     },
     has(company: string, entity: string, sha: string): boolean {
       const at = now();
       return entries.some((entry) => live(entry, at) && is(entry, [company, entity, sha]));
     },
-    take: (company: string, entity: string, sha: string): boolean => drop([company, entity, sha], now()),
+    take(company: string, entity: string, sha: string): boolean {
+      dropExpired(now());
+      // Entries are in the order registered, so the first is the oldest.
+      const i = entries.findIndex((entry) => is(entry, [company, entity, sha]));
+      if (i === -1) return false;
+      entries.splice(i, 1);
+      return true;
+    },
     get size(): number {
       return entries.length;
     },

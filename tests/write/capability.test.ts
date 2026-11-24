@@ -61,17 +61,32 @@ describe('register', () => {
     expect([registry.size, registry.has(...keyOf(dry))]).toEqual([1, false]);
   });
 
-  it('a body registered twice has one use, its life from the later registration', async () => {
+  it('a body registered twice has two uses and no third (spec §5)', async () => {
+    const { registry, key } = await held();
+    // A second check of the same change gives the same company, entity and body.
+    registry.register(await rig.check());
+    expect(registry.size).toBe(2);
+    expect([registry.take(...key), registry.size, registry.has(...key)]).toEqual([true, 1, true]);
+    expect([registry.take(...key), registry.size, registry.has(...key), registry.take(...key)]).toEqual([true, 0, false, false]);
+  });
+
+  it('of two of one body, one expired: take consumes the live one, and there is no other', async () => {
     const { registry, clock, checked, key } = await held();
-    clock.ms += 50_000;
+    clock.ms += 10_000;
     registry.register(checked);
-    expect(registry.size).toBe(1);
+    clock.ms += LIFE - 10_000;
+    expect([registry.size, registry.has(...key), registry.take(...key), registry.size, registry.take(...key)]).toEqual([2, true, true, 0, false]);
+  });
+
+  it('of two live ones of one body, take consumes the older: neither life is longer for the other', async () => {
+    const { registry, clock, checked, key } = await held();
+    clock.ms += 10_000;
+    registry.register(checked);
+    expect([registry.take(...key), registry.size]).toEqual([true, 1]);
     clock.ms += LIFE - 1;
     expect(registry.has(...key)).toBe(true);
-    // Another request of the same company, entity and body is the same capability.
-    registry.register(await rig.check());
-    expect(registry.size).toBe(1);
-    expect([registry.take(...key), registry.take(...key), registry.size]).toEqual([true, false, 0]);
+    clock.ms += 1;
+    expect([registry.has(...key), registry.take(...key)]).toEqual([false, false]);
   });
 
   it('a request that differs in company, entity or body alone is its own capability', async () => {
@@ -95,6 +110,8 @@ describe('take and has', () => {
       [OTHER, key[1], key[2]],
       [key[0], 'bill', key[2]],
       [key[0], key[1], createHash('sha256').update(`${checked.bodyText} `).digest('hex')],
+      [key[0].toUpperCase(), key[1], key[2]],
+      [key[0], 'Purchase', key[2]],
       [key[0], key[1], key[2].toUpperCase()],
       [key[0], key[1], checked.bodyText],
       [undefined, undefined, undefined] as any,
@@ -125,7 +142,7 @@ describe('take and has', () => {
 });
 
 describe('the life of a capability (A3.3(d))', () => {
-  it.each([0, 1, LIFE - 1])('live at %i ms, for has and for take', async (age) => {
+  it.each([0, 0.5, 1, LIFE - 1, LIFE - 0.5])('live at %d ms, for has and for take', async (age) => {
     const { registry, clock, key } = await held();
     clock.ms += age;
     expect([registry.has(...key), registry.take(...key), registry.size]).toEqual([true, true, 0]);
