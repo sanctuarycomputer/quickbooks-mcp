@@ -128,15 +128,26 @@ export interface WriteToolDefinition<T extends z.ZodObject<any, z.core.$strict> 
   handler(args: { company: string; params: z.infer<T> }, runtime: WriteRuntime): Promise<CallToolResult>;
 }
 
-/** Every object in the schema refuses an unknown key: a strict object's catchall is never, where a stripping one has none. A lazy schema isn't walked. */
-function allStrict(schema: z.ZodType): boolean {
-  if (schema instanceof z.ZodLazy) return false;
+/** How many schemas may be held one in another; a recursive schema is past any limit. */
+const MAX_DEPTH = 32;
+
+/**
+ * Every object in the schema refuses an unknown key (a strict object's catchall is never, where a stripping one has none), and nothing in
+ * it is `any`, `unknown` or `custom` (z.instanceof too), which let an object of any keys through, as a record's values too. A lazy schema
+ * and a recursive one are refused. What isn't judged: a schema's own checks, which take away from what it accepts; a transform, which
+ * judges no value; and a record's keys, which are never named.
+ */
+function allStrict(schema: z.ZodType, depth = 0): boolean {
+  if (depth > MAX_DEPTH) return false;
+  if (schema instanceof z.ZodLazy || schema instanceof z.ZodAny || schema instanceof z.ZodUnknown || schema instanceof z.ZodCustom) return false;
   if (schema instanceof z.ZodObject && !(schema.def.catchall instanceof z.ZodNever)) return false;
-  const inner: unknown[] = schema instanceof z.ZodObject ? Object.values(schema.shape) : Object.values(schema.def).flat();
-  return inner.every((s) => !(s instanceof z.ZodType) || allStrict(s));
+  // A `.refine` is a custom schema among the checks.
+  const { checks: _checks, ...held } = schema.def;
+  const inner: unknown[] = schema instanceof z.ZodObject ? Object.values(schema.shape) : Object.values(held).flat();
+  return inner.every((s) => !(s instanceof z.ZodType) || allStrict(s, depth + 1));
 }
 
-/** Throws unless `params` is an object, it and every object inside it strict. */
+/** Throws unless `params` is an object, it and every object inside it strict, as allStrict judges. */
 export function requireStrictParams(name: string, schema: unknown): void {
   if (!(schema instanceof z.ZodObject) || !allStrict(schema)) throw new Error(`allowlist: params not strict ${name}`);
 }

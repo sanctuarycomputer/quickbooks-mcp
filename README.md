@@ -127,7 +127,7 @@ In read mode the server registers these 31 read tools and `qbo_companies`, and n
 
 ## Write mode
 
-With `QBO_MODE=write` the server is the write server. It registers five tools and no read tool: `qbo_categorize_purchase`, `qbo_categorize_bill`, `qbo_undo_change`, `qbo_write_check` and `qbo_companies`. The four write tools are not built yet: each answers `reason: fork-error` ("This tool is not built yet.") until tickets 294 and 298 build them. The write server needs the five keys above and four more, and refuses to start without them. Until then no tool sends anything to QuickBooks. The read server loads nothing under `src/write` and ignores these keys. `.env.example` lists them, commented out.
+With `QBO_MODE=write` the server is the write server. It registers five tools and no read tool: `qbo_categorize_purchase`, `qbo_categorize_bill`, `qbo_undo_change`, `qbo_write_check` and `qbo_companies`. The four write tools are not built yet: each answers `reason: fork-error` ("This tool is not built yet.") until tickets 294 and 298 build them. Until then no tool sends anything to QuickBooks. The write server needs the five keys above and four more, and refuses to start without them. The read server loads nothing under `src/write` and ignores these keys. `.env.example` lists them, commented out.
 
 | Key | Required in write mode | What it is |
 |-----|------------------------|------------|

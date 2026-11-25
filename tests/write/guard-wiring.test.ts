@@ -536,7 +536,7 @@ describe('what an update may carry', () => {
       for (const method of ['get', 'GET']) await (ax.defaults.adapter as any)({ ...config, method });
       expect(net.calls.map((c) => c.headers?.['User-Agent'])).toEqual(['x', 'x']);
       const asked = seen.length;
-      for (const method of [['GET'], 'GETS', 'XGET', undefined]) {
+      for (const method of [['GET'], 'GETS', 'XGET', ' get', 'get ', 'GET\t', undefined]) {
         await expect((ax.defaults.adapter as any)({ ...config, method })).rejects.toMatchObject({ name: 'GuardRefusedError', rule: 'guard-error' });
       }
       expect(seen.length).toBe(asked);

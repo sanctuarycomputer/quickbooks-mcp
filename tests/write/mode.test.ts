@@ -264,6 +264,17 @@ describe('start refusals (A1.3)', () => {
 describe('params that aren’t strict (contract §13)', () => {
   // The stripping one compiles as a write tool's schema: zod's strict and stripping objects have one type.
   const shape = { settle: z.boolean().default(true) };
+  const selfHeld: z.ZodType = z.strictObject({
+    get a() {
+      return z.array(selfHeld).optional();
+    },
+  });
+  const endless = (): z.ZodType =>
+    z.strictObject({
+      get a() {
+        return endless().optional();
+      },
+    });
   const LOOSE: Array<[string, any]> = [
     ['a stripping z.object', z.object(shape)],
     ['a loose object', z.looseObject(shape)],
@@ -276,6 +287,20 @@ describe('params that aren’t strict (contract §13)', () => {
     ['a loose object in a strict line', z.strictObject({ a: z.array(z.strictObject({ b: z.object(shape).nullable() })) })],
     ['a loose object in a union in it', z.strictObject({ a: z.union([z.string(), z.object(shape)]) })],
     ['a lazy schema in it, which isn’t walked', z.strictObject({ a: z.lazy(() => z.strictObject(shape)) })],
+    // Forms held under a def key of their own (TJ5).
+    ['a loose object in a record in it', z.strictObject({ a: z.record(z.string(), z.object(shape)) })],
+    ['a loose object in a tuple in it', z.strictObject({ a: z.tuple([z.string(), z.object(shape)]) })],
+    ['a loose object in an intersection in it', z.strictObject({ a: z.intersection(z.strictObject(shape), z.object(shape)) })],
+    ['a loose object in a pipe in it', z.strictObject({ a: z.string().pipe(z.transform(() => ({}))).pipe(z.object(shape)) })],
+    ['a loose object in a map in it', z.strictObject({ a: z.map(z.string(), z.object(shape)) })],
+    // Schemas that let an object of any keys through (TJ3).
+    ['any in it', z.strictObject({ a: z.any() })],
+    ['unknown in it', z.strictObject({ a: z.unknown() })],
+    ['a custom schema in it', z.strictObject({ a: z.custom<object>(() => true) })],
+    ['a record of unknown in it', z.strictObject({ a: z.record(z.string(), z.unknown()) })],
+    // TJ2: zod's way to write a recursive schema without z.lazy, and one made anew at each read.
+    ['a strict object that holds itself', selfHeld],
+    ['a strict object that holds a new one like it', endless()],
     ['no zod schema', {}],
   ];
   /** Its tool last, after every other. */
@@ -295,8 +320,17 @@ describe('params that aren’t strict (contract §13)', () => {
     expect(interceptorCount()).toBe(before);
   });
 
+  // Every case above has the loose tool last (TJ6).
+  it.each(STUBS)('a loose schema on %s, in its own place', (name) => {
+    const tool = jest.fn();
+    rig.secure(writeEnv(), writeMode());
+    const tools = writeMode().tools.map((t) => (t.name === name ? ({ ...t, schema: z.object(shape) } as WriteTool) : t));
+    expect(() => startWriteServer(writeEnv(), { tool } as unknown as McpServer, tools)).toThrow(new Error(`refused to start: allowlist: params not strict ${name}`));
+    expect(tool).not.toHaveBeenCalled();
+  });
+
   it('a strict one, with a check of its own, is registered', async () => {
-    const { client } = await rig.start({ tools: withSchema(z.strictObject({ ...shape, lines: z.array(z.strictObject(shape).optional()).refine(() => true) }).refine(() => true)) });
+    const { client } = await rig.start({ tools: withSchema(z.strictObject({ ...shape, one: z.string().refine(() => true), same: shape.settle, lines: z.array(z.strictObject(shape).optional()).refine(() => true) }).refine(() => true)) });
     expect((await client.listTools()).tools).toHaveLength(5);
   });
 });

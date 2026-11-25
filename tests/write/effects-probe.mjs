@@ -27,12 +27,17 @@ open(none, 'w', done);
 open(none, constants.O_WRONLY, done);
 quiet(() => openSync(none, constants.O_WRONLY));
 quiet(() => openSync(none, 'r+'));
+// One bit each, beyond O_WRONLY.
+for (const bit of ['O_RDWR', 'O_CREAT', 'O_TRUNC', 'O_APPEND']) {
+  quiet(() => openSync(none, constants[bit]));
+}
 promises.open(none, 'a').catch(done);
 open(none, done);
 open(none, undefined, done);
 quiet(() => openSync(none));
 quiet(() => openSync(none, 'r'));
 quiet(() => openSync(none, 'rs'));
+quiet(() => openSync(none, 'sr'));
 quiet(() => openSync(none, constants.O_RDONLY));
 promises.open(none).catch(done);
 cp(none, `${none}2`, done);

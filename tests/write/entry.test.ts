@@ -207,7 +207,7 @@ describe('importing a module under src/write does nothing (G3)', () => {
       new Set([
         ...['made createRegistry', 'made createGuard', 'timer setTimeout', 'key QBO_WRITE_LEDGER', 'write rm', 'child execFile', 'key *', 'request https.request', 'socket connect'],
         // Each open for writing with its flags (so an open for reading would be one more), and each cp.
-        ...['write open w', 'write open 1', 'write openSync 1', 'write openSync r+', 'write promises.open a', 'write cp', 'write cpSync', 'write promises.cp'],
+        ...['write open w', 'write open 1', 'write openSync 1', 'write openSync r+', 'write promises.open a', ...(['O_RDWR', 'O_CREAT', 'O_TRUNC', 'O_APPEND'] as const).map((flag) => `write openSync ${fs.constants[flag]}`), 'write cp', 'write cpSync', 'write promises.cp'],
       ]),
     );
   });
