@@ -311,6 +311,8 @@ describe('params that aren’t strict (contract §13)', () => {
     ['a catch on params’ field', z.strictObject({ a: z.string().catch('x') })],
     ['a success in it', z.strictObject({ a: z.success(z.strictObject(shape)) })],
     ['a loose object after a strict one’s transform', z.strictObject({ a: z.strictObject(shape).transform((v) => v).pipe(z.object({ settle: z.boolean() })) })],
+    // A pipe's input is one deeper than the pipe, as any held schema is.
+    ['a strict schema nested past the depth limit through a transform', z.strictObject({ a: Array.from({ length: 31 }).reduce<z.ZodType>((s) => z.strictObject({ a: s }), z.boolean().transform((v) => v)) })],
     ['a strict schema nested past the depth limit', z.strictObject({ a: Array.from({ length: 32 }).reduce<z.ZodType>((s) => z.strictObject({ a: s }), z.boolean()) })],
     ['no zod schema', {}],
   ];
