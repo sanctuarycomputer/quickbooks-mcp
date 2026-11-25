@@ -618,6 +618,23 @@ describe('A3.5: the dry decision', () => {
     expect(dry(post({ url: `${ROOT}/purchase?minorversion=75&operation=update` }))).toEqual(needsCapability(`${ROOT}/purchase?minorversion=75&operation=update`));
   });
 
+  // TC4: a later read would answer otherwise.
+  it.each<[string, GuardRequest, GuardRequest]>([
+    ['a GET that 291 allows', get('/preferences?minorversion=75'), get('/vendor/5?minorversion=75', { headers: { 'X-Api-Key': 'k' }, data: 'x' })],
+    ['a refusal that is 291’s', post({ method: 'PUT' }), get('/preferences?minorversion=75')],
+  ])('%s is judged as first read, each field read once', (_name, first, later) => {
+    const reads: string[] = [];
+    const changing = Object.defineProperties(
+      {},
+      Object.fromEntries(
+        (['method', 'url', 'params', 'headers', 'data'] as const).map((key) => [key, { enumerable: true, get: () => (reads.push(key) && reads.indexOf(key) === reads.lastIndexOf(key) ? first : later)[key] }]),
+      ),
+    );
+    expect(dry(changing)).toEqual(asDry(decide(first, context())));
+    expect(reads.sort()).toEqual(['data', 'headers', 'method', 'params', 'url']);
+    expect(dry(later)).not.toEqual(dry(first));
+  });
+
   it('consumes nothing in 100 calls, and reads no registry it is handed', () => {
     const registry = holding();
     const deps = { company, get registry(): CapabilityRegistry { return boom(); } };
