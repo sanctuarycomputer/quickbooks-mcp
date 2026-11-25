@@ -131,18 +131,28 @@ export interface WriteToolDefinition<T extends z.ZodObject<any, z.core.$strict> 
 /** How many schemas may be held one in another; a recursive schema is past any limit, and so is a deeper one that isn't. */
 const MAX_DEPTH = 32;
 
-/** Schemas that let a value through unjudged, or put another value in place of a refused one: any of them can hide an object's keys. */
-const OPEN = [z.ZodLazy, z.ZodAny, z.ZodUnknown, z.ZodCustom, z.ZodTransform, z.ZodCatch, z.ZodSuccess];
+/** A schema that lets a value through unjudged, or puts another value in place of a refused one: any of these can hide an object's keys. */
+function isOpen(schema: z.ZodType): boolean {
+  return (
+    schema instanceof z.ZodLazy ||
+    schema instanceof z.ZodAny ||
+    schema instanceof z.ZodUnknown ||
+    schema instanceof z.ZodCustom ||
+    schema instanceof z.ZodTransform ||
+    schema instanceof z.ZodCatch ||
+    schema instanceof z.ZodSuccess
+  );
+}
 
 /**
  * Every object in the schema refuses an unknown key (a strict object's catchall is never, where a stripping one has none), and nothing in it
- * is OPEN: `lazy`, `any`, `unknown`, `custom` (z.instanceof too), a transform, `catch` or `success`. A transform is let through only as a
+ * is open (isOpen): `lazy`, `any`, `unknown`, `custom` (z.instanceof too), a transform, `catch` or `success`. A transform is let through only as a
  * pipe's output (`.transform()` after a judged schema), never as its input (z.preprocess) or alone. Nothing is held more than MAX_DEPTH deep.
  * What isn't judged: a schema's own checks (a `.refine` among them), which only take away from what it accepts, and a record's keys.
  */
 function allStrict(schema: z.ZodType, depth = 0): boolean {
   if (depth > MAX_DEPTH) return false;
-  if (OPEN.some((open) => schema instanceof open)) return false;
+  if (isOpen(schema)) return false;
   if (schema instanceof z.ZodObject && !(schema.def.catchall instanceof z.ZodNever)) return false;
   // The classic API makes every schema a z.ZodType; the def's type is the core one.
   if (schema instanceof z.ZodPipe && schema.def.out instanceof z.ZodTransform) return allStrict(schema.def.in as z.ZodType, depth + 1);
