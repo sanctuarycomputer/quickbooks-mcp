@@ -303,6 +303,15 @@ describe('params that aren’t strict (contract §13)', () => {
     // TJ2: zod's way to write a recursive schema without z.lazy, and one made anew at each read.
     ['a strict object that holds itself', selfHeld],
     ['a strict object that holds a new one like it', endless()],
+    // Wrappers that can hide an object's keys (TM4).
+    ['a loose object before a transform in it', z.strictObject({ a: z.object(shape).transform((v) => v) })],
+    ['a bare transform in it', z.strictObject({ a: z.transform((v) => v) })],
+    ['a preprocess in it', z.strictObject({ a: z.preprocess((v) => v, z.strictObject(shape)) })],
+    ['a catch on a strict line in it', z.strictObject({ a: z.array(z.strictObject(shape).catch({ settle: true })) })],
+    ['a catch on params’ field', z.strictObject({ a: z.string().catch('x') })],
+    ['a success in it', z.strictObject({ a: z.success(z.strictObject(shape)) })],
+    ['a loose object after a strict one’s transform', z.strictObject({ a: z.strictObject(shape).transform((v) => v).pipe(z.object({ settle: z.boolean() })) })],
+    ['a strict schema nested past the depth limit', z.strictObject({ a: Array.from({ length: 32 }).reduce<z.ZodType>((s) => z.strictObject({ a: s }), z.boolean()) })],
     ['no zod schema', {}],
   ];
   /** Its tool last, after every other. */
@@ -332,7 +341,7 @@ describe('params that aren’t strict (contract §13)', () => {
   });
 
   it('a strict one, with a check of its own, is registered', async () => {
-    const { client } = await rig.start({ tools: withSchema(z.strictObject({ ...shape, one: z.string().refine(() => true), same: shape.settle, lines: z.array(z.strictObject(shape).optional()).refine(() => true) }).refine(() => true)) });
+    const { client } = await rig.start({ tools: withSchema(z.strictObject({ ...shape, one: z.string().refine(() => true), same: shape.settle, kept: z.strictObject(shape).transform((v) => v), codec: z.codec(z.string(), z.number(), { decode: Number, encode: String }), deep: Array.from({ length: 31 }).reduce<z.ZodType>((s) => z.strictObject({ a: s }), z.boolean()), lines: z.array(z.strictObject(shape).optional()).refine(() => true) }).refine(() => true)) });
     expect((await client.listTools()).tools).toHaveLength(5);
   });
 });

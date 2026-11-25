@@ -359,6 +359,13 @@ describe('compare and compareDigests', () => {
     expect(names((t) => Object.assign(t, { constructor: 'x' }))).toEqual(['constructor']);
   });
 
+  it('intent digests are read for their own keys only: inherited ones are none, so every field is named (TM2)', () => {
+    const kept = digests(FETCHED, ['1']);
+    const inherited = Object.create(kept) as Record<string, string>;
+    expect(compareDigests(SENT, inherited, resolveChanges(FETCHED, CHANGES))).toEqual({ same: false, fields: Object.keys(kept).filter((k) => k !== 'Line').sort() });
+    expect(compareDigests(SENT, { ...kept }, resolveChanges(FETCHED, CHANGES))).toEqual({ same: true });
+  });
+
   it('intent digests without Line fail closed', () => {
     const { Line: _line, ...kept } = digests(FETCHED, ['1']);
     expect(compareDigests(SENT, kept, resolveChanges(FETCHED, CHANGES))).toEqual({ same: false, fields: ['Line'] });

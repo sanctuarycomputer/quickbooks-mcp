@@ -213,7 +213,7 @@ const HEADER_ROWS: Row[] = [
   { name: 'stacks-bill: PrivateNote', base: B, edit: () => (bill().PrivateNote = 'garden3d invoice 0001'), refusal: 'write:stacks-bill', gets: B_READS, pure: stacksBillOf },
   { name: 'closed: on the close date', edit: closeDate('2026-11-10'), refusal: 'write:closed', gets: P_READS, pure: closedOf },
   { name: 'closed: before the close date', edit: closeDate('2026-12-01'), refusal: 'write:closed', gets: P_READS, pure: closedOf },
-  ...[null, '', '2026-02-30', '2026-13-01', '2026-00-10', '2026/01/31', '2026-01-31 ', 'x2026-01-31', '2026-1-31', '2026-01-31T00:00:00', 20260131, ['2026-01-31'], {}, false].map(
+  ...[null, '', '2026-02-30', '2026-13-01', '2026-00-10', '2026/01/31', '2026-01-31 ', 'x2026-01-31', '2026-1-31', '2026-01-31T00:00:00', '2026-01-31T', '+012026-01-31', '-002026-01-31', 20260131, ['2026-01-31'], {}, false].map(
     (value): Row => ({ name: `closed: a close date of ${JSON.stringify(value)}`, edit: closeDate(value), refusal: 'write:closed', gets: P_READS, pure: closedOf }),
   ),
   ...['', '2026/11/10', '2026-11-31', '9999'].map((value): Row => ({ name: `closed: a TxnDate of ${JSON.stringify(value)}`, edit: () => (purchase().TxnDate = value), refusal: 'write:closed', gets: P_READS, pure: closedOf })),
