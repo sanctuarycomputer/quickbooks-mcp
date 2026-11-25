@@ -260,7 +260,6 @@ describe('start refusals (A1.3)', () => {
   });
 });
 
-const COMPANY = 'garden3d';
 /** The company's books, for the check's fetches. */
 function answerBooks(): void {
   const books: Json = { preferences: fixture('preferences/book-close-date.json'), 'purchase/1001': fixture('fetched/purchase-1001.json') };
