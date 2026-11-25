@@ -1,0 +1,18 @@
+{
+  "Preferences": {
+    "Id": "1",
+    "SyncToken": "0",
+    "domain": "QBO",
+    "sparse": false,
+    "MetaData": {
+      "CreateTime": "2026-11-01T09:00:00-08:00",
+      "LastUpdatedTime": "2026-11-01T09:00:00-08:00"
+    },
+    "AccountingInfoPrefs": {
+      "TrackDepartments": false,
+      "ClassTrackingPerTxn": false,
+      "ClassTrackingPerTxnLine": true
+    }
+  },
+  "time": "2026-11-18T09:00:00.000-08:00"
+}

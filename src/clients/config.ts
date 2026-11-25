@@ -1,5 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-286): the read server's start configuration, contract 1.1 §3 (docs/contracts/quickbooks.md in Stacksbot).
-// The only reader of the five keys. Each refusal is `refused to start: <KEY> <reason>`, naming the key and never its value.
+// The only reader of the five keys and of write mode's four. Each refusal is `refused to start: <KEY> <reason>`, naming the key and never its value.
+// Changed by Sanctuary Computer (quickbooks-mcp-293): isWriteMode, and loadWriteConfig for the write server; loadConfig is the read server's, as it was.
 import { readFileSync } from "fs";
 import { parseCompanies, type Company } from "./companies.js";
 
@@ -7,7 +8,16 @@ export type Config = {
   readonly stacksUrl: URL;
   readonly stacksKey: string;
   readonly companies: readonly Company[];
-  readonly mode: "read";
+  readonly mode: "read" | "write";
+};
+
+/** The write server's: the receipt command, and the switch file's, the ledger's and the sweep stamp's paths, as given. */
+export type WriteConfig = Config & {
+  readonly mode: "write";
+  readonly receiptCmd: string;
+  readonly writeSwitch: string;
+  readonly writeLedger: string;
+  readonly sweepStamp: string;
 };
 
 const refuse = (key: string, reason: string): never => {
@@ -51,8 +61,8 @@ function companies(path: string | undefined): readonly Company[] {
   }
 }
 
-/** Reads and checks the five keys in contract §3's order; throws at the first that fails, before any later key is read. */
-export function loadConfig(env: Record<string, string | undefined>): Config {
+/** The four keys before QBO_MODE, in contract §3's order. */
+function firstFour(env: Record<string, string | undefined>): Omit<Config, "mode"> {
   const url = stacksUrl(env.STACKS_QBO_URL);
   const token = env.STACKS_QBO_TOKEN;
   if (token === undefined) return refuse("STACKS_QBO_TOKEN", "is not set");
@@ -60,8 +70,40 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
   const environment = env.QUICKBOOKS_ENVIRONMENT;
   if (environment === undefined) return refuse("QUICKBOOKS_ENVIRONMENT", "is not set");
   if (environment !== "production") return refuse("QUICKBOOKS_ENVIRONMENT", "is not production");
-  const list = companies(env.QBO_COMPANIES);
+  return { stacksUrl: url, stacksKey: token, companies: companies(env.QBO_COMPANIES) };
+}
+
+/** Reads and checks the five keys in contract §3's order; throws at the first that fails, before any later key is read. */
+export function loadConfig(env: Record<string, string | undefined>): Config {
+  const four = firstFour(env);
   const mode = env.QBO_MODE;
   if (mode !== undefined && mode !== "read") return refuse("QBO_MODE", "is not read");
-  return Object.freeze({ stacksUrl: url, stacksKey: token, companies: list, mode: "read" });
+  return Object.freeze({ ...four, mode: "read" });
+}
+
+/** Whether the write server was asked for: exactly `write`. Every other value is the read server's, whose loadConfig accepts or refuses it. */
+export function isWriteMode(env: Record<string, string | undefined>): boolean {
+  return env.QBO_MODE === "write";
+}
+
+/** A write key: set and non-empty, nothing more. */
+function writeKey(env: Record<string, string | undefined>, key: string): string {
+  const value = env[key];
+  if (value === undefined) return refuse(key, "is not set");
+  if (value === "") return refuse(key, "is empty");
+  return value;
+}
+
+/** The write server's loadConfig: the five keys in the same order, `QBO_MODE` exactly `write`, then the four write keys in contract §3's. */
+export function loadWriteConfig(env: Record<string, string | undefined>): WriteConfig {
+  const four = firstFour(env);
+  if (!isWriteMode(env)) return refuse("QBO_MODE", "is not write");
+  return Object.freeze({
+    ...four,
+    mode: "write",
+    receiptCmd: writeKey(env, "QBO_WRITE_RECEIPT_CMD"),
+    writeSwitch: writeKey(env, "QBO_WRITE_SWITCH"),
+    writeLedger: writeKey(env, "QBO_WRITE_LEDGER"),
+    sweepStamp: writeKey(env, "QBO_WRITE_SWEEP_STAMP"),
+  });
 }

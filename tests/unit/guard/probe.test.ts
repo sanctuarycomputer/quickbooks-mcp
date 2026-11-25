@@ -90,7 +90,7 @@ describe('runProbe in process (A2.2)', () => {
     ['--realm twice', ['GET', COMPANYINFO, '--realm', '123', '--realm', '456'], '--realm given twice'],
     ['--stacks-url twice', ['GET', S, '--realm', '1', '--stacks-url', 'https://a.test', '--stacks-url', 'https://b.test'], '--stacks-url given twice'],
     ['--key without a value', ['GET', S, '--realm', '1', '--key'], '--key needs a value'],
-    ['an unknown flag', ['GET', COMPANYINFO, '--realm', '123', '--mode', 'write'], 'unknown flag --mode'],
+    ['an unknown flag', ['GET', COMPANYINFO, '--realm', '123', '--modes', 'write'], 'unknown flag --modes'],
     ['an unknown flag with =', ['GET', COMPANYINFO, '--realm=123'], 'unknown flag --realm=123'],
     ['a third positional', ['GET', COMPANYINFO, 'extra', '--realm', '123'], 'too many arguments'],
   ] as Array<[string, string[], string]>)('%s → 2, usage: on err, nothing on out', (_what, argv, reason) => {
@@ -181,13 +181,14 @@ describe('one decide (A2.3)', () => {
   const importsOf = (file: string) => specifiers(fs.readFileSync(path.join(ROOT, file), 'utf8'));
 
   it('guard-probe.ts imports only node:fs and node:url (to find its own path) and ./clients/guard-decide.js', () => {
-    expect(importsOf('src/guard-probe.ts')).toEqual(['node:fs', 'node:url', './clients/guard-decide.js']);
+    expect(importsOf('src/guard-probe.ts')).toEqual(['node:fs', 'node:url', './clients/guard-decide.js', './write/guard-rules.js']);
     // TK5: and only the one name the ruling allows from each builtin
     const text = fs.readFileSync(path.join(ROOT, 'src', 'guard-probe.ts'), 'utf8');
     expect(text.match(/^import .*$/gm)).toEqual([
-      'import { realpathSync } from "node:fs";',
+      'import { readFileSync, realpathSync } from "node:fs";',
       'import { fileURLToPath } from "node:url";',
       'import { decide, newCallRecord } from "./clients/guard-decide.js";',
+      'import { decideDry } from "./write/guard-rules.js";',
     ]);
   });
 
@@ -197,7 +198,7 @@ describe('one decide (A2.3)', () => {
 
   it('neither file names axios, node-quickbooks or a network module', () => {
     const banned = ['axios', 'node-quickbooks', 'http', 'https', 'net', 'tls', 'dns', 'http2'];
-    for (const f of ['src/guard-probe.ts', 'src/clients/guard-decide.ts']) {
+    for (const f of ['src/guard-probe.ts', 'src/clients/guard-decide.ts', 'src/write/guard-rules.ts', 'src/write/canonical.ts']) {
       const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
       const named = banned.filter((b) => new RegExp(`["'\`](?:node:)?${b}(?:/[^"'\`]*)?["'\`]`).test(text));
       expect({ f, named }).toEqual({ f, named: [] });

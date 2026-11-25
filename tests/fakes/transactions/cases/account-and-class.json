@@ -1,0 +1,66 @@
+{
+  "case": "account-and-class",
+  "tool": "qbo_categorize_purchase",
+  "call": "docs/contracts/quickbooks/tool-calls/qbo_categorize_purchase.json",
+  "params": {
+    "id": "1001",
+    "lines": [
+      {
+        "line_id": "1",
+        "account_id": "84",
+        "class_id": "12"
+      }
+    ],
+    "reason": "Monthly design tool subscription."
+  },
+  "intent": null,
+  "fetched": "docs/contracts/quickbooks/transactions/fetched/purchase-1001.json",
+  "fetch": "GET https://quickbooks.api.intuit.com/v3/company/9990000000000002/purchase/1001?minorversion=75",
+  "update": "POST https://quickbooks.api.intuit.com/v3/company/9990000000000002/purchase?operation=update&minorversion=75",
+  "sparse_body": {
+    "Id": "1001",
+    "SyncToken": "3",
+    "TxnDate": "2026-11-10",
+    "PaymentType": "CreditCard",
+    "TotalAmt": 120,
+    "Line": [
+      {
+        "Id": "1",
+        "Amount": 100,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "84"
+          },
+          "ClassRef": {
+            "value": "12"
+          }
+        }
+      },
+      {
+        "Id": "2",
+        "Amount": 20,
+        "DetailType": "AccountBasedExpenseLineDetail",
+        "AccountBasedExpenseLineDetail": {
+          "AccountRef": {
+            "value": "84"
+          },
+          "ClassRef": {
+            "value": "12"
+          }
+        }
+      }
+    ],
+    "sparse": true
+  },
+  "sparse_body_sha256": "e5a0faf7fa44e6f10e8d503ab330ebf8fd490081457e50e4f1914ef1de958da8",
+  "digests": {
+    "Id": "a0064c86a582fa64f14c66f6b43708d60e1bdb791ac2acfa332d059895c265f9",
+    "Line": "cc3f2a1ffd63c4db19e0114b93a94b774e4a2d07a2a5ec5b193303ac1387d633",
+    "Line:1": "44a7fce95e5c1f409da8d7193091845900bf9ea9a5057134236c05fe3f719428",
+    "Line:2": "4510a18193cfae65fa63ab147c8b473d27166b8a3a19b79636d039029d4852e1",
+    "PaymentType": "e28ab3299eec22d2e89df4e9ed8f93899e26355dd049cd3954c444fc66eac8bd",
+    "TotalAmt": "2abaca4911e68fa9bfbf3482ee797fd5b9045b841fdff7253557c5fe15de6477",
+    "TxnDate": "f67c5ec50bf3ce9b5e2e30b3b2ba5789ee3f1491778fd8b3b94147e12dbc2a81"
+  }
+}

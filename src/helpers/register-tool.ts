@@ -1,10 +1,13 @@
 // Changed by Sanctuary Computer (quickbooks-mcp-285): the removed switches are gone; every definition passed here registers.
 // Changed by Sanctuary Computer (quickbooks-mcp-286): every tool takes a required `company` from the loaded keys and runs
 // as one tool call: the company's call is prepared, then the handler's answer is shaped into contract §5's result.
+// Changed by Sanctuary Computer (quickbooks-mcp-293): RegisterWriteTool, for write mode's tools; RegisterTool is as it was.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { ToolDefinition } from "../types/tool-definition.js";
 import { z } from "zod";
 import { currentCall, runInCall, type CallStore, type Failure } from "../clients/call-context.js";
+import type { WriteConfig } from "../clients/config.js";
 import type { Runtime } from "../clients/runtime.js";
 import { errorResult, shapeResult } from "./tool-result.js";
 
@@ -108,4 +111,74 @@ export function RegisterTool<T extends z.ZodType<any, any>>(
     })) as unknown as Parameters<McpServer["tool"]>[3];
 
   server.tool(toolDefinition.name, toolDefinition.description, { company: z.enum(keys), params: paramsSchema }, handler as any);
+}
+
+/** The runtime, with the write server's config as its own. */
+export type WriteRuntime = Runtime & { cfg: WriteConfig };
+
+/**
+ * `params` refuses an unknown key (contract §13). The type keeps out a loose object only (zod's strict and stripping objects have one type),
+ * so the start checks each schema itself (requireStrictParams).
+ */
+export interface WriteToolDefinition<T extends z.ZodObject<any, z.core.$strict> = z.ZodObject<any, z.core.$strict>> {
+  name: string;
+  description: string;
+  schema: T;
+  /** Answers the whole result. No call is open and nothing was sent: it opens and prepares its own, where it needs one. */
+  handler(args: { company: string; params: z.infer<T> }, runtime: WriteRuntime): Promise<CallToolResult>;
+}
+
+/** How many schemas may be held one in another; a recursive schema is past any limit, and so is a deeper one that isn't. */
+const MAX_DEPTH = 32;
+
+/** A schema that lets a value through unjudged, or puts another value in place of a refused one: any of these can hide an object's keys. */
+function isOpen(schema: z.ZodType): boolean {
+  return (
+    schema instanceof z.ZodLazy ||
+    schema instanceof z.ZodAny ||
+    schema instanceof z.ZodUnknown ||
+    schema instanceof z.ZodCustom ||
+    schema instanceof z.ZodTransform ||
+    schema instanceof z.ZodCatch ||
+    schema instanceof z.ZodSuccess
+  );
+}
+
+/**
+ * Every object in the schema refuses an unknown key (a strict object's catchall is never, where a stripping one has none), and nothing in it
+ * is open (isOpen): `lazy`, `any`, `unknown`, `custom` (z.instanceof too), a transform, `catch` or `success`. A transform is let through only as a
+ * pipe's output (`.transform()` after a judged schema), never as its input (z.preprocess) or alone. Nothing is held more than MAX_DEPTH deep.
+ * What isn't judged: a schema's own checks (a `.refine` among them), which only take away from what it accepts, and a record's keys.
+ */
+function allStrict(schema: z.ZodType, depth = 0): boolean {
+  if (depth > MAX_DEPTH) return false;
+  if (isOpen(schema)) return false;
+  if (schema instanceof z.ZodObject && !(schema.def.catchall instanceof z.ZodNever)) return false;
+  // The classic API makes every schema a z.ZodType; the def's type is the core one.
+  if (schema instanceof z.ZodPipe && schema.def.out instanceof z.ZodTransform) return allStrict(schema.def.in as z.ZodType, depth + 1);
+  const { checks: _checks, ...held } = schema.def;
+  const inner: unknown[] = schema instanceof z.ZodObject ? Object.values(schema.shape) : Object.values(held).flat();
+  return inner.every((s) => !(s instanceof z.ZodType) || allStrict(s, depth + 1));
+}
+
+/** Throws unless `params` is an object, it and every object inside it strict, as allStrict judges. */
+export function requireStrictParams(name: string, schema: unknown): void {
+  if (!(schema instanceof z.ZodObject) || !allStrict(schema)) throw new Error(`allowlist: params not strict ${name}`);
+}
+
+/**
+ * Registers a write tool: `params` is checked as its schema says, nothing is added to it or taken out, and the call isn't
+ * prepared, so nothing is sent before the handler runs. A key beside `company` and `params` is stripped by the SDK, as in read mode.
+ */
+export function RegisterWriteTool(server: McpServer, toolDefinition: WriteToolDefinition, runtime: WriteRuntime) {
+  const keys = runtime.cfg.companies.map((c) => c.key) as [string, ...string[]];
+  const handler = async (args: { company: string; params: unknown }): Promise<CallToolResult> => {
+    try {
+      return await toolDefinition.handler(args as Parameters<WriteToolDefinition["handler"]>[0], runtime);
+    } catch {
+      // Never read: an axios error carries the token and the body.
+      return errorResult(FORK_ERROR, []);
+    }
+  };
+  server.tool(toolDefinition.name, toolDefinition.description, { company: z.enum(keys), params: toolDefinition.schema }, handler as any);
 }

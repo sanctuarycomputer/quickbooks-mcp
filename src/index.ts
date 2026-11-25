@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Changed by Sanctuary Computer (quickbooks-mcp-285): registers only the read allowlist and the qbo_companies stub, through startReadServer.
 // Changed by Sanctuary Computer (quickbooks-mcp-291): secureStart (start refusals, the HTTP guard, the backstop) runs first in main().
+// Changed by Sanctuary Computer (quickbooks-mcp-293): with QBO_MODE exactly `write`, the write server instead; only then are its modules loaded.
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { secureStart } from "./http-guard.js";
 import { QuickbooksMCPServer } from "./server/qbo-mcp-server.js";
-import { startReadServer, type ReadTool } from "./allowlist.js";
+import { startReadServer, startWriteServer, type ReadTool } from "./allowlist.js";
+import { isWriteMode } from "./clients/config.js";
 import { QboCompaniesTool } from "./tools/qbo-companies.tool.js";
 import { GetAgedPayablesTool } from "./tools/get-aged-payables.tool.js";
 import { GetAgedReceivablesTool } from "./tools/get-aged-receivables.tool.js";
@@ -74,18 +76,32 @@ const TOOLS: readonly ReadTool[] = [
   QboCompaniesTool,
 ];
 
+const loadWriteMode = async () => (await import("./write/mode.js")).writeMode();
+
 const main = async () => {
-  // The guard and the backstop go in before any tool registers; a refusal or a failed install stops start here.
+  let write: Awaited<ReturnType<typeof loadWriteMode>> | undefined;
+  // The guard and the backstop go in before any tool registers; a refusal, a failed install or a failed import stops start here.
   try {
-    secureStart(process.env, process.execArgv);
+    if (isWriteMode(process.env)) write = await loadWriteMode();
+    if (write === undefined) secureStart(process.env, process.execArgv);
+    else secureStart(process.env, process.execArgv, { extraRules: write.extraRules });
   } catch (e) {
-    process.stderr.write((e as Error).message + "\n");
+    // One line: an import's failure may say more.
+    process.stderr.write(failureLine(e) + "\n");
     process.exit(1);
   }
   const server = QuickbooksMCPServer.GetServer();
-  startReadServer(process.env, server, TOOLS);
+  if (write === undefined) startReadServer(process.env, server, TOOLS);
+  else startWriteServer(process.env, server, write.tools);
   await server.connect(new StdioServerTransport());
 };
+
+/** The first line of an Error's message, or a fixed text: nothing else that was thrown is printed. */
+function failureLine(e: unknown): string {
+  const message: unknown = e instanceof Error ? e.message : undefined;
+  const line = typeof message === "string" ? message.split(/[\r\n]/)[0] : "";
+  return line.trim() === "" ? "refused to start: the start failed with no message" : line;
+}
 
 main().catch((e) => {
   process.stderr.write((e instanceof Error ? e.message : String(e)) + "\n");

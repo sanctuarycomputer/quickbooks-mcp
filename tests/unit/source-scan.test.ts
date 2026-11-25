@@ -220,6 +220,16 @@ describe('A3.3: the call store is the only holder and reader of company identity
       'src/helpers/register-tool.ts: currentCall()',
       'src/http-guard.ts: new AsyncLocalStorage<IssuedTicket>',
       'src/http-guard.ts: new AsyncLocalStorage<{ realm: string | undefined; record: CallRecord }>', // 291's default scope, replaced at start
+      'src/write/capability.ts: checked.company', // the checked request's, which the capability is bound to
+      'src/write/client.ts: currentCall()', // the write client's GETs: the call's own token and realm
+      'src/write/client.ts: call.company', // the update's call, compared with the checked request's company
+      'src/write/client.ts: checked.company', // the same
+      'src/write/guard-rules.ts: deps.company', // decideWrite's company callback (the call's), never a kept company
+      'src/write/guard-rules.ts: deps.company', // decideDry's, the same
+      'src/write/mode.ts: currentCall()?.company', // decideWrite's company callback: the call's, read when asked
+      'src/write/mode.ts: currentCall()', // the same
+      'src/write/pre-send.ts: currentCall()', // the pre-send check's call, whose failure it reads
+      'src/write/pre-send.ts: call.company', // compared with the input's company, which must be the call's
     ]);
   });
 
@@ -276,8 +286,11 @@ describe("A6.1's source half: process.env only where the spec names it", () => {
     const uses = walk('src').flatMap((f) => processUses(f, fs.readFileSync(path.join(ROOT, f), 'utf8')));
     expect(uses).toEqual([
       'src/handlers/get-quickbooks-invoice-pdf.handler.ts:17: process.env.QBO_PDF_MAX_BYTES',
-      'src/index.ts:80: process.env, an argument of secureStart',
-      'src/index.ts:86: process.env, an argument of startReadServer',
+      'src/index.ts:85: process.env, an argument of isWriteMode',
+      'src/index.ts:86: process.env, an argument of secureStart', // read mode's
+      'src/index.ts:87: process.env, an argument of secureStart', // write mode's, with its rules
+      'src/index.ts:94: process.env, an argument of startReadServer',
+      'src/index.ts:95: process.env, an argument of startWriteServer',
       'src/tools/get-invoice-pdf.tool.ts:64: process.env.QBO_PDF_OUTPUT_DIR',
     ]);
   });
