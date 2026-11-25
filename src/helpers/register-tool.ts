@@ -118,7 +118,7 @@ export type WriteRuntime = Runtime & { cfg: WriteConfig };
 
 /**
  * `params` refuses an unknown key (contract §13). The type keeps out a loose object only (zod's strict and stripping objects have one type),
- * so RegisterWriteTool checks the schema itself.
+ * so the start checks each schema itself (requireStrictParams).
  */
 export interface WriteToolDefinition<T extends z.ZodObject<any, z.core.$strict> = z.ZodObject<any, z.core.$strict>> {
   name: string;
@@ -128,13 +128,24 @@ export interface WriteToolDefinition<T extends z.ZodObject<any, z.core.$strict> 
   handler(args: { company: string; params: z.infer<T> }, runtime: WriteRuntime): Promise<CallToolResult>;
 }
 
+/** Every object in the schema refuses an unknown key: a strict object's catchall is never, where a stripping one has none. A lazy schema isn't walked. */
+function allStrict(schema: z.ZodType): boolean {
+  if (schema instanceof z.ZodLazy) return false;
+  if (schema instanceof z.ZodObject && !(schema.def.catchall instanceof z.ZodNever)) return false;
+  const inner: unknown[] = schema instanceof z.ZodObject ? Object.values(schema.shape) : Object.values(schema.def).flat();
+  return inner.every((s) => !(s instanceof z.ZodType) || allStrict(s));
+}
+
+/** Throws unless `params` is an object, it and every object inside it strict. */
+export function requireStrictParams(name: string, schema: unknown): void {
+  if (!(schema instanceof z.ZodObject) || !allStrict(schema)) throw new Error(`allowlist: params not strict ${name}`);
+}
+
 /**
  * Registers a write tool: `params` is checked as its schema says, nothing is added to it or taken out, and the call isn't
  * prepared, so nothing is sent before the handler runs. A key beside `company` and `params` is stripped by the SDK, as in read mode.
  */
 export function RegisterWriteTool(server: McpServer, toolDefinition: WriteToolDefinition, runtime: WriteRuntime) {
-  // A strict object's catchall is never; a stripping one has none.
-  if (!(toolDefinition.schema.def.catchall instanceof z.ZodNever)) throw new Error(`allowlist: params not strict ${toolDefinition.name}`);
   const keys = runtime.cfg.companies.map((c) => c.key) as [string, ...string[]];
   const handler = async (args: { company: string; params: unknown }): Promise<CallToolResult> => {
     try {

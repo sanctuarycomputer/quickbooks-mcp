@@ -6,7 +6,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig, loadWriteConfig, type Config } from "./clients/config.js";
 import { createRuntime, type Runtime } from "./clients/runtime.js";
-import { RegisterTool, RegisterWriteTool, type WriteRuntime, type WriteToolDefinition } from "./helpers/register-tool.js";
+import { RegisterTool, RegisterWriteTool, requireStrictParams, type WriteRuntime, type WriteToolDefinition } from "./helpers/register-tool.js";
 import { COMPANIES_TOOL, READ_ALLOWLIST } from "./tool-lists.js";
 import type { ToolDefinition } from "./types/tool-definition.js";
 
@@ -78,8 +78,9 @@ export function registerReadTools(server: McpServer, tools: readonly ReadTool[],
   registerExactly<ToolDefinition<any>>(server, tools, [...READ_ALLOWLIST, COMPANIES_TOOL], runtime, (tool) => RegisterTool(server, tool, runtime));
 }
 
-/** Registers exactly WRITE_TOOLS, or throws before registering anything. */
+/** Registers exactly WRITE_TOOLS, each with strict params, or throws before registering anything. */
 function registerWriteTools(server: McpServer, tools: readonly WriteTool[], runtime: WriteRuntime): void {
+  for (const tool of tools) if (hasSchema<WriteToolDefinition<any>>(tool)) requireStrictParams(tool.name, tool.schema);
   registerExactly<WriteToolDefinition<any>>(server, tools, WRITE_TOOLS, runtime, (tool) => RegisterWriteTool(server, tool, runtime));
 }
 
