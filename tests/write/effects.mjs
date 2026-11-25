@@ -1,5 +1,6 @@
 // Sanctuary Computer (quickbooks-mcp-293): records what a module does beyond itself, for mode's import and start checks: each effect is
-// named to `say` as it happens, then done as before. Network, child processes; with `all`, also file writes, timers and reads of the keys.
+// named to `say` as it happens, then done as before. Network, child processes; with `all`, also file writes (and opens for
+// writing), timers and reads of the keys.
 import childProcess from 'node:child_process';
 import dns from 'node:dns';
 import fs from 'node:fs';
@@ -18,12 +19,20 @@ export const KEYS = [
 ];
 const WRITES = ['writeFile', 'appendFile', 'mkdir', 'mkdtemp', 'rm', 'rmdir', 'unlink', 'rename', 'copyFile', 'truncate', 'symlink', 'link', 'chmod', 'utimes'];
 
+const { O_WRONLY, O_RDWR, O_CREAT, O_TRUNC, O_APPEND } = fs.constants;
+/** The flags an open was given, when they can write: any but an absent one, `r` and its synchronous spellings, or a number with no such bit. */
+const writing = ([, flags]) => {
+  if (typeof flags === 'number') return (flags & (O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND)) !== 0;
+  return typeof flags === 'string' && !['r', 'rs', 'sr'].includes(flags);
+};
+
 export function recordEffects(say, { all = false } = {}) {
   const wrap = (target, name, label) => {
     const original = target[name];
     if (typeof original !== 'function') return;
     target[name] = function (...args) {
-      say(label);
+      const named = typeof label === 'function' ? label(args) : label;
+      if (named !== undefined) say(named);
       return new.target ? Reflect.construct(original, args, new.target) : Reflect.apply(original, this, args);
     };
   };
@@ -44,6 +53,10 @@ export function recordEffects(say, { all = false } = {}) {
       wrap(fs.promises, f, `write ${f}`);
     }
     wrap(fs, 'createWriteStream', 'write createWriteStream');
+    for (const [target, name, label] of [[fs, 'open', 'open'], [fs, 'openSync', 'openSync'], [fs.promises, 'open', 'promises.open']]) {
+      wrap(target, name, (args) => (writing(args) ? `write ${label} ${args[1]}` : undefined));
+    }
+    for (const [target, name, label] of [[fs, 'cp', 'cp'], [fs, 'cpSync', 'cpSync'], [fs.promises, 'cp', 'promises.cp']]) wrap(target, name, `write ${label}`);
     for (const f of ['setTimeout', 'setInterval', 'setImmediate']) wrap(globalThis, f, `timer ${f}`);
     const note = (k) => KEYS.includes(k) && say(`key ${k}`);
     process.env = new Proxy(process.env, {

@@ -84,6 +84,15 @@ describe('the write server (A1.1, G3)', () => {
     expect(lines(r.stderr).filter((l) => l.startsWith('ask '))).toEqual(['ask fetch: reached', 'ask update: refused write-update', 'ask done']);
   });
 
+  it('its guard has the rules of the one writeMode() whose tools it registers', async () => {
+    const r = await run([...preload('write', 'number-modes.mjs'), ...preload('write', 'entry-ask.mjs')], WRITE, HELLO, (x) => x.stderr.includes('ask done') && answered(2)(x));
+    const rules = lines(r.stderr).filter((l) => l.startsWith('rules of mode '));
+    expect(rules).toHaveLength(2); // the by-id fetch's and the update's
+    const tools = answer(r, 2).tools.map((t: any) => t.description);
+    expect(tools).toHaveLength(5);
+    expect(new Set([...rules, ...tools.map((d: string) => `rules of ${d}`)])).toEqual(new Set([rules[0]]));
+  });
+
   it.each([
     ['QBO_WRITE_SWITCH unset', { QBO_WRITE_SWITCH: undefined }, 'refused to start: QBO_WRITE_SWITCH is not set'],
     ['QBO_COMPANIES unset', { QBO_COMPANIES: undefined }, 'refused to start: QBO_COMPANIES is not set'],
@@ -96,6 +105,23 @@ describe('the write server (A1.1, G3)', () => {
   it('a failed import of write/mode.js: one line, exit 1, no tool registered, no read server (G3)', async () => {
     const r = await run([...preload('fixtures', 'report-start.mjs'), ...preload('write', 'fail-mode.mjs')], WRITE, HELLO, answered(2));
     expect([r.killed, r.code, r.stdout, lines(r.stderr)]).toEqual([false, 1, '', ['write mode cannot load', 'report-start: no registration']]);
+  });
+
+  const NO_MESSAGE = 'refused to start: the start failed with no message';
+  it.each([
+    ['a string', '"not to print"', NO_MESSAGE],
+    ['an object with a message', '({ message: "not to print" })', NO_MESSAGE],
+    ['undefined', 'undefined', NO_MESSAGE],
+    ['null', 'null', NO_MESSAGE],
+    ['an Error with an empty message', 'new Error("")', NO_MESSAGE],
+    ['an Error whose first line is empty', 'new Error("\\nnot to print")', NO_MESSAGE],
+    ['an Error of white space', 'new Error(" \\t")', NO_MESSAGE],
+    ['an Error whose message is no string', 'Object.assign(new Error("x"), { message: ["not to print"] })', NO_MESSAGE],
+    ['an Error whose lines end in CR', 'new Error("one line\\rnot to print")', 'one line'],
+    ['an Error whose lines end in CR LF', 'new Error("one line\\r\\nnot to print")', 'one line'],
+  ])('write/mode.js throws %s: one line, exit 1, no server', async (_label, thrown, line) => {
+    const r = await run([...preload('fixtures', 'report-start.mjs'), ...preload('write', 'fail-mode.mjs')], { ...WRITE, TEST_MODE_THROWS: thrown }, HELLO, answered(2));
+    expect([r.killed, r.code, r.stdout, r.stderr.split('\n').filter((l) => !/^\((node:|Use `node)/.test(l))]).toEqual([false, 1, '', [line, 'report-start: no registration', '']]);
   });
 });
 
@@ -178,7 +204,11 @@ describe('importing a module under src/write does nothing (G3)', () => {
   it('each effect counted is named when a module has it', () => {
     const { module } = effects(href(path.join(ROOT, 'tests', 'write', 'effects-probe.mjs')));
     expect(new Set(module)).toEqual(
-      new Set(['made createRegistry', 'made createGuard', 'timer setTimeout', 'key QBO_WRITE_LEDGER', 'write rm', 'child execFile', 'key *', 'request https.request', 'socket connect']),
+      new Set([
+        ...['made createRegistry', 'made createGuard', 'timer setTimeout', 'key QBO_WRITE_LEDGER', 'write rm', 'child execFile', 'key *', 'request https.request', 'socket connect'],
+        // Each open for writing with its flags (so an open for reading would be one more), and each cp.
+        ...['write open w', 'write open 1', 'write openSync 1', 'write openSync r+', 'write promises.open a', 'write cp', 'write cpSync', 'write promises.cp'],
+      ]),
     );
   });
 });

@@ -3,6 +3,7 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { readFileSync } from 'fs';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import { fakePath, NOW, testEnv } from '../helpers/server.js';
 import { readError } from '../helpers/result-grammar.js';
 import { COMPANIES_TOOL, READ_ALLOWLIST, REFUSED_KEYS, startWriteServer, WRITE_TOOLS, type WriteTool } from '../../src/allowlist.js';
@@ -191,7 +192,7 @@ describe('RegisterWriteTool (G2, H2)', () => {
   it('the handler sees company and params as sent, whatever is beside them, and the runtime; its answer is the result', async () => {
     const seen: any[][] = [];
     const answer = { content: [{ type: 'text', text: 'as it came' }] };
-    const { client, runtime } = await rig.start({ tools: withHandler('qbo_categorize_purchase', async (...args) => (seen.push(args.slice(0, 2)), answer)) });
+    const { client, runtime } = await rig.start({ tools: withHandler('qbo_categorize_purchase', async (...args) => (seen.push(args), answer)) });
     const args = call('qbo_categorize_purchase');
     expect(await client.callTool({ name: 'qbo_categorize_purchase', arguments: args })).toEqual(answer);
     expect(await client.callTool({ name: 'qbo_categorize_purchase', arguments: { ...args, id: '7', realm: '1', reason: 'x', lines: [] } })).toEqual(answer);
@@ -257,6 +258,35 @@ describe('start refusals (A1.3)', () => {
   });
   it('A1.4: qbo_companies with a schema', () => {
     refuse(writeEnv(), 'refused to start: allowlist: unlisted qbo_companies', tools().map((t) => (t.name === COMPANIES_TOOL ? extra(COMPANIES_TOOL) : t)));
+  });
+});
+
+describe('params that aren’t strict (contract §13)', () => {
+  // Each compiles as a write tool's schema, but for the cast: zod's strict and stripping objects have one type.
+  const shape = { settle: z.boolean().default(true) };
+  const LOOSE: Array<[string, any]> = [
+    ['a stripping z.object', z.object(shape)],
+    ['a loose object', z.looseObject(shape)],
+    ['an object with another catchall', z.object(shape).catchall(z.string())],
+    ['a strict object made loose', z.strictObject(shape).loose()],
+    ['a strict object in a transform', z.strictObject(shape).transform((v) => v)],
+  ];
+  const withSchema = (schema: any): WriteTool[] => writeMode().tools.map((t) => (t.name === 'qbo_write_check' ? ({ ...t, schema } as WriteTool) : t));
+
+  it.each(LOOSE)('%s: the start is refused, that tool not registered and the runtime closed', (_label, schema) => {
+    const tool = jest.fn();
+    rig.secure(writeEnv(), writeMode());
+    const before = interceptorCount();
+    expect(() => startWriteServer(writeEnv(), { tool } as unknown as McpServer, withSchema(schema))).toThrow(
+      new Error('refused to start: allowlist: params not strict qbo_write_check'),
+    );
+    expect(tool.mock.calls.map(([name]) => name)).not.toContain('qbo_write_check');
+    expect(interceptorCount()).toBe(before);
+  });
+
+  it('a strict one, with a check of its own, is registered', async () => {
+    const { client } = await rig.start({ tools: withSchema(z.strictObject(shape).refine(() => true)) });
+    expect((await client.listTools()).tools).toHaveLength(5);
   });
 });
 

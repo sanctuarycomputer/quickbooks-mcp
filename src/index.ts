@@ -87,7 +87,7 @@ const main = async () => {
     else secureStart(process.env, process.execArgv, { extraRules: write.extraRules });
   } catch (e) {
     // One line: an import's failure may say more.
-    process.stderr.write((e as Error).message.split("\n")[0] + "\n");
+    process.stderr.write(failureLine(e) + "\n");
     process.exit(1);
   }
   const server = QuickbooksMCPServer.GetServer();
@@ -95,6 +95,13 @@ const main = async () => {
   else startWriteServer(process.env, server, write.tools);
   await server.connect(new StdioServerTransport());
 };
+
+/** The first line of an Error's message, or a fixed text: nothing else that was thrown is printed. */
+function failureLine(e: unknown): string {
+  const message: unknown = e instanceof Error ? e.message : undefined;
+  const line = typeof message === "string" ? message.split(/[\r\n]/)[0] : "";
+  return line.trim() === "" ? "refused to start: the start failed with no message" : line;
+}
 
 main().catch((e) => {
   process.stderr.write((e instanceof Error ? e.message : String(e)) + "\n");

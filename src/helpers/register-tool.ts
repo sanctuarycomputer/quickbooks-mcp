@@ -116,7 +116,10 @@ export function RegisterTool<T extends z.ZodType<any, any>>(
 /** The runtime, with the write server's config as its own. */
 export type WriteRuntime = Runtime & { cfg: WriteConfig };
 
-/** `params` refuses an unknown key (contract §13); the schema's type says so, so a loose one doesn't compile. */
+/**
+ * `params` refuses an unknown key (contract §13). The type keeps out a loose object only (zod's strict and stripping objects have one type),
+ * so RegisterWriteTool checks the schema itself.
+ */
 export interface WriteToolDefinition<T extends z.ZodObject<any, z.core.$strict> = z.ZodObject<any, z.core.$strict>> {
   name: string;
   description: string;
@@ -130,6 +133,8 @@ export interface WriteToolDefinition<T extends z.ZodObject<any, z.core.$strict> 
  * prepared, so nothing is sent before the handler runs. A key beside `company` and `params` is stripped by the SDK, as in read mode.
  */
 export function RegisterWriteTool(server: McpServer, toolDefinition: WriteToolDefinition, runtime: WriteRuntime) {
+  // A strict object's catchall is never; a stripping one has none.
+  if (!(toolDefinition.schema.def.catchall instanceof z.ZodNever)) throw new Error(`allowlist: params not strict ${toolDefinition.name}`);
   const keys = runtime.cfg.companies.map((c) => c.key) as [string, ...string[]];
   const handler = async (args: { company: string; params: unknown }): Promise<CallToolResult> => {
     try {
