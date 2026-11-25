@@ -20,6 +20,8 @@ import { interceptorCount, WRITE_KEYS, writeEnv, writeRig } from './write-rig.js
 const rig = writeRig();
 const KEYS = ['sanctuary-computer', 'garden3d', 'index-space', 'usb-club'];
 const STUBS = ['qbo_categorize_purchase', 'qbo_categorize_bill', 'qbo_undo_change', 'qbo_write_check'];
+/** A file's text with LF line ends, as a Windows checkout's CRLF would otherwise change what is matched. */
+const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const call = (name: string): Json => JSON.parse(readFileSync(fakePath(`tool-calls/${name}.json`), 'utf8'));
 const NOT_BUILT = { isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThis tool is not built yet.' }] };
 
@@ -427,7 +429,7 @@ describe('A1.6: read mode’s guard', () => {
 
 describe('what the read start loads', () => {
   it.each(['src/allowlist.ts', 'src/helpers/register-tool.ts', 'src/index.ts'])('%s imports nothing under src/write, but for the entry’s one dynamic import', (file) => {
-    const text = readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+    const text = lf(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
     expect(text.match(/["'`][^"'`\n]*write\/[^"'`\n]*["'`]/g) ?? []).toEqual(file === 'src/index.ts' ? ['"./write/mode.js"'] : []);
     expect(text.includes('import("./write/mode.js")')).toBe(file === 'src/index.ts');
   });

@@ -17,6 +17,8 @@ import { byIdUrl, fetchById, fetchPreferences, MINOR_VERSION, updateUrl } from '
 import { decideWrite } from '../../src/write/guard-rules.js';
 import { StubRegistry } from './stub-registry.js';
 
+/** A file's text with LF line ends, as a Windows checkout's CRLF would otherwise change what is matched. */
+const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const CASE = JSON.parse(readFileSync(fileURLToPath(new URL('../fakes/transactions/cases/account-and-class.json', import.meta.url)), 'utf8'));
 // Non-ASCII text, so a re-encoded body is not the same bytes.
 const SPARSE = { ...CASE.sparse_body, PrivateNote: 'café — 日本 🙂  ' } as Record<string, unknown>;
@@ -809,7 +811,7 @@ describe('without the rules (read mode)', () => {
   });
 
   it('http-guard.ts takes types only from src/write', () => {
-    const text = readFileSync(fileURLToPath(new URL('../../src/http-guard.ts', import.meta.url)), 'utf8');
+    const text = lf(readFileSync(fileURLToPath(new URL('../../src/http-guard.ts', import.meta.url)), 'utf8'));
     expect(text.split('\n').filter((line) => /["'`]\.\/write\//.test(line))).toEqual(['import type { Unmatched, WriteDecision } from "./write/guard-rules.js";']);
   });
 });

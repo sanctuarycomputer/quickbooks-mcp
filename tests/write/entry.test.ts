@@ -167,7 +167,7 @@ describe('importing a module under src/write does nothing (G3)', () => {
   function baseline(): string[] {
     const out = new Set<string>();
     for (const rel of MODULES) {
-      for (const [, spec] of fs.readFileSync(built(rel), 'utf8').matchAll(/\b(?:from|import)\s*\(?\s*["']([^"']+)["']/g)) {
+      for (const [, spec] of fs.readFileSync(built(rel), 'utf8').replace(/\r\n/g, '\n').matchAll(/\b(?:from|import)\s*\(?\s*["']([^"']+)["']/g)) {
         if (!spec.startsWith('.')) out.add(spec);
         else if (path.relative(WRITE_DIST, path.resolve(path.dirname(built(rel)), spec)).startsWith('..')) out.add(href(path.resolve(path.dirname(built(rel)), spec)));
       }

@@ -16,7 +16,7 @@ registerHooks({
     const loaded = next(url, context);
     const maker = MAKERS[url];
     if (maker === undefined) return loaded;
-    const text = String(Buffer.from(loaded.source));
+    const text = String(Buffer.from(loaded.source)).replace(/\r\n/g, '\n');
     const source = text.replace(new RegExp(`^export function ${maker}\\(.*\\) \\{$`, 'm'), (head) => `${head} globalThis.madeInTest('${maker}');`);
     if (source === text) throw new Error(`no ${maker} in ${url}`);
     return { ...loaded, source };

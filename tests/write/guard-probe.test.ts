@@ -389,7 +389,7 @@ describe('the flags', () => {
 });
 
 describe('what the probe imports (PC3)', () => {
-  const text = (f: string) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+  const text = (f: string) => fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/\r\n/g, '\n');
   /** Every import, re-export, import() and require() with a literal, by TypeScript's own scan. */
   const importsOf = (f: string) => ts.preProcessFile(text(f), true, true).importedFiles.map((i) => i.fileName);
   /** Each file reached by local imports, and each package or builtin those name. */

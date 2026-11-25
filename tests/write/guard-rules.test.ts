@@ -9,6 +9,8 @@ import { sha256Hex } from '../../src/write/canonical.js';
 import { decideDry, decideWrite, type CapabilityRegistry } from '../../src/write/guard-rules.js';
 import { StubRegistry } from './stub-registry.js';
 
+/** A file's text with LF line ends, as a Windows checkout's CRLF would otherwise change what is matched. */
+const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const CASE = JSON.parse(readFileSync(fileURLToPath(new URL('../fakes/transactions/cases/account-and-class.json', import.meta.url)), 'utf8'));
 const SPARSE = CASE.sparse_body as Record<string, unknown>;
 const B = JSON.stringify(SPARSE);
@@ -650,13 +652,13 @@ describe('the module', () => {
   const files = readdirSync(root, { recursive: true, encoding: 'utf8' }).filter((f) => f.endsWith('.ts'));
 
   it('imports only the decision and the hash, and reads no environment', () => {
-    const text = readFileSync(path.join(root, 'write/guard-rules.ts'), 'utf8');
+    const text = lf(readFileSync(path.join(root, 'write/guard-rules.ts'), 'utf8'));
     expect([...text.matchAll(/from "([^"]+)"/g)].map((m) => m[1]).sort()).toEqual(['../clients/guard-decide.js', './canonical.js']);
     expect(text).not.toMatch(/process\.|require|import\(|^(export )?(let|var) /m);
   });
 
   it('nothing under src names the stub registry', () => {
     expect(files.length).toBeGreaterThan(100);
-    expect(files.filter((f) => /stub-registry|StubRegistry/.test(readFileSync(path.join(root, f), 'utf8')))).toEqual([]);
+    expect(files.filter((f) => /stub-registry|StubRegistry/.test(lf(readFileSync(path.join(root, f), 'utf8'))))).toEqual([]);
   });
 });
