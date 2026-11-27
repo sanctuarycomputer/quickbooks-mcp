@@ -9,10 +9,9 @@ import { z } from "zod";
 import { runInCall, type Failure } from "../clients/call-context.js";
 import type { WriteRuntime, WriteToolDefinition } from "../helpers/register-tool.js";
 import { lookupOk, type LineChange, type Lookup, type Side } from "./answers.js";
-import { holdsAfter, intentFor, refusalResult, refuse, rereadTxn, runChange, type ChangeTools } from "./change.js";
+import { holdsAfter, intentFor, notDeleted, refusalResult, refuse, rereadTxn, runChange, type ChangeTools } from "./change.js";
 import { preSend } from "./pre-send.js";
 import { runReceipt } from "./receipt-cmd.js";
-import type { SwitchFs } from "./kit.js";
 import { forkReason, SWITCH_TAIL, withTail, type SwitchTail } from "./results.js";
 import { isRecord } from "./rules.js";
 import { applySettled, settle } from "./settle.js";
@@ -26,19 +25,6 @@ export const undoParams = z.strictObject({
 
 /** A side as the intent request holds it, its keys in the intent line's order. */
 const sideOf = ({ account_id, account_name, class_id, class_name }: Side): Side => ({ account_id, account_name, class_id, class_name });
-
-/**
- * What step 4's settle did to the switch file after `turnOff` answered false (task-9-1 TR5): nothing, when the file is gone (ENOENT); else
- * it couldn't be deleted (the latch), a `stat` that fails any other way included, so the reader is told to delete it (fail closed).
- */
-async function notDeleted(fs: SwitchFs, path: string): Promise<SwitchTail | undefined> {
-  try {
-    await fs.stat(path);
-  } catch (e) {
-    if ((e as { code?: unknown } | null)?.code === "ENOENT") return undefined;
-  }
-  return "stuck";
-}
 
 /** Step 2's not-found: exactly a not-ok answer whose reason is `not-found`. */
 const notFound = (answer: unknown): boolean => isRecord(answer) && answer.ok === false && answer.reason === "not-found";

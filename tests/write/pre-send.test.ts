@@ -374,6 +374,10 @@ describe('A2.6: account', () => {
     ['cleaned to Cost of Goods Sold only by the 200 cut: its first 200 code points, quoted, then …', `Cost of Goods Sold${' '.repeat(190)}\u{1F600}`, `"Cost of Goods Sold${' '.repeat(182)}"…`],
     ['200 code points exactly, cleaned to Expense: quoted whole, no …', `Expense${' '.repeat(193)}`, `"Expense${' '.repeat(193)}"`],
     ['a 201st code point that is a pair, cut by code points (no lone half)', `Expense${'\t'.repeat(193)}\u{1F600}`, `"Expense${'\\t'.repeat(193)}"…`],
+    // task-9-1 follow-up T11: a pair in the first 200 code points survives the name rule (it trims, then keeps 200 code points), so the
+    // type never cleans to an allowed one: it is written cleaned, never quoted, and the quoted form's cut only ever meets BMP characters.
+    ['199 BMP characters, a pair at the 200th code point, one more: cleaned, the pair whole', `Expense\t${' '.repeat(191)}\u{1F600}x`, `Expense ${' '.repeat(191)}\u{1F600}`],
+    ['a pair at the 199th code point: cleaned, the pair whole, then the 200th', `Expense${' '.repeat(191)}\u{1F600}xy`, `Expense${' '.repeat(191)}\u{1F600}x`],
   ])('T9 TJ6: a refused type %s', (_label, type, shown) => oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: shown }), gets: READS }));
   it.each(['84', '91', '92'])('account %s passes', async (id) => {
     await allowed({ ...P(), ...to(id) });

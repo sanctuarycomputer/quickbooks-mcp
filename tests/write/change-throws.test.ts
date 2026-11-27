@@ -226,4 +226,37 @@ describe('A1.16, with a module mocked', () => {
     expect(r).toEqual({ content: [{ type: 'text', text: `reason: write:unknown\nreceipt: ${NEW}\n\nQuickBooks stored the change. Its outcome, sent, was recorded; this result couldn't be written. Writes are switched off.` }], isError: true });
     expect([existsSync(w.switchPath), rig.posts().length]).toEqual([false, 1]);
   });
+  it('task-9-1 follow-up N02: the settle’s deletion stuck, then the undo’s own sent-diff deleted the file, its success unrenderable: the decided text says writes are off, once, and no by-hand sentence', async () => {
+    writeSuccess.mockImplementationOnce(boom);
+    const { vector } = await import('./receipt-fake.js');
+    const { createKit } = await import('../../src/write/kit.js');
+    const NEW = 'quickbooks-write:garden3d:purchase:1001:4:1';
+    const TIME = '2026-11-18T09:00:00.000-08:00';
+    const lookup = vector('lookup-ok.json').answer;
+    lookup.outcome = { ...lookup.outcome, at: '2026-11-18T14:50:00.000Z', result: 'unknown', sync_token_after: null };
+    const OK = { answer: { ok: true, notion: true } };
+    const w = world(rig, { lookup: [{ answer: lookup }], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK, OK] });
+    const book = fixture('fetched/purchase-1001-after.json');
+    book.Purchase.TotalAmt = 121;
+    w.books['purchase/1001'] = book;
+    // Stored with TotalAmt 122: the undo's own answer is a sent-diff.
+    w.post = (c: { body: string }) => {
+      const { sparse: _sparse, ...body } = JSON.parse(c.body);
+      const txn = { ...body, TotalAmt: 122, SyncToken: String(Number(body.SyncToken) + 1), MetaData: { CreateTime: '2026-11-10T09:00:00-08:00' } };
+      w.books['purchase/1001'] = { Purchase: txn, time: TIME };
+      return { status: 200, body: JSON.stringify({ Purchase: txn, time: TIME }) };
+    };
+    // The settle's unlink fails (the latch); the undo's own works.
+    const real = createKit().fs;
+    let n = 0;
+    const unlink = async (p: string) => {
+      if (n++ === 0) throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+      return real.unlink(p);
+    };
+    const { client } = await w.start({ fs: { stat: real.stat, unlink: unlink as unknown as typeof real.unlink } });
+    const undo = JSON.parse(readFileSync(fakePath('tool-calls/qbo_undo_change.json'), 'utf8'));
+    const r: any = await client.callTool({ name: 'qbo_undo_change', arguments: { ...undo, params: { receipt: KEY } } });
+    expect(r).toEqual({ content: [{ type: 'text', text: `reason: write:unknown\nreceipt: ${NEW}\n\nQuickBooks stored the change, with differences from what was asked. Its outcome, sent-diff, was recorded; this result couldn't be written. Writes are switched off.` }], isError: true });
+    expect([existsSync(w.switchPath), rig.posts().length, n]).toEqual([false, 1, 2]);
+  });
 });

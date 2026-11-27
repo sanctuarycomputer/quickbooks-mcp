@@ -1260,6 +1260,53 @@ describe('T9 TQ1 (task-9-1 TR1, TR3-TR5, TR8): once step 4’s settle found a se
     const { client } = await w.start({ fs: { stat: stat as unknown as ReturnType<typeof stuckFs>['stat'], unlink: stuckFs().unlink } });
     expect(await client.callTool(undo())).toEqual(warned(sentWith({}), STUCK));
   });
+
+  // task-9-1 follow-up N02: what the switch file shows last decides the sentence: the undo's own turnOff when it ran, else the settle's.
+  /** The kit's fs whose unlinks go as `plan` says, in order (`fail`: EACCES, the latch; `real`: the real one); after the plan, real. */
+  const plannedFs = (...plan: Array<'real' | 'fail'>) => {
+    const real = createKit().fs;
+    let n = 0;
+    const unlink = async (p: string) => {
+      if (plan[n++] === 'fail') throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+      return real.unlink(p);
+    };
+    return { stat: real.stat, unlink: unlink as unknown as typeof real.unlink };
+  };
+  /** The undo's own send, after `act` did something to the switch file. */
+  const first = (w: World, act: () => void) => {
+    const send = w.post;
+    w.post = (c, n) => (act(), send(c, n));
+  };
+  const OWN: Array<[string, Array<'real' | 'fail'>, (w: World) => void, Json, string, boolean]> = [
+    // The settle stuck, then the undo's own answer deleted the file: writes are off, said once, and no by-hand sentence.
+    ['the settle stuck, then its own sent-diff deleted the file', ['fail'], storedDiff, { result: 'sent-diff', diff: ['TotalAmt'], writes_off: true }, SWITCHED, false],
+    ['the settle stuck, then its own id-mismatch deleted the file (the refetch stored)', ['fail'], (w) => (w.post = idMismatch(w, storeEcho(w))), { note: 'id-mismatch', writes_off: true }, SWITCHED, false],
+    // The settle stuck, then the file went (not this server): nothing to delete by hand, and nothing this attempt deleted.
+    ['the settle stuck, the file gone before its own sent-diff', ['fail'], (w) => (storedDiff(w), first(w, () => rmSync(w.switchPath, { force: true }))), { result: 'sent-diff', diff: ['TotalAmt'], writes_off: false }, '', false],
+    // The settle deleted it, then the file came back and its own unlink failed: the file is there, so writes aren't off.
+    ['the settle deleted the file, it came back, its own sent-diff could not delete it', ['real', 'fail'], (w) => (storedDiff(w), first(w, () => writeFileSync(w.switchPath, ''))), { result: 'sent-diff', diff: ['TotalAmt'], writes_off: false }, STUCK, true],
+  ];
+  it.each(OWN)('N02: %s: the whole result, its sentence once, and where the file is', async (_label, plan, setup, over, tail, file) => {
+    const w = undoWorld(due());
+    w.books['purchase/1001'] = diffBook();
+    setup(w);
+    const { client } = await w.start({ fs: plannedFs(...plan) });
+    expect(await client.callTool(undo())).toEqual(warned(sentWith(over), tail));
+    expect(existsSync(w.switchPath)).toBe(file);
+  });
+  it.each<[string, Array<'real' | 'fail'>, (w: World) => void, string, boolean]>([
+    // The id-mismatch sentence says it: not twice, and no by-hand sentence.
+    ['the settle stuck, then its own id-mismatch deleted the file (the refetch unmoved)', ['fail'], () => undefined, '', false],
+    ['the settle deleted the file, it came back, its own id-mismatch could not delete it (the refetch unmoved)', ['real', 'fail'], (w) => first(w, () => writeFileSync(w.switchPath, '')), STUCK, true],
+  ])('N02: %s: the id-mismatch unknown, then what the file shows', async (_label, plan, setup, tail, file) => {
+    const w = undoWorld(due());
+    w.books['purchase/1001'] = diffBook();
+    w.post = idMismatch(w, () => undefined);
+    setup(w);
+    const { client } = await w.start({ fs: plannedFs(...plan) });
+    expect(await client.callTool(undo())).toEqual(errorText(`reason: write:unknown\nreceipt: ${NEW}\nnote: id-mismatch\n\n${ID_MISMATCH}${tail}`));
+    expect(existsSync(w.switchPath)).toBe(file);
+  });
 });
 
 afterAll(() => {

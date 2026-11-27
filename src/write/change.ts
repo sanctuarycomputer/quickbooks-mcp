@@ -8,7 +8,8 @@
 // a not-ok intent like any other (receipt-failed). The last answer for an undecided outcome keeps `note: id-mismatch` and states `recorded`
 // from the outcome's answer (task-7-2 TL2). `holdsAfter` is exported for undo's changed-since check (§18 step 9). `rereadTxn` reads a
 // refetched body as §17 does, any Fault before the entity, for step 6 here and undo's settle alike (task-8-2 TN1). After undo's settle found
-// a sent-diff, every result ends once with what the settle did to the switch file (`settledTail`, task-9-1 TR1, TR5, TR8).
+// a sent-diff, every result ends once with what the switch file shows last: the attempt's own turnOff when it ran, else the settle's
+// (`settledTail`, task-9-1 TR1, TR5, TR8, and the follow-up's N02).
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { currentCall, setCallToken, type Failure } from "../clients/call-context.js";
 import type { WriteRuntime } from "../helpers/register-tool.js";
@@ -17,7 +18,7 @@ import { intentOk, isMoved, outcomeRecorded, type LineChange } from "./answers.j
 import type { Registry } from "./capability.js";
 import { fetchById, sendUpdate, type UpdateAnswer, type UpdateEntity } from "./client.js";
 import { compare, digests, resolveChanges, type ResolvedChange, type Transaction } from "./compare.js";
-import type { WriteKit } from "./kit.js";
+import type { SwitchFs, WriteKit } from "./kit.js";
 import type { CheckedRequest } from "./pre-send.js";
 import { runReceipt } from "./receipt-cmd.js";
 import { forkReason, freeText, SWITCH_TAIL, withTail, writeError, writeSuccess, type SwitchTail } from "./results.js";
@@ -150,8 +151,9 @@ async function forceToken(runtime: WriteRuntime, company: string, sentAt: number
 
 /** What the post-send flow knows when it answers write:unknown: the outcome asked (if any), what it answered, the note, the tid, the switch. */
 type AfterState = { result?: Outcome["result"]; recorded: Recorded; note: "id-mismatch" | null; tid?: string; writesOff: boolean };
-/** The same, with whether the outcome was asked; made before the intent, so `runChange` reads `writesOff` whatever the flow answered. */
-type SendState = AfterState & { asked: boolean };
+/** The same, with whether the outcome was asked, and what the switch file showed after this attempt's own `turnOff` when it ran
+ * (`"gone"`: nothing there to delete); made before the intent, so `runChange` reads them whatever the flow answered. */
+type SendState = AfterState & { asked: boolean; turned?: SwitchTail | "gone" };
 
 /** What QuickBooks did, for an outcome already asked other than unknown (TK7): never a later settle, which no check will make. */
 type Decided = Exclude<Outcome["result"], "unknown">;
@@ -196,21 +198,37 @@ const LAST_UNKNOWN: Readonly<Record<"send" | "recorded-none" | "id-mismatch", st
 });
 
 /**
- * A result after undo's step-4 settle found a sent-diff ends once with what the settle did (task-9-1 TR1, TR5, TR8). `said` is the flow's
- * own knowledge that its text says writes are off already (an error after this attempt's own deletion), never a search of the text, which
- * may carry QuickBooks' words. No text of the flow says the latch's sentence, so it is always added.
+ * What a `turnOff` that answered false left (task-9-1 TR5): nothing to say when the file is gone (ENOENT); else it couldn't be deleted (the
+ * latch), a `stat` that fails any other way included, so the reader is told to delete it (fail closed). Never throws.
  */
-function settledTail(ctx: ChangeContext, result: CallToolResult, said: boolean): CallToolResult {
-  if (ctx.settled === undefined || (ctx.settled === "deleted" && said)) return result;
-  return withTail(result, SWITCH_TAIL[ctx.settled]);
+export async function notDeleted(fs: SwitchFs, path: string): Promise<SwitchTail | undefined> {
+  try {
+    await fs.stat(path);
+  } catch (e) {
+    if ((e as { code?: unknown } | null)?.code === "ENOENT") return undefined;
+  }
+  return "stuck";
+}
+
+/**
+ * A result after undo's step-4 settle found a sent-diff ends once with what the switch file shows last (task-9-1 TR1, TR5, TR8, and the
+ * follow-up's N02): this attempt's own `turnOff` when it ran, else the settle's. `said` is the flow's own knowledge that its text says
+ * writes are off already (an error after this attempt's own deletion: the decided tail, or the id-mismatch sentence), never a search of
+ * the text, which may carry QuickBooks' words. No text of the flow says the latch's sentence, so it is always added.
+ */
+function settledTail(ctx: ChangeContext, result: CallToolResult, s: SendState): CallToolResult {
+  if (ctx.settled === undefined) return result;
+  const tail = s.turned === undefined ? ctx.settled : s.turned === "gone" ? undefined : s.turned;
+  const said = result.isError === true && s.writesOff;
+  if (tail === undefined || said) return result;
+  return withTail(result, SWITCH_TAIL[tail]);
 }
 
 /** Runs the change from the switch's re-check to its result, inside the call `preSend` checked it in, the call prepared. */
 export async function runChange(ctx: ChangeContext): Promise<CallToolResult> {
   const s: SendState = { asked: false, recorded: "none", note: null, writesOff: false };
   const result = await change(ctx, s);
-  // An error's text says writes are off exactly when this attempt turned them off: the decided tail, or the id-mismatch sentence.
-  return settledTail(ctx, result, result.isError === true && s.writesOff);
+  return settledTail(ctx, result, s);
 }
 
 async function change(ctx: ChangeContext, s: SendState): Promise<CallToolResult> {
@@ -251,11 +269,18 @@ async function afterSend(ctx: ChangeContext, key: string, got: { answer: UpdateA
   const { cfg } = runtime;
   /**
    * The switch turned off by this attempt's own answer (a sent-diff, or an id-mismatch), at most once. `writesOff` is whether the server
-   * deleted the file (§14): this unlink, or this call's settle, whose deletion leaves this one ENOENT (task-9-1 TR4). The latch, or a
-   * file gone before the call, deleted nothing.
+   * deleted the file (§14): this unlink, or this call's settle, whose deletion leaves this one ENOENT (task-9-1 TR4). The latch, a file
+   * put back after the settle deleted it, or a file gone before the call, deleted nothing (the follow-up's N02).
    */
   const turnOff = async (): Promise<void> => {
-    s.writesOff = (await sw.turnOff(cfg.writeSwitch)) || ctx.settled === "deleted";
+    if (await sw.turnOff(cfg.writeSwitch)) {
+      s.writesOff = true;
+      s.turned = "deleted";
+      return;
+    }
+    const left = await notDeleted(kit.fs, cfg.writeSwitch);
+    s.writesOff = left === undefined && ctx.settled === "deleted";
+    s.turned = s.writesOff ? "deleted" : (left ?? "gone");
   };
   /** The attempt's one outcome request; what it answered, any failure read as `none`. */
   const record = async (o: Outcome): Promise<void> => {
