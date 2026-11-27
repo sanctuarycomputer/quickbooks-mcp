@@ -24,10 +24,11 @@ const STUBS = ['qbo_categorize_purchase', 'qbo_categorize_bill', 'qbo_undo_chang
 const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const call = (name: string): Json => JSON.parse(readFileSync(fakePath(`tool-calls/${name}.json`), 'utf8'));
 const NOT_BUILT = { isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThis tool is not built yet.' }] };
-// The two categorize tools are built (294 T7): with the rig's env (no stamp at /nowhere/stamp) each call answers write:sweep, nothing sent.
+// The two categorize tools (294 T7) and undo (T8) are built: with the rig's env (no stamp at /nowhere/stamp) each call answers write:sweep,
+// nothing sent; qbo_write_check alone is a stub.
 const SWEEP = { isError: true, content: [{ type: 'text', text: "reason: write:sweep\n\nThe job guard hasn't run clean in the last 20 minutes; writes are held." }] };
 const SIZE = { isError: true, content: [{ type: 'text', text: 'reason: write:size\n\nAt most 20 lines can be changed in one call.' }] };
-const answerOf = (name: string) => (name.startsWith('qbo_categorize_') ? SWEEP : NOT_BUILT);
+const answerOf = (name: string) => (name === 'qbo_write_check' ? NOT_BUILT : SWEEP);
 
 // First in the file: 291's guard has never started in this module registry.
 describe('before 291’s start', () => {
@@ -112,12 +113,12 @@ describe('the stubs (A1.2)', () => {
     ['qbo_undo_change', 'qbo_undo_change'],
     ['qbo_write_check', 'qbo_write_check'],
     ['qbo_write_check', 'qbo_write_check-dry-run'],
-  ])('%s, called as %s: categorize write:sweep (no stamp), the others fork-error, not built yet; nothing is sent', async (name, file) => {
+  ])('%s, called as %s: categorize and undo write:sweep (no stamp), the write check fork-error, not built yet; nothing is sent', async (name, file) => {
     const { client } = await rig.start();
     const result = await client.callTool({ name, arguments: call(file) });
     expect(result).toEqual(answerOf(name));
     // 286's reader knows the 1.0 reasons only; a write reason is checked whole above.
-    if (!name.startsWith('qbo_categorize_')) expect(readError(result)).toEqual({ reason: 'fork-error', free: 'This tool is not built yet.', warnings: [] });
+    if (name === 'qbo_write_check') expect(readError(result)).toEqual({ reason: 'fork-error', free: 'This tool is not built yet.', warnings: [] });
     expect(rig.net.calls).toEqual([]);
   });
 
@@ -140,7 +141,7 @@ describe('the stubs (A1.2)', () => {
   ];
   it.each(ACCEPTED)('takes %s', async (label, name, params) => {
     const { client } = await rig.start();
-    // Q4: the 21-line call answers write:size (size runs first), every other categorize call write:sweep, undo and the check the stub.
+    // Q4: the 21-line call answers write:size (size runs first), every other categorize call and undo write:sweep, the check the stub.
     expect(await client.callTool({ name, arguments: { company: 'garden3d', params } })).toEqual(label.startsWith('21 lines') ? SIZE : answerOf(name));
   });
 

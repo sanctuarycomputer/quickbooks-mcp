@@ -4,6 +4,9 @@
 // send on, everything runs inside one `try`: the answer read, a 401's forced token (QA4), the refetch when there is no answer, the compare,
 // the switch turned off on a `sent-diff` or an `id-mismatch`, the one outcome, and the result. Any throw there answers `write:unknown`
 // with the receipt, asking the outcome only when it wasn't asked yet (A1.16): the update is never sent again.
+// Changed in T8 (undo): a `write:cap` answer refuses categorize only; undo is never counted against the cap (§18 step 13), so for undo it is
+// a not-ok intent like any other (receipt-failed). The last answer for an undecided outcome keeps `note: id-mismatch` and states `recorded`
+// from the outcome's answer (task-7-2 TL2). `holdsAfter` is exported for undo's changed-since check (§18 step 9).
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { currentCall, setCallToken, type Failure } from "../clients/call-context.js";
 import type { WriteRuntime } from "../helpers/register-tool.js";
@@ -94,7 +97,7 @@ function classOf(line: unknown): string | null | undefined {
 }
 
 /** §17 "holds the after values": every named line is in the copy, and each copy of it has the after account and class. */
-function holdsAfter(txn: Transaction, changes: readonly ResolvedChange[]): boolean {
+export function holdsAfter(txn: Transaction, changes: readonly ResolvedChange[]): boolean {
   const lines = Array.isArray(txn.Line) ? txn.Line : [];
   return changes.every((change) => {
     const copies = lines.filter((line) => prop(line, "Id") === change.line_id);
@@ -155,14 +158,20 @@ function unknownResult(key: string, s: AfterState): CallToolResult {
     const head = { receipt: key, intuit_tid: s.tid, note: s.note ?? undefined, recorded: s.recorded === "notion" ? undefined : s.recorded };
     return writeError("write:unknown", head, decided !== undefined ? decidedText(decided, s) : freeText("write:unknown", kase, {}));
   } catch {
-    // The last answer, built from fixed strings: the receipt, and nothing claimed that wasn't decided.
-    if (decided === undefined) return lastAnswer(`reason: write:unknown\nreceipt: ${key}\nrecorded: none\n\nNo answer, and the outcome wasn't confirmed recorded.`);
+    // The last answer, built from fixed strings: the receipt, the note and what the outcome's answer recorded (`none` unless the command
+    // confirmed it), and nothing claimed that wasn't decided.
     const note = s.note === null ? "" : `\nnote: ${s.note}`;
     const recorded = s.recorded === "notion" ? "" : `\nrecorded: ${s.recorded}`;
-    return lastAnswer(`reason: write:unknown\nreceipt: ${key}${note}${recorded}\n\n${decidedText(decided, s)}`);
+    return lastAnswer(`reason: write:unknown\nreceipt: ${key}${note}${recorded}\n\n${decided !== undefined ? decidedText(decided, s) : LAST_UNKNOWN[kase]}`);
   }
 }
 const lastAnswer = (text: string): CallToolResult => ({ content: [{ type: "text", text }], isError: true });
+/** §6's three post-send unknown sentences, as fixed strings for the last answer. */
+const LAST_UNKNOWN: Readonly<Record<"send" | "recorded-none" | "id-mismatch", string>> = Object.freeze({
+  send: "QuickBooks didn't answer; the change will be settled by a later check.",
+  "recorded-none": "No answer, and the outcome wasn't confirmed recorded.",
+  "id-mismatch": "QuickBooks answered with another transaction's id; writes are switched off.",
+});
 
 /** Runs the change from the switch's re-check to its result, inside the call `preSend` checked it in, the call prepared. */
 export async function runChange(ctx: ChangeContext): Promise<CallToolResult> {
@@ -175,7 +184,8 @@ export async function runChange(ctx: ChangeContext): Promise<CallToolResult> {
   const attempt = { company: intent.company, type: intent.type, id: intent.id, syncToken: intent.sync_token };
   const asked = intentOk(await runReceipt(cfg, intent, { spawn: kit.spawn }), attempt);
   if (!asked.ok) {
-    if (asked.cap === true) return refuse("write:cap");
+    // The cap is categorize's alone (§14, §18 step 13).
+    if (asked.cap === true && ctx.categorize) return refuse("write:cap");
     if (asked.key === undefined) return refuse("write:receipt-failed", { case: "intent" });
     return writeError("write:receipt-failed", { receipt: asked.key }, freeText("write:receipt-failed", "intent-key", {}));
   }

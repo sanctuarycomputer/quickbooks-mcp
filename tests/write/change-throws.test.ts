@@ -144,4 +144,61 @@ describe('A1.16, with a module mocked', () => {
     const { client } = await w.start();
     expect(await client.callTool(call())).toEqual(expected('unknown-recorded-none.json'));
   });
+
+  /** An update answered with another Id (1009), the books then holding `stored`. */
+  const mismatch = (w: any, stored: unknown) => () => {
+    w.books['purchase/1001'] = stored;
+    return stubOf(((f) => ((f.body.Purchase.Id = '1009'), f))(fixture('answers/update-sent.json')));
+  };
+  it.each<[string, unknown, string, string]>([
+    ['recorded in the ledger', { ok: true, notion: false }, '\nrecorded: ledger', "QuickBooks didn't answer; the change will be settled by a later check."],
+    ['recorded in Notion (no recorded line: unknown.json)', { ok: true, notion: true }, '', "QuickBooks didn't answer; the change will be settled by a later check."],
+  ])('TL2: no answer, the unknown outcome %s, and it can’t be rendered: the last answer states recorded from the outcome’s answer', async (_label, answer, head, free) => {
+    writeError.mockImplementationOnce(boom);
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer }] });
+    w.post = () => ({ status: 500, body: '{}' });
+    const { client } = await w.start();
+    expect(await client.callTool(call())).toEqual(unknownWith(head, free));
+  });
+  it.each<[string, unknown, string]>([
+    ['recorded in Notion (unknown-id-mismatch.json)', { ok: true, notion: true }, '\nnote: id-mismatch'],
+    ['not confirmed recorded', { ok: false, reason: 'failed', cause: 'lock' }, '\nnote: id-mismatch\nrecorded: none'],
+  ])('TL2: an id-mismatch, the refetch unmoved, the unknown outcome %s, and it can’t be rendered: the last answer keeps note id-mismatch', async (_label, answer, head) => {
+    writeError.mockImplementationOnce(boom);
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer }] });
+    w.post = mismatch(w, fixture('fetched/purchase-1001.json'));
+    const { client } = await w.start();
+    expect(await client.callTool(call())).toEqual(unknownWith(head, "QuickBooks answered with another transaction's id; writes are switched off."));
+    expect(w.fake.requests().map((r: any) => [r.cmd, r.result, r.note])).toEqual([['intent', undefined, undefined], ['outcome', 'unknown', 'id-mismatch']]);
+  });
+
+  it('TL1 (N23): an id-mismatch, the refetch moved and stored, and the success can’t be rendered: the decided answer keeps its note line', async () => {
+    writeSuccess.mockImplementationOnce(boom);
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer: { ok: true, notion: true } }] });
+    w.post = mismatch(w, fixture('answers/update-sent.json').body);
+    const { client } = await w.start();
+    expect(await client.callTool(call())).toEqual(
+      unknownWith('\nnote: id-mismatch', "QuickBooks stored the change. Its outcome, sent, was recorded; this result couldn't be written. Writes are switched off."),
+    );
+    expect(writeError).toHaveBeenCalledTimes(1);
+  });
+
+  it('TL1 (N18): the outcome’s run fails (its child throws as it is written), then the stale result can’t be rendered: the decided stale answer, recorded none', async () => {
+    writeError.mockImplementationOnce(boom);
+    const { createKit } = await import('../../src/write/kit.js');
+    const real = createKit().spawn;
+    let runs = 0;
+    const throwing = () => {
+      throw new Error('stdin');
+    };
+    const broken = () => ({ stdin: { on: () => undefined, end: throwing }, stdout: { on: () => undefined }, stderr: { on: () => undefined }, on: () => undefined, kill: () => undefined });
+    const spawn = ((...a: Parameters<typeof real>) => (runs++ === 0 ? real(...a) : broken())) as typeof real;
+    const w = world(rig, { intent: ['intent-ok.json'] });
+    w.post = () => stubOf(fixture('answers/stale.json'));
+    const { client } = await w.start({ spawn });
+    expect(await client.callTool(call())).toEqual(
+      unknownWith('\nrecorded: none', "QuickBooks refused the change: the transaction had changed since it was read. Its outcome, stale, wasn't confirmed recorded; this result couldn't be written."),
+    );
+    expect([runs, w.fake.requests().map((r: any) => r.cmd)]).toEqual([2, ['intent']]);
+  });
 });

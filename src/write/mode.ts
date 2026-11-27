@@ -2,7 +2,7 @@
 // when QBO_MODE is `write`. Nothing is made at import.
 // Changed by Sanctuary Computer (quickbooks-mcp-294): writeMode(deps) makes the write kit, every seam's one route, the registry on its mono,
 // and the switch on its fs: one each per server, so one latch (spec §3 T2). The tools get the three (T7, T8): the two categorize tools are
-// categorize.ts's (T7).
+// categorize.ts's (T7), undo undo.ts's (T8).
 import type { WriteTool } from "../allowlist.js";
 import { currentCall } from "../clients/call-context.js";
 import type { ExtraRules } from "../http-guard.js";
@@ -12,7 +12,8 @@ import { decideWrite } from "./guard-rules.js";
 import { createKit, type WriteKit } from "./kit.js";
 import { createSwitch, type Switch } from "./switch.js";
 import { categorizeTool } from "./categorize.js";
-import { QboUndoChangeTool, QboWriteCheckTool } from "./stubs.js";
+import { QboWriteCheckTool } from "./stubs.js";
+import { undoTool } from "./undo.js";
 
 export type WriteMode = { readonly registry: Registry; readonly sw: Switch; readonly kit: WriteKit; readonly extraRules: ExtraRules; readonly tools: readonly WriteTool[] };
 
@@ -30,6 +31,6 @@ export function writeMode(deps: Partial<WriteKit> = {}): WriteMode {
     sw,
     kit,
     extraRules: Object.freeze(extraRules),
-    tools: Object.freeze([categorizeTool("purchase", tools), categorizeTool("bill", tools), QboUndoChangeTool, QboWriteCheckTool, QboCompaniesTool]),
+    tools: Object.freeze([categorizeTool("purchase", tools), categorizeTool("bill", tools), undoTool(tools), QboWriteCheckTool, QboCompaniesTool]),
   });
 }
