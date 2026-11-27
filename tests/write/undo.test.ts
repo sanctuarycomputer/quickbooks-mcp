@@ -11,6 +11,7 @@ import { nameFiltered } from '../helpers/name-filter.js';
 import { stacksFake } from '../fakes/stacks-token.js';
 import type { StubCall } from '../fakes/stub-network.js';
 import { createKit } from '../../src/write/kit.js';
+import { forkReason } from '../../src/write/results.js';
 import { fixture, sharedId, type Json } from './derive.js';
 import { vector } from './receipt-fake.js';
 import { STAMP_NOW, world, writeRig, type World } from './write-rig.js';
@@ -638,6 +639,308 @@ describe('A3.2: the schema', () => {
     expect(r.isError).toBe(true);
     expect(r.content[0].text).toMatch(/^MCP error -32602/);
     expect([rig.net.calls, cmds(w)]).toEqual([[], ['lookup']]);
+  });
+});
+
+describe('task-8-1 TM1: an undo of a change that names two lines (§18 step 9, "every line")', () => {
+  /** The undone change named line 1 (77, no class, to 84 and class 12) and line 2 (91, no class, to 84 and class 12). */
+  const LINE_2 = {
+    line_id: '2',
+    before: { account_id: '91', account_name: 'Contractors', class_id: null, class_name: null },
+    after: { account_id: '84', account_name: 'Software', class_id: '12', class_name: 'Client Delivery' },
+  };
+  const twoLines = () => lookup((a) => a.intent.lines.push(LINE_2));
+  const script = () => ({ lookup: [twoLines()], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK] });
+  const detail = (account: string) => ({ AccountRef: { value: account } });
+  const put = (line: string, account: string) => ({ line_id: line, before: { account_id: '84', class_id: '12' }, after: { account_id: account, class_id: null } });
+
+  it('both lines still on the after values: sent, each line’s before values put back (no ClassRef), the books hold both', async () => {
+    const w = undoWorld(script());
+    const { client } = await w.start();
+    expect(await client.callTool(undo())).toEqual(sentWith({ lines: [put('1', '77'), put('2', '91')] }));
+    expect(JSON.parse(rig.posts()[0].body).Line.map((l: Json) => [l.Id, l.AccountBasedExpenseLineDetail])).toEqual([
+      ['1', detail('77')],
+      ['2', detail('91')],
+    ]);
+    expect((w.books['purchase/1001'] as Json).Purchase.Line.map((l: Json) => l.AccountBasedExpenseLineDetail)).toEqual([detail('77'), detail('91')]);
+    expect(JSON.parse(JSON.stringify(w.fake.requests()[1])).lines).toEqual([
+      { line_id: '1', before: vector('intent-undo.json').request.lines[0].before, after: vector('intent-undo.json').request.lines[0].after },
+      { line_id: '2', before: LINE_2.after, after: LINE_2.before },
+    ]);
+  });
+
+  const edits: Array<[string, (t: Json) => void]> = [
+    ['only line 1 on another account (92)', (t) => (t.Line[0].AccountBasedExpenseLineDetail.AccountRef.value = '92')],
+    ['only line 1’s class cleared', (t) => delete t.Line[0].AccountBasedExpenseLineDetail.ClassRef],
+    ['only line 1 gone', (t) => t.Line.shift()],
+    ['only line 2 on another account (92)', (t) => (t.Line[1].AccountBasedExpenseLineDetail.AccountRef.value = '92')],
+    ['only line 2 on another class (13)', (t) => (t.Line[1].AccountBasedExpenseLineDetail.ClassRef.value = '13')],
+    ['only line 2’s class cleared', (t) => delete t.Line[1].AccountBasedExpenseLineDetail.ClassRef],
+    ['only line 2 gone', (t) => t.Line.pop()],
+  ];
+  it.each(edits)('%s since: changed-since.json, no intent, nothing sent', async (_label, edit) => {
+    const w = undoWorld(script());
+    w.books['purchase/1001'] = afterBook(edit);
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/changed-since.json`);
+    expect([cmds(w), rig.posts()]).toEqual([['lookup'], []]);
+  });
+
+  // Step 6 after the undo's own send (change.ts's holdsAfter): moved, but only one of the two lines put back, is no stored copy.
+  it.each<[string, number]>([
+    ['line 1 put back, line 2 still on 84', 0],
+    ['line 2 put back, line 1 still on 84', 1],
+  ])('no answer, the refetch moved with %s: write:unknown with its own receipt, never sent again', async (_label, back) => {
+    const w = undoWorld(script());
+    w.post = () => {
+      w.books['purchase/1001'] = afterBook((t) => {
+        t.SyncToken = '5';
+        t.Line[back].AccountBasedExpenseLineDetail = detail(back === 0 ? '77' : '91');
+      });
+      return { status: 500, body: '{}' };
+    };
+    const { client } = await w.start();
+    expect(await client.callTool(undo())).toEqual(errorText(`reason: write:unknown\nreceipt: ${NEW}\n\nQuickBooks didn't answer; the change will be settled by a later check.`));
+    expect(w.fake.requests()[2]).toMatchObject({ cmd: 'outcome', key: NEW, result: 'unknown' });
+    expect(rig.posts()).toHaveLength(1);
+  });
+  it('no answer, the refetch moved with both lines put back: sent (stored), one POST', async () => {
+    const w = undoWorld(script());
+    w.post = () => {
+      w.books['purchase/1001'] = afterBook((t) => ((t.SyncToken = '5'), (t.Line[0].AccountBasedExpenseLineDetail = detail('77')), (t.Line[1].AccountBasedExpenseLineDetail = detail('91'))));
+      return { status: 500, body: '{}' };
+    };
+    const { client } = await w.start();
+    expect(await client.callTool(undo())).toEqual(sentWith({ lines: [put('1', '77'), put('2', '91')] }));
+    expect(rig.posts()).toHaveLength(1);
+  });
+});
+
+describe('task-8-1 TM2: an undo of a Bill’s change (§13 purchase or bill; §18 steps 4, 6, 7)', () => {
+  /** qbo_categorize_bill.json's change (intent-bill.json: bill 2001 line 1 from 77 to 91, sent at SyncToken 0, stored as 1). */
+  const BKEY = 'quickbooks-write:garden3d:bill:2001:0:1';
+  const BNEW = 'quickbooks-write:garden3d:bill:2001:1:1';
+  const billLookup = (id = '2001', edit: (a: Json) => void = () => undefined) =>
+    lookup((a) => {
+      const req = vector('intent-bill.json').request;
+      const key = `quickbooks-write:garden3d:bill:${id}:0:1`;
+      a.intent = { ...a.intent, key, type: 'bill', id, sync_token: '0', lines: req.lines, digests: req.digests, reason: req.reason };
+      a.outcome = { ...a.outcome, key, sync_token_after: '1' };
+      edit(a);
+    });
+  /** A bill as the categorize left it: SyncToken 1, line 1 on 91. */
+  const billAfter = (file: string): Json => {
+    const answer = fixture(file);
+    answer.Bill.SyncToken = '1';
+    answer.Bill.Line[0].AccountBasedExpenseLineDetail.AccountRef.value = '91';
+    return answer;
+  };
+  /** QuickBooks storing the Bill update it was sent, one SyncToken up; the books hold it after. */
+  const billEcho = (w: World) => (c: StubCall) => {
+    const { sparse: _sparse, ...body } = JSON.parse(c.body);
+    const txn = { ...body, SyncToken: String(Number(body.SyncToken) + 1), MetaData: { CreateTime: '2026-11-12T09:00:00-08:00' } };
+    w.books['bill/2001'] = { Bill: txn, time: TIME };
+    return { status: 200, body: JSON.stringify({ Bill: txn, time: TIME }) };
+  };
+  const billWorld = (lk: { answer: Json }, outcomes: Array<typeof OK> = [OK]): World => {
+    const w = world(rig, { lookup: [lk], intent: [{ answer: { ok: true, key: BNEW, n: 1 } }], outcome: outcomes });
+    w.books['bill/2001'] = billAfter('fetched/bill-2001.json');
+    w.post = billEcho(w);
+    return w;
+  };
+  const billSent = sentWith({
+    receipt: BNEW,
+    type: 'bill',
+    id: '2001',
+    sync_token: '1',
+    sync_token_after: '2',
+    lines: [{ line_id: '1', before: { account_id: '91', class_id: null }, after: { account_id: '77', class_id: null } }],
+    undo_of: BKEY,
+  });
+  /** The logged intent request (the `n`th command run), less its digests. */
+  const intentRequest = (w: World, n = 1): Json => {
+    const { digests: _d, ...rest } = w.fake.requests()[n] as Json;
+    return rest;
+  };
+  const wantIntent = {
+    cmd: 'intent',
+    company: 'garden3d',
+    type: 'bill',
+    id: '2001',
+    sync_token: '1',
+    lines: [{ line_id: '1', before: vector('intent-bill.json').request.lines[0].after, after: vector('intent-bill.json').request.lines[0].before }],
+    reason: vector('intent-bill.json').request.reason,
+    undo_of: BKEY,
+  };
+
+  it('its latest outcome sent: the GET and the POST on bill, the intent’s type bill; sent with its own bill receipt; the books’ line 1 back on 77', async () => {
+    const w = billWorld(billLookup());
+    const { client } = await w.start();
+    expect(await client.callTool(undo(BKEY))).toEqual(billSent);
+    expect(rig.qbo()).toEqual(['GET companyinfo/9990000000000002', 'GET bill/2001', 'GET preferences', 'GET account/77', 'POST bill']);
+    expect(intentRequest(w)).toEqual(wantIntent);
+    expect((w.books['bill/2001'] as Json).Bill.Line[0].AccountBasedExpenseLineDetail).toEqual({ AccountRef: { value: '77' } });
+  });
+
+  it.each(KINDS)('%s 10:00.000 old: settled sent from bill/2001 (its Bill read), then the undo sends on bill', async (_label, kind) => {
+    const w = billWorld(billLookup('2001', kind(DUE)), [OK, OK]);
+    const { client } = await w.start();
+    expect(await client.callTool(undo(BKEY))).toEqual(billSent);
+    expect(rig.qbo()).toEqual(['GET companyinfo/9990000000000002', 'GET bill/2001', 'GET bill/2001', 'GET preferences', 'GET account/77', 'POST bill']);
+    expect(JSON.stringify(w.fake.requests()[1])).toBe(JSON.stringify({ cmd: 'outcome', key: BKEY, result: 'sent', sync_token_after: '1', diff: null, error: null, note: null }));
+    expect(intentRequest(w, 2)).toEqual(wantIntent);
+  });
+
+  it('a due unknown, bill/2001 unmoved (SyncToken 0): settled failed from the Bill, not-sent.json, nothing sent', async () => {
+    const w = billWorld(billLookup('2001', unknownAt(DUE)));
+    w.books['bill/2001'] = fixture('fetched/bill-2001.json');
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo(BKEY)), `${UNDO}/not-sent.json`);
+    expect(w.fake.requests()[1]).toMatchObject({ cmd: 'outcome', key: BKEY, result: 'failed' });
+    expect(rig.qbo()).toEqual(['GET companyinfo/9990000000000002', 'GET bill/2001']);
+  });
+
+  it.each<[string, string, string]>([
+    ['a Stacks bill (bill 2002, DocNumber Stacks_…)', '2002', 'fetched/bill-2002-stacks.json'],
+    ['an intercompany bill (bill 2003)', '2003', 'fetched/bill-2003-intercompany.json'],
+  ])('%s: write:stacks-bill through undo, as categorize answers it; nothing sent', async (_label, id, file) => {
+    const w = billWorld(billLookup(id));
+    w.books[`bill/${id}`] = billAfter(file);
+    const { client } = await w.start();
+    expect(await client.callTool(undo(`quickbooks-write:garden3d:bill:${id}:0:1`))).toEqual(
+      expected(`qbo_categorize_bill/${id === '2002' ? 'stacks-bill.json' : 'stacks-bill-intercompany.json'}`),
+    );
+    expect([cmds(w), rig.posts(), rig.qbo()]).toEqual([['lookup'], [], ['GET companyinfo/9990000000000002', `GET bill/${id}`, 'GET preferences']]);
+  });
+
+  it('no answer, bill/2001 unmoved: write:unknown with its own bill receipt; the refetch is on bill, never sent again', async () => {
+    const w = billWorld(billLookup());
+    w.post = () => ({ status: 500, body: '{}' });
+    const { client } = await w.start();
+    expect(await client.callTool(undo(BKEY))).toEqual(errorText(`reason: write:unknown\nreceipt: ${BNEW}\n\nQuickBooks didn't answer; the change will be settled by a later check.`));
+    expect(rig.qbo().slice(-2)).toEqual(['POST bill', 'GET bill/2001']);
+  });
+});
+
+describe('task-8-1 TM3: step 2’s not-found is the reason, not the cause', () => {
+  it.each<[string, Json, string]>([
+    ['reason failed, cause not-found: receipt-failed.json', { ok: false, reason: 'failed', cause: 'not-found' }, 'receipt-failed.json'],
+    ['reason bad-request, cause not-found: receipt-failed.json', { ok: false, reason: 'bad-request', cause: 'not-found' }, 'receipt-failed.json'],
+    ['no reason, cause not-found: receipt-failed.json', { ok: false, cause: 'not-found' }, 'receipt-failed.json'],
+    ['reason not-found, cause lock: not-sent.json', { ok: false, reason: 'not-found', cause: 'lock' }, 'not-sent.json'],
+    ['reason not-found, no cause: not-sent.json', { ok: false, reason: 'not-found' }, 'not-sent.json'],
+  ])('a not-ok lookup, %s, nothing fetched', async (_label, answer, rel) => {
+    const w = undoWorld({ lookup: [{ answer }] });
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/${rel}`);
+    expect([cmds(w), rig.net.calls]).toEqual([['lookup'], []]);
+  });
+});
+
+describe('task-8-1 TM4: the settle’s refetch reads a Fault from its first Error item, in any status (§17)', () => {
+  const fault = (status: number, codes: string[], extra: Json = {}) => ({
+    answer: { status, body: JSON.stringify({ Fault: { Error: codes.map((code) => ({ Message: 'm', Detail: 'd', code })), type: 'ValidationFault' }, ...extra, time: TIME }) },
+  });
+  it.each<[string, Json]>([
+    ['a 200 carrying Fault 610', fault(200, ['610'])],
+    ['a 500 carrying Fault 610', fault(500, ['610'])],
+    ['a 200 carrying Fault 610 beside the moved Purchase', fault(200, ['610'], { Purchase: afterBook().Purchase })],
+    ['a 400 whose first code is 610, its second 6000', fault(400, ['610', '6000'])],
+  ])('%s: settled unsettled, deleted; not-sent.json, nothing sent', async (_label, book) => {
+    const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], outcome: [OK] });
+    w.books['purchase/1001'] = book;
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/not-sent.json`);
+    expect(w.fake.requests()[1]).toMatchObject({ cmd: 'outcome', key: KEY, result: 'unsettled', note: 'deleted' });
+    expect(rig.posts()).toEqual([]);
+  });
+  it.each<[string, Json]>([
+    ['a 400 whose first code is 6000, its second 610', fault(400, ['6000', '610'])],
+    ['a 200 whose first code is 6000, its second 610', fault(200, ['6000', '610'])],
+  ])('%s: it stays unknown (unknown.json), no outcome asked', async (_label, book) => {
+    const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], outcome: [OK] });
+    w.books['purchase/1001'] = book;
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/unknown.json`);
+    expect([cmds(w), rig.posts()]).toEqual([['lookup'], []]);
+  });
+});
+
+describe('task-8-1 TM5: the undo’s intent request is intent-undo.json’s as text, whatever order the lookup’s keys are in', () => {
+  const reversed = (o: Json): Json => Object.fromEntries(Object.entries(o).reverse());
+  it.each<[string, (line: Json) => Json]>([
+    ['each side’s keys reversed', (line) => ({ line_id: line.line_id, before: reversed(line.before), after: reversed(line.after) })],
+    ['each line’s keys reversed', (line) => reversed(line)],
+    ['both', (line) => reversed({ line_id: line.line_id, before: reversed(line.before), after: reversed(line.after) })],
+  ])('%s: sent.json, the request equal as text', async (_label, reorder) => {
+    const w = undoWorld({ lookup: [lookup((a) => (a.intent.lines = a.intent.lines.map(reorder)))], intent: ['intent-undo.json'], outcome: [OK] });
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/sent.json`);
+    expect(JSON.stringify(w.fake.requests()[1])).toBe(JSON.stringify(vector('intent-undo.json').request));
+  });
+});
+
+describe('task-8-1 TM6: undo on its server’s mono and switch (spec §3 T1, T2)', () => {
+  it('an injected mono far from performance.now: the undo registers on it and sends (sent.json)', async () => {
+    const w = undoWorld();
+    const { client, mode } = await w.start({ mono: () => 5_000_000_000 });
+    expectFile(await client.callTool(undo()), `${UNDO}/sent.json`);
+    expect([rig.posts().length, mode.registry.size]).toEqual([1, 0]);
+  });
+  it('the injected mono 60000 ms on between the undo’s check and its registration: fork-error, no POST', async () => {
+    const w = undoWorld();
+    // The check reads it first (0), the registration next (60000).
+    let n = 0;
+    const { client, mode } = await w.start({ mono: () => (n++ === 0 ? 0 : 60_000) });
+    expect(await client.callTool(undo())).toEqual(forkReason({ reason: 'fork-error' }));
+    expect([rig.posts(), mode.registry.size, cmds(w)]).toEqual([[], 0, ['lookup', 'intent']]);
+  });
+
+  /** The kit's fs with an unlink that fails EACCES: the switch can't be deleted, so the server's latch is set. */
+  const stuck = () => {
+    const real = createKit().fs;
+    const unlink = async () => {
+      throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+    };
+    return { stat: real.stat, unlink: unlink as unknown as typeof real.unlink };
+  };
+  const categorize = () => ({ name: 'qbo_categorize_purchase', arguments: JSON.parse(readFileSync(fakePath('tool-calls/qbo_categorize_purchase.json'), 'utf8')) });
+  const own = { lookup: [lookup()], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK] };
+  it.each<[string, Json, (w: World) => void, RegExp]>([
+    [
+      'a settled sent-diff in the undo’s step 4',
+      { lookup: [lookup(unknownAt(DUE))], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK, OK] },
+      (w) => (w.books['purchase/1001'] = afterBook((txn) => (txn.TotalAmt = 121))),
+      /^\{"result":"sent",/,
+    ],
+    [
+      'the undo’s own send stored with a difference (sent-diff)',
+      own,
+      (w) => {
+        const echo = storeEcho(w);
+        w.post = (c) => {
+          const body = JSON.parse(echo(c).body as string);
+          body.Purchase.TotalAmt = 121;
+          return { status: 200, body: JSON.stringify(body) };
+        };
+      },
+      /^\{"result":"sent-diff",.*"writes_off":false,/,
+    ],
+    [
+      'the undo’s own send answered with another transaction’s id (id-mismatch)',
+      own,
+      (w) => (w.post = () => ({ status: 200, body: JSON.stringify({ Purchase: { ...afterBook().Purchase, Id: '1009', SyncToken: '5' }, time: TIME }) })),
+      /^reason: write:unknown\nreceipt: [^\n]*\nnote: id-mismatch\n/,
+    ],
+  ])('%s, the switch file undeletable: the latch is the server’s one, so categorize is then refused (disabled.json)', async (_label, script, setup, first) => {
+    const w = undoWorld(script);
+    setup(w);
+    const { client } = await w.start({ fs: stuck() });
+    const r: any = await client.callTool(undo());
+    expect(r.content[0].text).toMatch(first);
+    expect(existsSync(w.switchPath)).toBe(true);
+    expectFile(await client.callTool(categorize()), 'qbo_categorize_purchase/disabled.json');
+    expect(rig.posts()).toHaveLength(1);
   });
 });
 

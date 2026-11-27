@@ -306,6 +306,48 @@ describe('TK6: the switch is turned off before the outcome is asked', () => {
   });
 });
 
+describe('task-8-1 TM1: step 6’s refetch stores only a copy holding every named line’s after values (§17 Settling)', () => {
+  /** A categorize of line 1 (77 to 84, class 12) and line 2 (84 and class 12 to 91, class 13). */
+  const two = () => args({ lines: [{ line_id: '1', account_id: '84', class_id: '12' }, { line_id: '2', account_id: '91', class_id: '13' }] });
+  const detail = (account: string, klass: string) => ({ AccountRef: { value: account }, ClassRef: { value: klass } });
+  /** No answer to the POST; the books then hold purchase 1001 at SyncToken 4 with the given lines' details. */
+  const unanswered = (w: World, line1: Json, line2: Json) => {
+    w.post = () => {
+      const txn = fixture('fetched/purchase-1001.json');
+      txn.Purchase.SyncToken = '4';
+      txn.Purchase.Line[0].AccountBasedExpenseLineDetail = line1;
+      txn.Purchase.Line[1].AccountBasedExpenseLineDetail = line2;
+      w.books['purchase/1001'] = txn;
+      return { status: 500, body: '{}' };
+    };
+  };
+  it.each<[string, Json, Json]>([
+    ['line 1 on its after values, line 2 still on 84 and class 12', detail('84', '12'), detail('84', '12')],
+    ['line 2 on its after values, line 1 still on 77', { AccountRef: { value: '77' } }, detail('91', '13')],
+  ])('moved with %s: unknown.json, the unknown outcome asked, one POST', async (_label, line1, line2) => {
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: ['outcome-unknown.json'] });
+    unanswered(w, line1, line2);
+    const { client } = await w.start();
+    expect(await client.callTool(two())).toEqual(expected('unknown.json'));
+    expect(w.fake.requests()[1]).toMatchObject({ cmd: 'outcome', result: 'unknown' });
+    expect(rig.posts()).toHaveLength(1);
+  });
+  it('moved with both lines on their after values: stored, sent with both lines', async () => {
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer: { ok: true, notion: true } }] });
+    unanswered(w, detail('84', '12'), detail('91', '13'));
+    const { client } = await w.start();
+    expect(await client.callTool(two())).toEqual(
+      successWith('sent.json', {
+        lines: [
+          { line_id: '1', before: { account_id: '77', class_id: null }, after: { account_id: '84', class_id: '12' } },
+          { line_id: '2', before: { account_id: '84', class_id: '12' }, after: { account_id: '91', class_id: '13' } },
+        ],
+      }),
+    );
+    expect(rig.posts()).toHaveLength(1);
+  });
+});
+
 describe('TJ2: a refusal with no §6 text never reaches freeText unchecked', () => {
   it('ruleLines decides `none` before the fetched ids', () => {
     const txn = sharedId(fixture('fetched/purchase-1001.json')).Purchase;
