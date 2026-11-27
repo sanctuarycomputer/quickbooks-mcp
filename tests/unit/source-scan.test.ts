@@ -232,6 +232,7 @@ describe('A3.3: the call store is the only holder and reader of company identity
       'src/write/mode.ts: currentCall()', // the same
       'src/write/pre-send.ts: currentCall()', // the pre-send check's call, whose failure it reads
       'src/write/pre-send.ts: call.company', // compared with the input's company, which must be the call's
+      'src/write/results.ts: change.company', // the change item's company, the call's as the change flow gives it, written into the success
     ]);
   });
 

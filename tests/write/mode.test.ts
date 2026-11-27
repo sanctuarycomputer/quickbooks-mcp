@@ -412,6 +412,28 @@ describe('A3.10: the guard write mode starts', () => {
     const mode = writeMode();
     for (const o of [mode, mode.registry, mode.extraRules, mode.tools]) expect(Object.isFrozen(o)).toBe(true);
   });
+
+  it('one switch per server, on the kit’s fs, so one latch: a failed delete in one server leaves another on (quickbooks-mcp-294 T6)', async () => {
+    const file = { isFile: () => true };
+    const fsOf = (unlink: () => Promise<void>) => ({ stat: jest.fn(async () => file), unlink: jest.fn(unlink) });
+    const stuck = fsOf(async () => Promise.reject(Object.assign(new Error('denied'), { code: 'EACCES' })));
+    const fine = fsOf(async () => undefined);
+    const one = writeMode({ fs: stuck as any });
+    const other = writeMode({ fs: fine as any });
+    expect(Object.keys(one).sort()).toEqual(['extraRules', 'kit', 'registry', 'sw', 'tools']);
+    expect(one.sw).not.toBe(other.sw);
+    expect(Object.isFrozen(one.sw)).toBe(true);
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    expect([await one.sw.isOn('/switch'), await other.sw.isOn('/switch')]).toEqual([true, true]);
+    expect(await one.sw.turnOff('/switch')).toBe(false);
+    expect(stderr).toHaveBeenCalledTimes(1);
+    expect([await one.sw.isOn('/switch'), await other.sw.isOn('/switch')]).toEqual([false, true]);
+    expect([stuck.stat.mock.calls, stuck.unlink.mock.calls, fine.stat.mock.calls]).toEqual([[['/switch']], [['/switch']], [['/switch'], ['/switch']]]);
+    expect(await other.sw.turnOff('/switch')).toBe(true);
+    expect(fine.unlink.mock.calls).toEqual([['/switch']]);
+    // The kit's fs is the switch's: the same object.
+    expect(one.kit.fs).toBe(stuck);
+  });
 });
 
 describe('A1.6: read mode’s guard', () => {

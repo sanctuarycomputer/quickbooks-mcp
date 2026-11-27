@@ -17,7 +17,8 @@ const LIFE = 60_000;
 async function held(input: Json = P()) {
   const clock = { ms: 1000 };
   const registry = createRegistry({ now: () => clock.ms });
-  const checked = await rig.check(input);
+  // QA1: checked on the registry's own clock, so its age is the registry's.
+  const checked = await rig.check(input, () => clock.ms);
   registry.register(checked);
   return { clock, registry, checked, key: keyOf(checked) };
 }
@@ -71,17 +72,17 @@ describe('register', () => {
   });
 
   it('of two of one body, one expired: take consumes the live one, and there is no other', async () => {
-    const { registry, clock, checked, key } = await held();
+    const { registry, clock, key } = await held();
     clock.ms += 10_000;
-    registry.register(checked);
+    registry.register(await rig.check(P(), () => clock.ms));
     clock.ms += LIFE - 10_000;
     expect([registry.size, registry.has(...key), registry.take(...key), registry.size, registry.take(...key)]).toEqual([2, true, true, 0, false]);
   });
 
   it('of two live ones of one body, take consumes the older: neither life is longer for the other', async () => {
-    const { registry, clock, checked, key } = await held();
+    const { registry, clock, key } = await held();
     clock.ms += 10_000;
-    registry.register(checked);
+    registry.register(await rig.check(P(), () => clock.ms));
     expect([registry.take(...key), registry.size]).toEqual([true, 1]);
     clock.ms += LIFE - 1;
     expect(registry.has(...key)).toBe(true);
@@ -166,10 +167,10 @@ describe('the life of a capability (A3.3(d))', () => {
   it('register drops the expired and keeps the live (A3.8)', async () => {
     const { registry, clock, key } = await held();
     clock.ms += 10_000;
-    const live = await rig.check(B());
+    const live = await rig.check(B(), () => clock.ms);
     registry.register(live);
     clock.ms += LIFE - 10_000;
-    const next = await rig.check({ ...P(), company: OTHER });
+    const next = await rig.check({ ...P(), company: OTHER }, () => clock.ms);
     registry.register(next);
     expect(registry.size).toBe(2);
     expect([registry.has(...key), registry.has(...keyOf(live)), registry.has(...keyOf(next))]).toEqual([false, true, true]);
@@ -200,6 +201,100 @@ describe('the life of a capability (A3.3(d))', () => {
       now.mockReturnValue(5 + LIFE);
       expect(registry.has(...keyOf(checked))).toBe(false);
     }
+  });
+});
+
+describe('QA1 (A1.13): a check registers once, and only within 60 000 ms of its checkedAt', () => {
+  /** A registry whose clock reads `now`, and a real check made at `checkedAt`. */
+  async function aged(checkedAt: unknown, now = 100_000) {
+    const clock = { ms: now };
+    const registry = createRegistry({ now: () => clock.ms });
+    const checked = await rig.check(P(), () => checkedAt as number);
+    return { clock, registry, checked, key: keyOf(checked) };
+  }
+  const refused = (registry: ReturnType<typeof createRegistry>, checked: CheckedRequest): unknown => {
+    try {
+      registry.register(checked);
+    } catch (e) {
+      return e;
+    }
+    return 'registered';
+  };
+
+  it('the same check registered twice: the second throws, and the registry holds one entry', async () => {
+    const { registry, checked, key } = await aged(100_000);
+    registry.register(checked);
+    expect(refused(registry, checked)).toBeInstanceOf(CapabilityError);
+    expect([registry.size, registry.take(...key), registry.take(...key)]).toEqual([1, true, false]);
+    // Taken, it still can't come back.
+    expect(refused(registry, checked)).toBeInstanceOf(CapabilityError);
+    expect(registry.size).toBe(0);
+  });
+
+  it('a second check of the same change is its own, and registers', async () => {
+    const { registry, checked, key } = await aged(100_000);
+    registry.register(checked);
+    registry.register(await rig.check(P(), () => 100_000));
+    expect([registry.size, registry.take(...key), registry.take(...key)]).toEqual([2, true, true]);
+  });
+
+  it('the once is per registry: another registry takes the check once too', async () => {
+    const { registry, checked } = await aged(100_000);
+    const other = createRegistry({ now: () => 100_000 });
+    registry.register(checked);
+    other.register(checked);
+    expect(refused(other, checked)).toBeInstanceOf(CapabilityError);
+    expect([registry.size, other.size]).toEqual([1, 1]);
+  });
+
+  it.each([0, 0.5, 1, 59_999, 59_999.999])('%d ms old registers', async (age) => {
+    const { registry, checked, key } = await aged(100_000 - age);
+    registry.register(checked);
+    expect([registry.size, registry.has(...key)]).toEqual([1, true]);
+  });
+
+  it.each([60_000, 60_000.001, 60_001, 100_000, -1, -0.001, -60_000])('%d ms old is refused, and nothing is added', async (age) => {
+    const { registry, checked } = await aged(100_000 - age);
+    expect(refused(registry, checked)).toBeInstanceOf(CapabilityError);
+    expect(registry.size).toBe(0);
+  });
+
+  it.each([NaN, Infinity, -Infinity])('a checkedAt of %d is refused (no finite age)', async (checkedAt) => {
+    const { registry, checked } = await aged(checkedAt);
+    expect(Object.is(checked.checkedAt, checkedAt)).toBe(true);
+    expect(refused(registry, checked)).toBeInstanceOf(CapabilityError);
+    expect(registry.size).toBe(0);
+  });
+
+  it.each([NaN, Infinity, -Infinity])('a registry clock at %d refuses a check made at 0', async (now) => {
+    const { registry, checked } = await aged(0, now);
+    expect(refused(registry, checked)).toBeInstanceOf(CapabilityError);
+    expect(registry.size).toBe(0);
+  });
+
+  it('a mono that answers no number gives no age: refused', async () => {
+    for (const value of ['100000', 100_000n, null, undefined, { valueOf: () => 100_000 }]) {
+      const { registry, checked } = await aged(value);
+      expect(Number.isNaN(checked.checkedAt)).toBe(true);
+      expect(refused(registry, checked)).toBeInstanceOf(CapabilityError);
+    }
+  });
+
+  it('a refused registration burns nothing: the same check registers once its age is in range', async () => {
+    const { registry, clock, checked, key } = await aged(100_000, 99_999);
+    expect(refused(registry, checked)).toBeInstanceOf(CapabilityError);
+    clock.ms = 100_000;
+    registry.register(checked);
+    expect([registry.size, registry.has(...key)]).toEqual([1, true]);
+  });
+
+  it('the entry\'s life starts at the registration, not the check', async () => {
+    const { registry, clock, checked, key } = await aged(100_000 - 59_999);
+    registry.register(checked);
+    clock.ms += LIFE - 1;
+    expect(registry.has(...key)).toBe(true);
+    clock.ms += 1;
+    expect(registry.has(...key)).toBe(false);
   });
 });
 

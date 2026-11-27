@@ -71,7 +71,8 @@ describe('writeMode(deps)', () => {
     mode.registry.register(first);
     now += 59_999;
     expect(mode.registry.take(...key)).toBe(true);
-    mode.registry.register(await rig.check());
+    // QA1: the second check on the registry's own clock, so its age is in range.
+    mode.registry.register(await rig.check(undefined, () => now));
     now += 60_000;
     expect(mode.registry.take(...key)).toBe(false);
   });

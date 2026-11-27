@@ -55,9 +55,9 @@ export function sendRig() {
         setCallToken(fixtureToken(company), REALMS[company] ?? REALMS[COMPANY]);
         return fn(currentCall()!);
       }),
-    /** The real check's request, its GETs forgotten. */
-    check: async (input: Json = P()): Promise<CheckedRequest> => {
-      const out = await rig.inCall(() => preSend(input as any), input.company);
+    /** The real check's request, its GETs forgotten; checked on the registry's clock (QA1), or on `mono`. */
+    check: async (input: Json = P(), mono?: () => number): Promise<CheckedRequest> => {
+      const out = await rig.inCall(() => preSend(input as any, { mono: mono ?? (() => rig.clock) }), input.company);
       expect(out).toMatchObject({ ok: true });
       net.calls.length = 0;
       rig.seen.length = 0;
