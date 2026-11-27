@@ -1,0 +1,18 @@
+{
+  "now": "2026-11-18T15:00:00.000Z",
+  "notion": "ok",
+  "lock": null,
+  "ledger_dir_writable": true,
+  "ledger": [],
+  "request": {
+    "cmd": "delete",
+    "key": "quickbooks-write:garden3d:purchase:1001:3:1"
+  },
+  "answer": {
+    "ok": false,
+    "reason": "bad-request",
+    "cause": "bad-request"
+  },
+  "appended": [],
+  "receipts": []
+}

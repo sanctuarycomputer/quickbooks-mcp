@@ -1,0 +1,713 @@
+{
+  "now": "2026-11-18T15:00:00.000Z",
+  "notion": "ok",
+  "lock": null,
+  "ledger_dir_writable": true,
+  "ledger": [],
+  "request": {
+    "cmd": "intent",
+    "company": "garden3d",
+    "type": "purchase",
+    "id": "10000000000000000999",
+    "sync_token": "10000000000000000998",
+    "lines": [
+      {
+        "line_id": "10000000000000000000",
+        "before": {
+          "account_id": "10000000000000000100",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000200",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000300",
+          "account_name": "Software",
+          "class_id": "10000000000000000400",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000001",
+        "before": {
+          "account_id": "10000000000000000101",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000201",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000301",
+          "account_name": "Software",
+          "class_id": "10000000000000000401",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000002",
+        "before": {
+          "account_id": "10000000000000000102",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000202",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000302",
+          "account_name": "Software",
+          "class_id": "10000000000000000402",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000003",
+        "before": {
+          "account_id": "10000000000000000103",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000203",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000303",
+          "account_name": "Software",
+          "class_id": "10000000000000000403",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000004",
+        "before": {
+          "account_id": "10000000000000000104",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000204",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000304",
+          "account_name": "Software",
+          "class_id": "10000000000000000404",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000005",
+        "before": {
+          "account_id": "10000000000000000105",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000205",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000305",
+          "account_name": "Software",
+          "class_id": "10000000000000000405",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000006",
+        "before": {
+          "account_id": "10000000000000000106",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000206",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000306",
+          "account_name": "Software",
+          "class_id": "10000000000000000406",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000007",
+        "before": {
+          "account_id": "10000000000000000107",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000207",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000307",
+          "account_name": "Software",
+          "class_id": "10000000000000000407",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000008",
+        "before": {
+          "account_id": "10000000000000000108",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000208",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000308",
+          "account_name": "Software",
+          "class_id": "10000000000000000408",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000009",
+        "before": {
+          "account_id": "10000000000000000109",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000209",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000309",
+          "account_name": "Software",
+          "class_id": "10000000000000000409",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000010",
+        "before": {
+          "account_id": "10000000000000000110",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000210",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000310",
+          "account_name": "Software",
+          "class_id": "10000000000000000410",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000011",
+        "before": {
+          "account_id": "10000000000000000111",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000211",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000311",
+          "account_name": "Software",
+          "class_id": "10000000000000000411",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000012",
+        "before": {
+          "account_id": "10000000000000000112",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000212",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000312",
+          "account_name": "Software",
+          "class_id": "10000000000000000412",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000013",
+        "before": {
+          "account_id": "10000000000000000113",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000213",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000313",
+          "account_name": "Software",
+          "class_id": "10000000000000000413",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000014",
+        "before": {
+          "account_id": "10000000000000000114",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000214",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000314",
+          "account_name": "Software",
+          "class_id": "10000000000000000414",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000015",
+        "before": {
+          "account_id": "10000000000000000115",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000215",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000315",
+          "account_name": "Software",
+          "class_id": "10000000000000000415",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000016",
+        "before": {
+          "account_id": "10000000000000000116",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000216",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000316",
+          "account_name": "Software",
+          "class_id": "10000000000000000416",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000017",
+        "before": {
+          "account_id": "10000000000000000117",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000217",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000317",
+          "account_name": "Software",
+          "class_id": "10000000000000000417",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000018",
+        "before": {
+          "account_id": "10000000000000000118",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000218",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000318",
+          "account_name": "Software",
+          "class_id": "10000000000000000418",
+          "class_name": "Client Delivery"
+        }
+      },
+      {
+        "line_id": "10000000000000000019",
+        "before": {
+          "account_id": "10000000000000000119",
+          "account_name": "Uncategorized Expense",
+          "class_id": "10000000000000000219",
+          "class_name": "Studio"
+        },
+        "after": {
+          "account_id": "10000000000000000319",
+          "account_name": "Software",
+          "class_id": "10000000000000000419",
+          "class_name": "Client Delivery"
+        }
+      }
+    ],
+    "digests": {
+      "Id": "2c757dd003b11c623c8ac483656393fa00152eef134086e39b700edd605e01ac",
+      "Line": "e87ff50d86c028c34fec1643d4537f33b8d1b6793e1a6ee1c8ad93a6db5804e0",
+      "Line:10000000000000000000": "54a3c87634d6676581f460f0b80f424441bbb4d844369560a7b1ed2c7bc2b857",
+      "Line:10000000000000000001": "1bab0af51e64c4e1821c16a61c4b5a77efb3ce6dc134addad22dcc6cbde58e71",
+      "Line:10000000000000000002": "6375534d63f694c4efcee5caa442fe773f1e18651225f85c7e7e39697e6f51af",
+      "Line:10000000000000000003": "61c9bdff75d4bdc402627e34ad7ead80f9ff63424bbc56e7b25ae6fe001b99db",
+      "Line:10000000000000000004": "359d128adb45ed1acc074c8115da652a0249802dce1c3fc4d1b4ad1ba50c7918",
+      "Line:10000000000000000005": "2c4eed0a5edac3a75ce09eaf32e8f8bd07d4267719f75875cfab64ca40c223b5",
+      "Line:10000000000000000006": "b7b6cc12b8e3f4b1b2c906dd0acc56b5ac099b32c7f829486fccbe032e3948e9",
+      "Line:10000000000000000007": "2e9d31c08138ab4f0322bb2729c26acca1c182c6961994b9ee5ae0a7bcaffdba",
+      "Line:10000000000000000008": "e48122bec6657837726b4b5be31772c7e00d5dd7b7dcb24ba73f9e0277af42e5",
+      "Line:10000000000000000009": "4da6aff15fb58c0c220ddd34a97b4497cdc095a6ac9a4519faace4e94f74880f",
+      "Line:10000000000000000010": "4fdfcfd0acfc62a8287396df44170bd624abee1d5aad5b7bcd067cc6221f025e",
+      "Line:10000000000000000011": "7f5f7e00e2e6543f8be8279a41d948e0e3e8f828ec0a7645f0b23a923b92dd4a",
+      "Line:10000000000000000012": "183eeac31abbe1f94992f7b59e5b367c414e730116ca235d66890b41046e56ba",
+      "Line:10000000000000000013": "b541f4de79fac108996b2db1843087378892fd69e192282c488c440f7b19324e",
+      "Line:10000000000000000014": "69383a62d1ddf23f8b0b97d6764198fe4a29743d4cff37fb9edd44b1bc502f7e",
+      "Line:10000000000000000015": "cddf6012dc526c6107d9022731f8099bc6a13408abb3abcae0321a9877f3f985",
+      "Line:10000000000000000016": "280bc19a2288c9d809b33013104a8b66240625d1f28e5ef88a637bad747e2556",
+      "Line:10000000000000000017": "76b4d177a346837b5a59f92d9a481e73f397c8ac1388bdb3887ecbec2aaf2e56",
+      "Line:10000000000000000018": "4cc84001475ad4a53dfe45e081a611c99b0fa965e57bceb08bf1f048d172e94a",
+      "Line:10000000000000000019": "fc990a97a66c564fc2726abb30c4762dad3d44baa989d7eef16c8f53050212db",
+      "TotalAmt": "e3b98a4da31a127d4bde6e43033f66ba274cab0eb7eb1c70ec41402bf6273dd8"
+    },
+    "reason": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.",
+    "undo_of": null
+  },
+  "answer": {
+    "ok": true,
+    "key": "quickbooks-write:garden3d:purchase:10000000000000000999:10000000000000000998:1",
+    "n": 1
+  },
+  "appended": [
+    {
+      "v": "1.1",
+      "kind": "intent",
+      "key": "quickbooks-write:garden3d:purchase:10000000000000000999:10000000000000000998:1",
+      "n": 1,
+      "at": "2026-11-18T15:00:00.000Z",
+      "company": "garden3d",
+      "type": "purchase",
+      "id": "10000000000000000999",
+      "sync_token": "10000000000000000998",
+      "lines": [
+        {
+          "line_id": "10000000000000000000",
+          "before": {
+            "account_id": "10000000000000000100",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000200",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000300",
+            "account_name": "Software",
+            "class_id": "10000000000000000400",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000001",
+          "before": {
+            "account_id": "10000000000000000101",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000201",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000301",
+            "account_name": "Software",
+            "class_id": "10000000000000000401",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000002",
+          "before": {
+            "account_id": "10000000000000000102",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000202",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000302",
+            "account_name": "Software",
+            "class_id": "10000000000000000402",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000003",
+          "before": {
+            "account_id": "10000000000000000103",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000203",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000303",
+            "account_name": "Software",
+            "class_id": "10000000000000000403",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000004",
+          "before": {
+            "account_id": "10000000000000000104",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000204",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000304",
+            "account_name": "Software",
+            "class_id": "10000000000000000404",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000005",
+          "before": {
+            "account_id": "10000000000000000105",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000205",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000305",
+            "account_name": "Software",
+            "class_id": "10000000000000000405",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000006",
+          "before": {
+            "account_id": "10000000000000000106",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000206",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000306",
+            "account_name": "Software",
+            "class_id": "10000000000000000406",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000007",
+          "before": {
+            "account_id": "10000000000000000107",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000207",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000307",
+            "account_name": "Software",
+            "class_id": "10000000000000000407",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000008",
+          "before": {
+            "account_id": "10000000000000000108",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000208",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000308",
+            "account_name": "Software",
+            "class_id": "10000000000000000408",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000009",
+          "before": {
+            "account_id": "10000000000000000109",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000209",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000309",
+            "account_name": "Software",
+            "class_id": "10000000000000000409",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000010",
+          "before": {
+            "account_id": "10000000000000000110",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000210",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000310",
+            "account_name": "Software",
+            "class_id": "10000000000000000410",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000011",
+          "before": {
+            "account_id": "10000000000000000111",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000211",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000311",
+            "account_name": "Software",
+            "class_id": "10000000000000000411",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000012",
+          "before": {
+            "account_id": "10000000000000000112",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000212",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000312",
+            "account_name": "Software",
+            "class_id": "10000000000000000412",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000013",
+          "before": {
+            "account_id": "10000000000000000113",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000213",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000313",
+            "account_name": "Software",
+            "class_id": "10000000000000000413",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000014",
+          "before": {
+            "account_id": "10000000000000000114",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000214",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000314",
+            "account_name": "Software",
+            "class_id": "10000000000000000414",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000015",
+          "before": {
+            "account_id": "10000000000000000115",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000215",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000315",
+            "account_name": "Software",
+            "class_id": "10000000000000000415",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000016",
+          "before": {
+            "account_id": "10000000000000000116",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000216",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000316",
+            "account_name": "Software",
+            "class_id": "10000000000000000416",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000017",
+          "before": {
+            "account_id": "10000000000000000117",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000217",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000317",
+            "account_name": "Software",
+            "class_id": "10000000000000000417",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000018",
+          "before": {
+            "account_id": "10000000000000000118",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000218",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000318",
+            "account_name": "Software",
+            "class_id": "10000000000000000418",
+            "class_name": "Client Delivery"
+          }
+        },
+        {
+          "line_id": "10000000000000000019",
+          "before": {
+            "account_id": "10000000000000000119",
+            "account_name": "Uncategorized Expense",
+            "class_id": "10000000000000000219",
+            "class_name": "Studio"
+          },
+          "after": {
+            "account_id": "10000000000000000319",
+            "account_name": "Software",
+            "class_id": "10000000000000000419",
+            "class_name": "Client Delivery"
+          }
+        }
+      ],
+      "digests": {
+        "Id": "2c757dd003b11c623c8ac483656393fa00152eef134086e39b700edd605e01ac",
+        "Line": "e87ff50d86c028c34fec1643d4537f33b8d1b6793e1a6ee1c8ad93a6db5804e0",
+        "Line:10000000000000000000": "54a3c87634d6676581f460f0b80f424441bbb4d844369560a7b1ed2c7bc2b857",
+        "Line:10000000000000000001": "1bab0af51e64c4e1821c16a61c4b5a77efb3ce6dc134addad22dcc6cbde58e71",
+        "Line:10000000000000000002": "6375534d63f694c4efcee5caa442fe773f1e18651225f85c7e7e39697e6f51af",
+        "Line:10000000000000000003": "61c9bdff75d4bdc402627e34ad7ead80f9ff63424bbc56e7b25ae6fe001b99db",
+        "Line:10000000000000000004": "359d128adb45ed1acc074c8115da652a0249802dce1c3fc4d1b4ad1ba50c7918",
+        "Line:10000000000000000005": "2c4eed0a5edac3a75ce09eaf32e8f8bd07d4267719f75875cfab64ca40c223b5",
+        "Line:10000000000000000006": "b7b6cc12b8e3f4b1b2c906dd0acc56b5ac099b32c7f829486fccbe032e3948e9",
+        "Line:10000000000000000007": "2e9d31c08138ab4f0322bb2729c26acca1c182c6961994b9ee5ae0a7bcaffdba",
+        "Line:10000000000000000008": "e48122bec6657837726b4b5be31772c7e00d5dd7b7dcb24ba73f9e0277af42e5",
+        "Line:10000000000000000009": "4da6aff15fb58c0c220ddd34a97b4497cdc095a6ac9a4519faace4e94f74880f",
+        "Line:10000000000000000010": "4fdfcfd0acfc62a8287396df44170bd624abee1d5aad5b7bcd067cc6221f025e",
+        "Line:10000000000000000011": "7f5f7e00e2e6543f8be8279a41d948e0e3e8f828ec0a7645f0b23a923b92dd4a",
+        "Line:10000000000000000012": "183eeac31abbe1f94992f7b59e5b367c414e730116ca235d66890b41046e56ba",
+        "Line:10000000000000000013": "b541f4de79fac108996b2db1843087378892fd69e192282c488c440f7b19324e",
+        "Line:10000000000000000014": "69383a62d1ddf23f8b0b97d6764198fe4a29743d4cff37fb9edd44b1bc502f7e",
+        "Line:10000000000000000015": "cddf6012dc526c6107d9022731f8099bc6a13408abb3abcae0321a9877f3f985",
+        "Line:10000000000000000016": "280bc19a2288c9d809b33013104a8b66240625d1f28e5ef88a637bad747e2556",
+        "Line:10000000000000000017": "76b4d177a346837b5a59f92d9a481e73f397c8ac1388bdb3887ecbec2aaf2e56",
+        "Line:10000000000000000018": "4cc84001475ad4a53dfe45e081a611c99b0fa965e57bceb08bf1f048d172e94a",
+        "Line:10000000000000000019": "fc990a97a66c564fc2726abb30c4762dad3d44baa989d7eef16c8f53050212db",
+        "TotalAmt": "e3b98a4da31a127d4bde6e43033f66ba274cab0eb7eb1c70ec41402bf6273dd8"
+      },
+      "reason": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.",
+      "undo_of": null
+    },
+    {
+      "v": "1.1",
+      "kind": "notion",
+      "key": "quickbooks-write:garden3d:purchase:10000000000000000999:10000000000000000998:1",
+      "m": 0,
+      "at": "2026-11-18T15:00:00.000Z"
+    }
+  ],
+  "receipts": [
+    {
+      "action": "QuickBooks change: garden3d purchase 10000000000000000999",
+      "sourceKey": "quickbooks-write:garden3d:purchase:10000000000000000999:10000000000000000998:1:intent",
+      "kind": "quickbooks",
+      "actor": "agent",
+      "surface": "QuickBooks",
+      "target": "garden3d",
+      "trigger": "mcp quickbooks-write",
+      "rationale": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.",
+      "before": "line 10000000000000000000: account 10000000000000000100, class 10000000000000000200\nline 10000000000000000001: account 10000000000000000101, class 10000000000000000201\nline 10000000000000000002: account 10000000000000000102, class 10000000000000000202\nline 10000000000000000003: account 10000000000000000103, class 10000000000000000203\nline 10000000000000000004: account 10000000000000000104, class 10000000000000000204\nline 10000000000000000005: account 10000000000000000105, class 10000000000000000205\nline 10000000000000000006: account 10000000000000000106, class 10000000000000000206\nline 10000000000000000007: account 10000000000000000107, class 10000000000000000207\nline 10000000000000000008: account 10000000000000000108, class 10000000000000000208\nline 10000000000000000009: account 10000000000000000109, class 10000000000000000209\nline 10000000000000000010: account 10000000000000000110, class 10000000000000000210\nline 10000000000000000011: account 10000000000000000111, class 10000000000000000211\nline 10000000000000000012: account 10000000000000000112, class 10000000000000000212\nline 10000000000000000013: account 10000000000000000113, class 10000000000000000213\nline 10000000000000000014: account 10000000000000000114, class 10000000000000000214\nline 10000000000000000015: account 10000000000000000115, class 10000000000000000215\nline 10000000000000000016: account 10000000000000000116, class 10000000000000000216\nline 10000000000000000017: account 10000000000000000117, class 10000000000000000217\nline 10000000000000000018: account 10000000000000000118, class 10000000000000000218\nline 10000000000000000019: account 10000000000000000119, class 10000000000000000219",
+      "after": "line 10000000000000000000: account 10000000000000000300, class 10000000000000000400\nline 10000000000000000001: account 10000000000000000301, class 10000000000000000401\nline 10000000000000000002: account 10000000000000000302, class 10000000000000000402\nline 10000000000000000003: account 10000000000000000303, class 10000000000000000403\nline 10000000000000000004: account 10000000000000000304, class 10000000000000000404\nline 10000000000000000005: account 10000000000000000305, class 10000000000000000405\nline 10000000000000000006: account 10000000000000000306, class 10000000000000000406\nline 10000000000000000007: account 10000000000000000307, class 10000000000000000407\nline 10000000000000000008: account 10000000000000000308, class 10000000000000000408\nline 10000000000000000009: account 10000000000000000309, class 10000000000000000409\nline 10000000000000000010: account 10000000000000000310, class 10000000000000000410\nline 10000000000000000011: account 10000000000000000311, class 10000000000000000411\nline 10000000000000000012: account 10000000000000000312, class 10000000000000000412\nline 10000000000000000013: account 10000000000000000313, class 10000000000000000413\nline 10000000000000000014: account 10000000000000000314, class 10000000000000000414\nline 10000000000000000015: account 10000000000000000315, class 10000000000000000415\nline 10000000000000000016: account 10000000000000000316, class 10000000000000000416\nline 10000000000000000017: account 10000000000000000317, class 10000000000000000417\nline 10000000000000000018: account 10000000000000000318, class 10000000000000000418\nline 10000000000000000019: account 10000000000000000319, class 10000000000000000419",
+      "outcome": "intent",
+      "at": "2026-11-18T15:00:00.000Z"
+    }
+  ]
+}

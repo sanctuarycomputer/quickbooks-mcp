@@ -1,0 +1,17 @@
+{
+  "now": "2026-11-18T15:00:00.000Z",
+  "notion": "ok",
+  "lock": null,
+  "ledger_dir_writable": false,
+  "ledger": [],
+  "request": {
+    "cmd": "ping"
+  },
+  "answer": {
+    "ok": false,
+    "reason": "failed",
+    "cause": "ledger-dir"
+  },
+  "appended": [],
+  "receipts": []
+}

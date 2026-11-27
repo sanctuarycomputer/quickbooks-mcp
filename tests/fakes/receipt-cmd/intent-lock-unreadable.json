@@ -1,0 +1,120 @@
+{
+  "now": "2026-11-18T15:00:00.000Z",
+  "notion": "ok",
+  "lock": {
+    "content": "",
+    "mtime_age_ms": 30000,
+    "released_after_ms": null
+  },
+  "lock_trace": [
+    "stale-removed",
+    "taken",
+    "taken"
+  ],
+  "ledger_dir_writable": true,
+  "ledger": [],
+  "request": {
+    "cmd": "intent",
+    "company": "garden3d",
+    "type": "purchase",
+    "id": "1001",
+    "sync_token": "3",
+    "lines": [
+      {
+        "line_id": "1",
+        "before": {
+          "account_id": "77",
+          "account_name": "Uncategorized Expense",
+          "class_id": null,
+          "class_name": null
+        },
+        "after": {
+          "account_id": "84",
+          "account_name": "Software",
+          "class_id": "12",
+          "class_name": "Client Delivery"
+        }
+      }
+    ],
+    "digests": {
+      "Id": "a0064c86a582fa64f14c66f6b43708d60e1bdb791ac2acfa332d059895c265f9",
+      "Line": "cc3f2a1ffd63c4db19e0114b93a94b774e4a2d07a2a5ec5b193303ac1387d633",
+      "Line:1": "44a7fce95e5c1f409da8d7193091845900bf9ea9a5057134236c05fe3f719428",
+      "Line:2": "4510a18193cfae65fa63ab147c8b473d27166b8a3a19b79636d039029d4852e1",
+      "PaymentType": "e28ab3299eec22d2e89df4e9ed8f93899e26355dd049cd3954c444fc66eac8bd",
+      "TotalAmt": "2abaca4911e68fa9bfbf3482ee797fd5b9045b841fdff7253557c5fe15de6477",
+      "TxnDate": "f67c5ec50bf3ce9b5e2e30b3b2ba5789ee3f1491778fd8b3b94147e12dbc2a81"
+    },
+    "reason": "Monthly design tool subscription.",
+    "undo_of": null
+  },
+  "answer": {
+    "ok": true,
+    "key": "quickbooks-write:garden3d:purchase:1001:3:1",
+    "n": 1
+  },
+  "appended": [
+    {
+      "v": "1.1",
+      "kind": "intent",
+      "key": "quickbooks-write:garden3d:purchase:1001:3:1",
+      "n": 1,
+      "at": "2026-11-18T15:00:00.000Z",
+      "company": "garden3d",
+      "type": "purchase",
+      "id": "1001",
+      "sync_token": "3",
+      "lines": [
+        {
+          "line_id": "1",
+          "before": {
+            "account_id": "77",
+            "account_name": "Uncategorized Expense",
+            "class_id": null,
+            "class_name": null
+          },
+          "after": {
+            "account_id": "84",
+            "account_name": "Software",
+            "class_id": "12",
+            "class_name": "Client Delivery"
+          }
+        }
+      ],
+      "digests": {
+        "Id": "a0064c86a582fa64f14c66f6b43708d60e1bdb791ac2acfa332d059895c265f9",
+        "Line": "cc3f2a1ffd63c4db19e0114b93a94b774e4a2d07a2a5ec5b193303ac1387d633",
+        "Line:1": "44a7fce95e5c1f409da8d7193091845900bf9ea9a5057134236c05fe3f719428",
+        "Line:2": "4510a18193cfae65fa63ab147c8b473d27166b8a3a19b79636d039029d4852e1",
+        "PaymentType": "e28ab3299eec22d2e89df4e9ed8f93899e26355dd049cd3954c444fc66eac8bd",
+        "TotalAmt": "2abaca4911e68fa9bfbf3482ee797fd5b9045b841fdff7253557c5fe15de6477",
+        "TxnDate": "f67c5ec50bf3ce9b5e2e30b3b2ba5789ee3f1491778fd8b3b94147e12dbc2a81"
+      },
+      "reason": "Monthly design tool subscription.",
+      "undo_of": null
+    },
+    {
+      "v": "1.1",
+      "kind": "notion",
+      "key": "quickbooks-write:garden3d:purchase:1001:3:1",
+      "m": 0,
+      "at": "2026-11-18T15:00:00.000Z"
+    }
+  ],
+  "receipts": [
+    {
+      "action": "QuickBooks change: garden3d purchase 1001",
+      "sourceKey": "quickbooks-write:garden3d:purchase:1001:3:1:intent",
+      "kind": "quickbooks",
+      "actor": "agent",
+      "surface": "QuickBooks",
+      "target": "garden3d",
+      "trigger": "mcp quickbooks-write",
+      "rationale": "Monthly design tool subscription.",
+      "before": "line 1: account 77, class none",
+      "after": "line 1: account 84, class 12",
+      "outcome": "intent",
+      "at": "2026-11-18T15:00:00.000Z"
+    }
+  ]
+}

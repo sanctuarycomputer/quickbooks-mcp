@@ -1,0 +1,111 @@
+{
+  "now": "2026-11-18T15:00:00.000Z",
+  "notion": "ok",
+  "lock": null,
+  "ledger_dir_writable": true,
+  "ledger": [],
+  "request": {
+    "cmd": "intent",
+    "company": "garden3d",
+    "type": "bill",
+    "id": "2001",
+    "sync_token": "0",
+    "lines": [
+      {
+        "line_id": "1",
+        "before": {
+          "account_id": "77",
+          "account_name": "Uncategorized Expense",
+          "class_id": null,
+          "class_name": null
+        },
+        "after": {
+          "account_id": "91",
+          "account_name": "Contractors",
+          "class_id": null,
+          "class_name": null
+        }
+      }
+    ],
+    "digests": {
+      "DocNumber": "c759d17695dd098ba72f85617e01a0d546c9e058c56ba8444336f4cc662be640",
+      "Id": "d98672bae649bb1912b12fba2f300a7817abbecdc40daffb247b4d6f3faa839e",
+      "Line": "43de3a417d75f4818c5a553268b80ce3a5805109a3bbc6b605e9fb0b8f50b485",
+      "Line:1": "9ee9c6ecf8e92f2a027f6ea6becb90267625c593fe6a359afad91c05bee32c1c",
+      "TotalAmt": "983bd614bb5afece5ab3b6023f71147cd7b6bc2314f9d27af7422541c6558389",
+      "TxnDate": "eb349f71a7e711e0ce6d06c80026691e8a28047d509b4438a3b8a72f9b6646a0",
+      "VendorRef": "244f6b953daf9af6bf5515a44691632f7a8857d66e7f7e284880fc28871bd066"
+    },
+    "reason": "Monthly design tool subscription.",
+    "undo_of": null
+  },
+  "answer": {
+    "ok": true,
+    "key": "quickbooks-write:garden3d:bill:2001:0:1",
+    "n": 1
+  },
+  "appended": [
+    {
+      "v": "1.1",
+      "kind": "intent",
+      "key": "quickbooks-write:garden3d:bill:2001:0:1",
+      "n": 1,
+      "at": "2026-11-18T15:00:00.000Z",
+      "company": "garden3d",
+      "type": "bill",
+      "id": "2001",
+      "sync_token": "0",
+      "lines": [
+        {
+          "line_id": "1",
+          "before": {
+            "account_id": "77",
+            "account_name": "Uncategorized Expense",
+            "class_id": null,
+            "class_name": null
+          },
+          "after": {
+            "account_id": "91",
+            "account_name": "Contractors",
+            "class_id": null,
+            "class_name": null
+          }
+        }
+      ],
+      "digests": {
+        "DocNumber": "c759d17695dd098ba72f85617e01a0d546c9e058c56ba8444336f4cc662be640",
+        "Id": "d98672bae649bb1912b12fba2f300a7817abbecdc40daffb247b4d6f3faa839e",
+        "Line": "43de3a417d75f4818c5a553268b80ce3a5805109a3bbc6b605e9fb0b8f50b485",
+        "Line:1": "9ee9c6ecf8e92f2a027f6ea6becb90267625c593fe6a359afad91c05bee32c1c",
+        "TotalAmt": "983bd614bb5afece5ab3b6023f71147cd7b6bc2314f9d27af7422541c6558389",
+        "TxnDate": "eb349f71a7e711e0ce6d06c80026691e8a28047d509b4438a3b8a72f9b6646a0",
+        "VendorRef": "244f6b953daf9af6bf5515a44691632f7a8857d66e7f7e284880fc28871bd066"
+      },
+      "reason": "Monthly design tool subscription.",
+      "undo_of": null
+    },
+    {
+      "v": "1.1",
+      "kind": "notion",
+      "key": "quickbooks-write:garden3d:bill:2001:0:1",
+      "m": 0,
+      "at": "2026-11-18T15:00:00.000Z"
+    }
+  ],
+  "receipts": [
+    {
+      "action": "QuickBooks change: garden3d bill 2001",
+      "sourceKey": "quickbooks-write:garden3d:bill:2001:0:1:intent",
+      "kind": "quickbooks",
+      "actor": "agent",
+      "surface": "QuickBooks",
+      "target": "garden3d",
+      "trigger": "mcp quickbooks-write",
+      "rationale": "Monthly design tool subscription.",
+      "before": "line 1: account 77, class none",
+      "after": "line 1: account 91, class none",
+      "outcome": "intent",
+      "at": "2026-11-18T15:00:00.000Z"
+    }
+  ]
+}
