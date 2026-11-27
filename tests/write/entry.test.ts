@@ -68,7 +68,7 @@ describe('the write server (A1.1, G3)', () => {
     const r = await run(RECORD, WRITE, [...HELLO, ...STUB_CALLS], (x) => [3, 4, 5, 6].every((id) => answered(id)(x)));
     expect(answer(r, 2).tools.map((t: any) => t.name).sort()).toEqual([...WRITE_TOOLS].sort());
     for (const id of [3, 4, 5, 6]) expect(answer(r, id)).toEqual({ isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThis tool is not built yet.' }] });
-    expect(records(r, 'load')).toEqual(expect.arrayContaining(['index.js', 'write/mode.js', 'write/capability.js', 'write/guard-rules.js', 'write/stubs.js']));
+    expect(records(r, 'load')).toEqual(expect.arrayContaining(['index.js', 'write/mode.js', 'write/capability.js', 'write/guard-rules.js', 'write/stubs.js', 'write/kit.js', 'write/receipt-cmd.js']));
     expect(records(r, 'tool').sort()).toEqual([...WRITE_TOOLS].sort());
     expect(sent(r)).toEqual([]);
     expect(r.stdout).not.toContain('network-reached');
