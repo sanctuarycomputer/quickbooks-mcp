@@ -177,6 +177,37 @@ describe('settle, rows 7-10: the refetched copy', () => {
       settled('sent', { sync_token_after: '10000000000000000003', note: 'edited-since' }),
     );
   });
+  // TG3: "moved by k" as integers, past 2^53, where a Number compare reads 1 as 2 (and 0 as 0 or 1).
+  describe('moved by k as integers past 2^53', () => {
+    const BASE = '9007199254740993'; // 2^53 + 1: as a Number, 9007199254740992
+    const onToken = (): Lookup => {
+      const a = UNKNOWN();
+      return { ...a, intent: { ...a.intent, sync_token: BASE } };
+    };
+    it('one ahead (…994) is row 8: compared, sent with no note (a Number says two ahead: row 9)', async () => {
+      expect((await run(onToken(), txn({ ...MOVED_ONE(), SyncToken: '9007199254740994' }))).got).toEqual(
+        settled('sent', { sync_token_after: '9007199254740994' }),
+      );
+    });
+    it('two ahead (…995) is row 9: edited-since', async () => {
+      expect((await run(onToken(), txn({ ...MOVED_ONE(), SyncToken: '9007199254740995' }))).got).toEqual(
+        settled('sent', { sync_token_after: '9007199254740995', note: 'edited-since' }),
+      );
+    });
+    it('equal (…993) is row 7: failed', async () => {
+      expect((await run(onToken(), txn({ ...MOVED_ONE(), SyncToken: BASE }))).got).toEqual(settled('failed'));
+    });
+  });
+  it.each([
+    ['NaN', () => NaN],
+    ['Infinity', () => Infinity],
+    ['a string of digits', () => String(NOW) as unknown as number],
+    ['undefined', () => undefined as unknown as number],
+  ])('row 1: a wall clock of %s gives no age: stays unknown, with no reread', async (_name, wall) => {
+    const fn = jest.fn(async () => txn(MOVED_ONE()));
+    expect(await settle(UNKNOWN(), Object.freeze({ reread: fn, wall }))).toBe('stays');
+    expect(fn).not.toHaveBeenCalled();
+  });
   it.each([
     ['moved by one without the after values (line 1 still 77)', { ...UNMOVED(), SyncToken: '4' }],
     ['moved by two without the after values', { ...UNMOVED(), SyncToken: '5' }],
@@ -212,6 +243,61 @@ describe('settle, rows 7-10: the refetched copy', () => {
       t.Line.push({ ...clone(lineOne(t)), AccountBasedExpenseLineDetail: { AccountRef: { value: '77' } } });
       expect((await run(UNKNOWN(), txn(t))).got).toEqual(settled('unsettled'));
     });
+    // TG1: every named line, not one.
+    describe('an attempt naming two lines (line 1 to 84 / 12, line 2 to 91 / none)', () => {
+      const twoLines = (): Lookup => {
+        const a = UNKNOWN();
+        const intent = clone(a.intent);
+        intent.lines.push({
+          line_id: '2',
+          before: { account_id: '84', account_name: 'Software', class_id: '12', class_name: 'Client Delivery' },
+          after: { account_id: '91', account_name: 'Cost of Goods Sold', class_id: null, class_name: null },
+        });
+        return { ...a, intent };
+      };
+      const lineTwoAfter = (t: Record<string, any>) => {
+        const two = t.Line.find((line: any) => line.Id === '2');
+        two.AccountBasedExpenseLineDetail = { AccountRef: { value: '91' } };
+        return t;
+      };
+      it.each([
+        ['one', MOVED_ONE],
+        ['two', MOVED_TWO],
+      ])('moved by %s with line 1 holding and line 2 not: unsettled', async (_k, copy) => {
+        expect((await run(twoLines(), txn(copy()))).got).toEqual(settled('unsettled'));
+      });
+      it('moved by two with both holding: sent, edited-since (the control)', async () => {
+        expect((await run(twoLines(), txn(lineTwoAfter(MOVED_TWO())))).got).toEqual(settled('sent', { sync_token_after: '5', note: 'edited-since' }));
+      });
+      it('moved by two with line 2 holding and line 1 not: unsettled', async () => {
+        const t = lineTwoAfter(withLineOne(MOVED_TWO(), (l) => (l.AccountBasedExpenseLineDetail.AccountRef.value = '77')));
+        expect((await run(twoLines(), txn(t))).got).toEqual(settled('unsettled'));
+      });
+    });
+
+    // TG2: a ref is read as compare.ts reads it: only a string value is an account or a class.
+    describe('a ref whose value isn’t a string holds nothing', () => {
+      const clearing = (): Lookup => {
+        const a = UNKNOWN();
+        const intent = clone(a.intent);
+        intent.lines[0].after = { ...intent.lines[0].after, class_id: null, class_name: null };
+        return { ...a, intent };
+      };
+      it.each([
+        ['ClassRef {}', (l: any) => (l.AccountBasedExpenseLineDetail.ClassRef = {})],
+        ['ClassRef { value: null }', (l: any) => (l.AccountBasedExpenseLineDetail.ClassRef = { value: null })],
+      ])('an intent clearing the class, the copy’s line 1 holding %s, moved by two: unsettled', async (_name, edit) => {
+        expect((await run(clearing(), txn(withLineOne(MOVED_TWO(), edit)))).got).toEqual(settled('unsettled'));
+      });
+      it.each([
+        ['AccountRef { value: 84 } (a number)', (l: any) => (l.AccountBasedExpenseLineDetail.AccountRef = { value: 84 })],
+        ['no AccountRef', (l: any) => delete l.AccountBasedExpenseLineDetail.AccountRef],
+        ['ClassRef { value: 12 } (a number)', (l: any) => (l.AccountBasedExpenseLineDetail.ClassRef = { value: 12 })],
+      ])('line 1 holding %s, moved by two: unsettled', async (_name, edit) => {
+        expect((await run(UNKNOWN(), txn(withLineOne(MOVED_TWO(), edit)))).got).toEqual(settled('unsettled'));
+      });
+    });
+
     it('an intent clearing the class holds on a line with no ClassRef', async () => {
       const a = UNKNOWN();
       const intent = clone(a.intent);

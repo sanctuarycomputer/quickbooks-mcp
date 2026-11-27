@@ -32,10 +32,16 @@ const SYNC_TOKEN = /^[0-9]{1,20}$/;
 
 const outcome = (result: Settled["result"], rest: Partial<Settled> = {}): Settled => ({ result, sync_token_after: null, diff: null, note: null, ...rest });
 
+/** A ref's string value; any other value is none, so it matches no account or class (as compare.ts reads it). */
+function refValue(ref: unknown): string | undefined {
+  const value = prop(ref, "value");
+  return typeof value === "string" ? value : undefined;
+}
+
 /** A line's class as the compare reads it: an absent `ClassRef` is null; a present one with no string value is no class. */
-function classOf(line: unknown): unknown {
+function classOf(line: unknown): string | null | undefined {
   const ref = prop(prop(line, "AccountBasedExpenseLineDetail"), "ClassRef");
-  return ref === undefined ? null : prop(ref, "value");
+  return ref === undefined ? null : refValue(ref);
 }
 
 /** "Holds the after values": every named line is in the copy, and every copy of it has the after account and class. */
@@ -43,7 +49,7 @@ function holds(txn: Transaction, changes: readonly ResolvedChange[]): boolean {
   const lines = Array.isArray(txn.Line) ? txn.Line : [];
   return changes.every((change) => {
     const copies = lines.filter((line) => prop(line, "Id") === change.line_id);
-    const account = (line: unknown) => prop(prop(prop(line, "AccountBasedExpenseLineDetail"), "AccountRef"), "value");
+    const account = (line: unknown) => refValue(prop(prop(line, "AccountBasedExpenseLineDetail"), "AccountRef"));
     return copies.length > 0 && copies.every((line) => account(line) === change.account_id && classOf(line) === change.class_id);
   });
 }
@@ -59,7 +65,7 @@ async function reread(read: () => Promise<Reread>): Promise<Reread> {
 
 /**
  * §17 Settling for an attempt whose latest outcome is `unknown` or which has none: `wait` (row 1, no reread), `stays` (row 6, or an age
- * that can't be told: an `at` failing the ledger's test), or the settled outcome. An attempt with any other latest outcome is never settled
+ * that can't be told: an `at` failing the ledger's test, or a wall clock that isn't a finite number), or the settled outcome. An attempt with any other latest outcome is never settled
  * (`stays`, no reread). `deps` is the reread and the wall clock (epoch ms), and nothing else.
  */
 export async function settle(
@@ -71,7 +77,9 @@ export async function settle(
   // Row 1: the age from the unknown outcome's at, else the intent's.
   const at = latest === null ? intent.at : latest.at;
   if (!isIsoAt(at)) return "stays";
-  if (!(deps.wall() - Date.parse(at) >= SETTLE_AFTER_MS)) return "wait";
+  const now: unknown = deps.wall();
+  if (typeof now !== "number" || !Number.isFinite(now)) return "stays";
+  if (now - Date.parse(at) < SETTLE_AFTER_MS) return "wait";
   // Rows 2-4: the receipt command's superseded values.
   if (superseded_ahead === 0) return outcome("failed");
   if (superseded_ahead === 1) return outcome("failed");

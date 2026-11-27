@@ -155,6 +155,39 @@ describe('lookupOk: exactly { ok: true, intent, outcome, superseded_by, supersed
     expect(check(answer(), KEY, 'usb-club')).toBeNull();
   });
 
+  // TG5: each part of the attempt pattern, with the intent and outcome carrying the same key, so only the pattern decides.
+  describe('the attempt pattern on the asked key, the intent and outcome rekeyed to match', () => {
+    const rekeyed = (key: string) => {
+      const a = answer();
+      const [, company, type, id, sync_token, n] = key.split(':');
+      Object.assign(a.intent, { key, company, type, id, sync_token, n: Number(n) });
+      a.outcome.key = key;
+      return check(a, key, company);
+    };
+    it('another valid key, rekeyed, is read (the control)', () => {
+      expect(rekeyed('quickbooks-write:usb-club:bill:12345678901234567890:12345678901234567890:999999')).not.toBeNull();
+    });
+    it.each([
+      ['an :intent suffix', `${KEY}:intent`],
+      ['a type invoice', KEY.replace(':purchase:', ':invoice:')],
+      ['a company off the four', KEY.replace(':garden3d:', ':other-co:')],
+      ['an id of 21 digits', KEY.replace(':1001:', `:${'1'.repeat(21)}:`)],
+      ['an empty id', KEY.replace(':1001:', '::')],
+      ['a SyncToken of 21 digits', KEY.replace(':3:', `:${'3'.repeat(21)}:`)],
+      ['an n of 0', `${KEY.slice(0, -1)}0`],
+      ['an n of seven digits', `${KEY.slice(0, -1)}1000000`],
+      ['an n led by 0', `${KEY.slice(0, -1)}01`],
+    ])('%s: null', (_name, key) => {
+      expect(rekeyed(key)).toBeNull();
+    });
+  });
+  it.each([
+    ['another company', 'quickbooks-write:other-co:purchase:1001:5:1'],
+    ['a type invoice', 'quickbooks-write:garden3d:invoice:1001:5:1'],
+  ])('superseded_by with %s: null', (_name, by) => {
+    expect(check({ ...answer(), superseded_by: by, superseded_ahead: 2 })).toBeNull();
+  });
+
   describe('the intent: a valid intent line of the asked key', () => {
     const withIntent = (edit: (intent: Record<string, any>) => void) => {
       const a = answer();
@@ -203,8 +236,26 @@ describe('lookupOk: exactly { ok: true, intent, outcome, superseded_by, supersed
       ['an account_id a number', (i: any) => (i.lines[0].after.account_id = 84)],
       ['a class_id a number', (i: any) => (i.lines[0].after.class_id = 12)],
       ['an account_name a number', (i: any) => (i.lines[0].after.account_name = 1)],
+      ['a line_id off the id pattern with its own Line:<id> digest', (i: any) => {
+        i.lines[0].line_id = 'x';
+        i.digests = addDigest(i.digests, 'Line:x');
+      }],
+      ['a line_id of 21 digits with its own Line:<id> digest', (i: any) => {
+        i.lines[0].line_id = '1'.repeat(21);
+        i.digests = addDigest(i.digests, `Line:${'1'.repeat(21)}`);
+      }],
+      ['an empty account_id', (i: any) => (i.lines[0].after.account_id = '')],
+      ['an account_id of 21 digits', (i: any) => (i.lines[0].after.account_id = '8'.repeat(21))],
+      ['an empty class_id', (i: any) => (i.lines[0].after.class_id = '')],
+      ['a digest of 63 hex characters', (i: any) => (i.digests.Id = i.digests.Id.slice(1))],
+      ['a digest of 65 hex characters', (i: any) => (i.digests.Id = `0${i.digests.Id}`)],
+      ['undo_of for a company off the four', (i: any) => (i.undo_of = 'quickbooks-write:other-co:purchase:1001:3:9')],
+      ['undo_of with a type invoice', (i: any) => (i.undo_of = 'quickbooks-write:garden3d:invoice:1001:3:9')],
     ])('%s: null', (_name, edit) => {
       expect(withIntent(edit)).toBeNull();
+    });
+    it('ids of 20 digits are ids (the pattern’s top)', () => {
+      expect(withIntent((i) => Object.assign(i.lines[0].after, { account_id: '8'.repeat(20), class_id: '1'.repeat(20) }))).not.toBeNull();
     });
     it.each(['v', 'kind', 'key', 'n', 'at', 'company', 'type', 'id', 'sync_token', 'lines', 'digests', 'reason', 'undo_of'])('%s missing: null', (k) => {
       expect(withIntent((i) => delete i[k])).toBeNull();
@@ -250,8 +301,25 @@ describe('lookupOk: exactly { ok: true, intent, outcome, superseded_by, supersed
       ['id-mismatch past m 1', (o: any) => Object.assign(o, { result: 'unknown', note: 'id-mismatch', m: 2 })],
       ['a result that is a list', (o: any) => (o.result = ['sent'])],
       ['a note that is a list', (o: any) => (o.note = ['deleted'])],
+      ['a result with trailing text', (o: any) => (o.result = 'sentx')],
+      ['a result with leading text', (o: any) => (o.result = 'xsent')],
+      ['a note with trailing text', (o: any) => (o.note = 'deletedx')],
+      ['a note with leading text', (o: any) => (o.note = 'xdeleted')],
+      ['an empty sync_token_after', (o: any) => (o.sync_token_after = '')],
+      ['a sync_token_after of 21 digits', (o: any) => (o.sync_token_after = '4'.repeat(21))],
+      ['a diff name of 65 characters', (o: any) => Object.assign(o, { result: 'sent-diff', diff: ['A'.repeat(65)] })],
+      ['an error code of 65 characters', (o: any) => Object.assign(o, { result: 'failed', error: { code: 'A'.repeat(65), intuit_tid: null } })],
+      ['an error tid of 65 characters', (o: any) => Object.assign(o, { result: 'failed', error: { code: '6000', intuit_tid: 'a'.repeat(65) } })],
     ])('%s: null', (_name, edit) => {
       expect(withOutcome(edit)).toBeNull();
+    });
+    it.each([
+      ['a sync_token_after of 20 digits', (o: any) => (o.sync_token_after = '4'.repeat(20))],
+      ['a diff name of 64 characters, every pattern character', (o: any) => Object.assign(o, { result: 'sent-diff', diff: ['Aa0_:.-'.padEnd(64, 'z')] })],
+      ['an error code with an underscore and 64 characters', (o: any) => Object.assign(o, { result: 'failed', error: { code: 'A_b-9'.padEnd(64, 'x'), intuit_tid: null } })],
+      ['an error tid of 64 characters', (o: any) => Object.assign(o, { result: 'failed', error: { code: '6000', intuit_tid: 'a-Z9'.padEnd(64, '0') } })],
+    ])('%s: read', (_name, edit) => {
+      expect(withOutcome(edit)).not.toBeNull();
     });
     it.each(['v', 'kind', 'key', 'm', 'at', 'result', 'sync_token_after', 'diff', 'error', 'note'])('%s missing: null', (k) => {
       expect(withOutcome((o) => delete o[k])).toBeNull();
@@ -309,6 +377,8 @@ describe('isMoved: both SyncTokens digits, the got one greater as an integer', (
     ['3', '', 'empty'],
     ['3', '9'.repeat(21), '21 digits'],
     ['x', '4', 'a non-digit sent'],
+    ['', '4', 'an empty sent (BigInt would read it as 0)'],
+    ['000000000000000000003', '4', 'a sent of 21 digits led by zeros'],
     ['9'.repeat(21), '9'.repeat(22), '21 digits sent'],
   ])('%s → %s not moved (%s)', (sent, got) => {
     expect(isMoved(sent, got)).toBe(false);

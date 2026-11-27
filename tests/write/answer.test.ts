@@ -103,6 +103,9 @@ describe('1.2: a Fault whose first code is off ^[A-Za-z0-9_-]{1,64}$ is no answe
   it('even beside another Id in a 200: not id-mismatch', () => {
     expect(read({ status: 200, data: { ...fault('x y'), Purchase: stored({ Id: '1009' }) } })).toStrictEqual({ kind: 'none' });
   });
+  it('its none keeps a valid tid (an unknown from a 4xx carries it, spec §3 T7)', () => {
+    expect(read({ status: 400, data: fault('x y'), intuit_tid: 'fake-tid-0007' })).toStrictEqual({ kind: 'none', tid: 'fake-tid-0007' });
+  });
   it('a later item’s valid code does not save it', () => {
     expect(read({ status: 400, data: fault('x y', [{ code: '5010' }]) })).toStrictEqual({ kind: 'none' });
   });
