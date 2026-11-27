@@ -4,7 +4,7 @@
 // real command's bad-request for it (task-2-1 TB1). Each shape rule has a refused case that differs from an accepted request in that rule
 // alone (TB3); rules no request can reach (lineValid's key count, key types and key parts, m under 1) are named in the fake's header.
 import { spawnSync } from 'child_process';
-import { readdirSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { receiptFake, vector, type FakeScript } from './receipt-fake.js';
 
@@ -235,6 +235,20 @@ describe('the fake receipt command', () => {
     const fake = make({ '*': [{ misbehave: 'close-stdin' }] });
     expect(run(fake, '{"cmd":"ping"}')).toEqual({ status: 0, stdout: '' });
     expect(fake.requests()).toEqual([null]);
+  });
+
+  // The helper's own afterEach finishes every fake a test made, pass or fail, so no temp folder outlives its test (task-2-2 TC1; the
+  // operator's m-20261127-055806138). The first test leaves its fakes undone on purpose; the second finds their folders gone.
+  let leftOpen: string[] = [];
+  it('cleanup, part 1: a test leaves two fakes, one used, neither done', () => {
+    const used = make({ ping: [{ answer: 'ok' }] });
+    ask(used, { cmd: 'ping' });
+    leftOpen = [used.dir, make().dir];
+    expect(leftOpen.every((dir) => existsSync(dir))).toBe(true);
+  });
+  it('cleanup, part 2: both folders are gone after it', () => {
+    expect(leftOpen).toHaveLength(2);
+    expect(leftOpen.filter((dir) => existsSync(dir))).toEqual([]);
   });
 
   it('done() hands every logged request to RECEIPT_REPLAY_LOG with its mark', () => {
