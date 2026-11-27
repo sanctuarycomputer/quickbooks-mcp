@@ -12,7 +12,8 @@ import { lookupOk, type LineChange, type Lookup, type Side } from "./answers.js"
 import { holdsAfter, intentFor, refusalResult, refuse, rereadTxn, runChange, type ChangeTools } from "./change.js";
 import { preSend } from "./pre-send.js";
 import { runReceipt } from "./receipt-cmd.js";
-import { forkReason } from "./results.js";
+import type { SwitchFs } from "./kit.js";
+import { forkReason, SWITCH_TAIL, withTail, type SwitchTail } from "./results.js";
 import { isRecord } from "./rules.js";
 import { applySettled, settle } from "./settle.js";
 import { readSweep } from "./sweep.js";
@@ -26,20 +27,17 @@ export const undoParams = z.strictObject({
 /** A side as the intent request holds it, its keys in the intent line's order. */
 const sideOf = ({ account_id, account_name, class_id, class_name }: Side): Side => ({ account_id, account_name, class_id, class_name });
 
-/** What an error result adds once this call's settle deleted the switch file (§6's `write:disabled` sentence). */
-const SWITCHED_OFF = "Writes are switched off.";
-
 /**
- * TQ1 (task-8-3): §14 gives an error no `writes_off` (it is a Change result key only), so once step 4's settle deleted the switch file
- * (a settled `sent-diff`, §18 step 4), every error result of the call ends with §6's "Writes are switched off." after its own text,
- * unless that text says so already (an `id-mismatch` unknown, or a decided unknown that turned it off). A success carries
- * `writes_off: true` through the change flow instead. A failed unlink (the latch) or an absent file (ENOENT) deleted nothing: neither.
+ * What step 4's settle did to the switch file after `turnOff` answered false (task-9-1 TR5): nothing, when the file is gone (ENOENT); else
+ * it couldn't be deleted (the latch), a `stat` that fails any other way included, so the reader is told to delete it (fail closed).
  */
-function told(result: CallToolResult): CallToolResult {
-  // Every write and 1.0 error is one text item.
-  const [first] = result.content as Array<{ type: "text"; text: string }>;
-  if (result.isError !== true || /writes are switched off\./i.test(first.text)) return result;
-  return { content: [{ type: "text", text: `${first.text} ${SWITCHED_OFF}` }], isError: true };
+async function notDeleted(fs: SwitchFs, path: string): Promise<SwitchTail | undefined> {
+  try {
+    await fs.stat(path);
+  } catch (e) {
+    if ((e as { code?: unknown } | null)?.code === "ENOENT") return undefined;
+  }
+  return "stuck";
 }
 
 /** Step 2's not-found: exactly a not-ok answer whose reason is `not-found`. */
@@ -48,10 +46,19 @@ const notFound = (answer: unknown): boolean => isRecord(answer) && answer.ok ===
 async function undo(tools: ChangeTools, company: string, receipt: string, runtime: WriteRuntime): Promise<CallToolResult> {
   const { cfg } = runtime;
   const { kit, sw } = tools;
-  // Whether step 4's settle deleted the switch file (`turnOff` answered true): from then on every result says so (TQ1).
-  let deleted = false;
-  const watched = { ...sw, turnOff: async (path: string) => (deleted = await sw.turnOff(path)) };
-  const after = (result: CallToolResult): CallToolResult => (deleted ? told(result) : result);
+  // TQ1 (task-8-3), task-9-1 TR1 and TR5: what step 4's settle did to the switch file for a sent-diff. From then on every result ends once
+  // with its sentence (§14 keeps `writes_off` to the attempt's own deletion, and gives an error none). Undo's own errors here are §6's
+  // texts or 1.0 ones, none the fork's sentence, so it is always added (a 1.0 text may hold QuickBooks' words: never searched, TR8).
+  let settledTail: SwitchTail | undefined;
+  const watched = {
+    ...sw,
+    turnOff: async (path: string) => {
+      const deleted = await sw.turnOff(path);
+      settledTail = deleted ? "deleted" : await notDeleted(kit.fs, path);
+      return deleted;
+    },
+  };
+  const after = (result: CallToolResult): CallToolResult => (settledTail === undefined ? result : withTail(result, SWITCH_TAIL[settledTail]));
   // Step 1: nothing fetched or run.
   if (!(await readSweep(cfg.sweepStamp, kit.wall))) return refuse("write:sweep");
   // Step 2: the key, `:intent` stripped; another company's key names no attempt of this call's, and is never looked up.
@@ -95,7 +102,8 @@ async function undo(tools: ChangeTools, company: string, receipt: string, runtim
   if (!pre.ok) return after(refusalResult(pre));
   // Step 13: the undo's own lines (before and after swapped, with their names) and the undone intent's reason, naming `undo_of`.
   const lines: LineChange[] = intent.lines.map((line) => ({ line_id: line.line_id, before: sideOf(line.after), after: sideOf(line.before) }));
-  return after(await runChange({ runtime, tools, checked: pre.checked, intent: intentFor(pre.checked, lines, intent.reason, key), categorize: false, writesOff: deleted }));
+  // The change flow ends its own results with the settle's sentence: only it knows when its text says it already.
+  return runChange({ runtime, tools, checked: pre.checked, intent: intentFor(pre.checked, lines, intent.reason, key), categorize: false, settled: settledTail });
 }
 
 /** `qbo_undo_change`, on its server's registry, switch and kit. */

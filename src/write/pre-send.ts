@@ -166,6 +166,25 @@ async function readRef(call: CallStore, mode: Mode, entity: "account" | "class",
 
 /** What an `AccountType` that §5's name rule cleans to nothing reads as in the free text. */
 const UNTYPED = "untyped";
+/** Step 9's types, matched as read (§15). */
+const ALLOWED_TYPES: readonly string[] = ["Expense", "Other Expense", "Cost of Goods Sold"];
+/** The code points of a quoted type kept, as §5's name rule keeps a name's. */
+const TYPE_MAX = 200;
+
+/**
+ * A refused `AccountType` as spec §6's `write:account` sentence writes it (task-6-1 TJ6, task-9-1 TR7): cleaned by §5's name rule, and
+ * `untyped` when that leaves nothing. A type cleaned to an allowed one was refused only for what the rule takes off, so it is written as
+ * read, JSON-quoted (its first 200 code points, then `…` after the quote when cut), every control character, U+2028, U+2029 and white
+ * space but U+0020 escaped as `\uXXXX`: the sentence stays true and its text one line.
+ */
+function typeText(type: string): string {
+  const cleaned = cleanName(type);
+  if (cleaned === null) return UNTYPED;
+  if (!ALLOWED_TYPES.includes(cleaned)) return cleaned;
+  const points = Array.from(type);
+  const quoted = JSON.stringify(points.slice(0, TYPE_MAX).join("")).replace(/[\p{Cc}\u2028\u2029]|(?! )\s/gu, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  return points.length > TYPE_MAX ? `${quoted}…` : quoted;
+}
 
 const mustBeActive = ({ Active }: Record<string, unknown>, reason: string, id: string): void => {
   if (typeof Active !== "boolean") broken();
@@ -181,8 +200,8 @@ async function checkRefs(call: CallStore, mode: Mode, accounts: unknown[], class
     const { AccountType } = account;
     if (typeof AccountType !== "string") return broken();
     mustBeActive(account, "write:account", id as string);
-    // Matched as read; written cleaned by §5's name rule, a type cleaned to nothing reading `untyped` (task-6-1 TJ6).
-    if (AccountType !== "Expense" && AccountType !== "Other Expense" && AccountType !== "Cost of Goods Sold") refuse("write:account", { case: "type", id: id as string, AccountType: cleanName(AccountType) ?? UNTYPED });
+    // Matched as read; written as `typeText` says (task-6-1 TJ6, task-9-1 TR7).
+    if (!ALLOWED_TYPES.includes(AccountType)) refuse("write:account", { case: "type", id: id as string, AccountType: typeText(AccountType) });
   }
   for (const id of new Set(classes)) {
     const found = await readRef(call, mode, "class", id, names);

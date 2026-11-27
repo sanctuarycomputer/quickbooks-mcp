@@ -170,6 +170,25 @@ export function freeText(reason: string, kase: string, vars: Record<string, stri
   });
 }
 
+/** What undo's step-4 settle did when it found a sent-diff: deleted the switch file, or couldn't (the latch). Already gone, it did nothing. */
+export type SwitchTail = "deleted" | "stuck";
+/** The sentence each gives (task-9-1 TR1, TR5): `deleted` is §6's `write:disabled` text; `stuck` tells the reader to do what the server couldn't. */
+export const SWITCH_TAIL: Readonly<Record<SwitchTail, string>> = Object.freeze({
+  deleted: TEXTS["write:disabled"][""],
+  stuck: "The switch file couldn't be deleted; delete it by hand.",
+});
+
+/**
+ * A result that ends with `sentence` (task-9-1 TR1): an error's one text item gains it after a space; a success gains a `WARNING:` item
+ * holding it, the only item §5's grammar lets follow the data item, so the change item stays exactly §14's keys.
+ */
+export function withTail(result: CallToolResult, sentence: string): CallToolResult {
+  // Every write and 1.0 error is one text item.
+  const [first] = result.content as Array<{ type: "text"; text: string }>;
+  if (result.isError === true) return { content: [text(`${first.text} ${sentence}`)], isError: true };
+  return { content: [...result.content, text(`WARNING: ${sentence}`)] };
+}
+
 /** The 1.0 reasons whose text loses its trailing status (spec §3): every other 1.0 text is 286's, whole. */
 const CUT_REASONS = /^(stacks-auth|not-connected|unknown-enterprise|renewal-failed:.*)$/;
 

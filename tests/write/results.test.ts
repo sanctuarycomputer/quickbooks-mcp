@@ -6,7 +6,7 @@ import { readFileSync, readdirSync } from 'fs';
 import { fakePath } from '../helpers/server.js';
 import { errorResult, REASON_TEXT } from '../../src/helpers/tool-result.js';
 import * as resultsModule from '../../src/write/results.js';
-import { forkReason, freeText, writeError, writeSuccess, type ChangeItem } from '../../src/write/results.js';
+import { forkReason, freeText, SWITCH_TAIL, withTail, writeError, writeSuccess, type ChangeItem } from '../../src/write/results.js';
 
 type Json = Record<string, any>;
 const DIRS = ['qbo_categorize_purchase', 'qbo_categorize_bill', 'qbo_undo_change'];
@@ -340,5 +340,21 @@ describe('forkReason: 286\'s result, its trailing (<3 digits>) cut (spec §3)', 
 const errorOf = (f: Json) => errorResult(f as any, []);
 
 it('results.ts exports exactly these', () => {
-  expect(Object.keys(resultsModule).sort()).toEqual(['forkReason', 'freeText', 'writeError', 'writeSuccess']);
+  expect(Object.keys(resultsModule).sort()).toEqual(['SWITCH_TAIL', 'forkReason', 'freeText', 'withTail', 'writeError', 'writeSuccess']);
+});
+
+describe('task-9-1 TR1, TR5: the settle sentences, and a result that ends with one', () => {
+  it('SWITCH_TAIL: deleted is §6’s write:disabled text; stuck tells the reader to delete the file; frozen', () => {
+    expect({ ...SWITCH_TAIL }).toEqual({ deleted: 'Writes are switched off.', stuck: "The switch file couldn't be deleted; delete it by hand." });
+    expect(SWITCH_TAIL.deleted).toBe(freeText('write:disabled', '', {}));
+    expect(Object.isFrozen(SWITCH_TAIL)).toBe(true);
+  });
+  it('an error: its one text item gains the sentence after a space, isError kept', () => {
+    const e = writeError('write:stale', { receipt: KEY }, freeText('write:stale', '', {}));
+    expect(withTail(e, 'X y.')).toEqual({ content: [{ type: 'text', text: `${(e.content[0] as { text: string }).text} X y.` }], isError: true });
+  });
+  it('a success: a WARNING: item after the data item, the data item unchanged and no isError', () => {
+    const r = ok()();
+    expect(withTail(r, 'X y.')).toEqual({ content: [...r.content, { type: 'text', text: 'WARNING: X y.' }] });
+  });
 });
