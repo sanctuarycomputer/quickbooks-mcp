@@ -239,12 +239,14 @@ describe('freeText (spec §6)', () => {
     expect(freeText('fork-error', '', {})).toBe(REASON_TEXT['fork-error']);
   });
   it('a case is its reason\'s alone: a reason with one text takes no case, and one with cases takes no empty one', () => {
-    expect(() => freeText('write:size', 'credit', {})).toThrow(TypeError);
-    expect(() => freeText('write:type', '', {})).toThrow(TypeError);
-    expect(() => freeText('write:closed', 'credit', {})).toThrow(TypeError);
+    expect(() => freeText('write:size', 'credit', {})).toThrow(new TypeError('results: no free text for write:size credit'));
+    expect(() => freeText('write:type', '', {})).toThrow(new TypeError('results: no free text for write:type '));
+    expect(() => freeText('write:closed', 'credit', {})).toThrow(new TypeError('results: no free text for write:closed credit'));
   });
-  it.each([['write:other', ''], ['stacks-auth', ''], ['toString', ''], ['__proto__', ''], ['constructor', ''], ['constructor', 'constructor'], ['write:size', 'toString'], ['write:size', 'constructor'], ['write:line', '__proto__'], ['write:line', 'constructor'], ['write:line', 'toString']])('%s %j has no text: it throws', (reason, kase) => {
-    expect(() => freeText(reason, kase, VARS)).toThrow(TypeError);
+  it.each([['write:other', ''], ['stacks-auth', ''], ['toString', ''], ['__proto__', ''], ['constructor', ''], ['constructor', 'constructor'], ['write:size', 'toString'], ['write:size', 'constructor'], ['write:line', '__proto__'], ['write:line', 'constructor'], ['write:line', 'toString'], ['constructor', 'name'], ['constructor', 'length'], ['toString', 'name'], ['write:size', 'hasOwnProperty'], ['hasOwnProperty', 'name']])('%s %j has no text: it throws, naming the reason and case (TJ1, TK3)', (reason, kase) => {
+    // The exact error: a table with a prototype answers some of these with a string (constructor name: "Object") and throws another
+    // TypeError for others (a function's .replace), so only this message decides that the tables have no prototype.
+    expect(() => freeText(reason, kase, VARS)).toThrow(new TypeError(`results: no free text for ${reason} ${kase}`));
   });
   it('a var the text needs that is missing or isn\'t a string throws; one it doesn\'t need is ignored', () => {
     expect(() => freeText('write:line', 'twice', {})).toThrow(TypeError);

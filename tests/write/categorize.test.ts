@@ -3,7 +3,7 @@
 // refetch of an unanswered send (A1.8), the differing Id (A1.9), QA4's forced token (A1.15), the sweep gate per stamp (A2.10), the schemas
 // (A3.2), V3's three cases, and the race. Each result is compared whole with its tool-results/ file; A3.3's coverage list is checked last.
 import { afterAll, describe, expect, it, jest } from '@jest/globals';
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { fakePath, fixtureToken, REALMS } from '../helpers/server.js';
 import { nameFiltered } from '../helpers/name-filter.js';
 import { readError } from '../helpers/result-grammar.js';
@@ -140,6 +140,8 @@ describe('A1.1: the order, and every check run', () => {
     ['with Name "": fork-error', (w) => ((w.books['account/77'] as Json).Account.Name = ''), (r) => expect(r).toEqual(forkReason({ reason: 'fork-error' }))],
     ['for another Id: fork-error', (w) => ((w.books['account/77'] as Json).Account.Id = '78'), (r) => expect(r).toEqual(forkReason({ reason: 'fork-error' }))],
     ['reset: its 1.0 reason', () => (rig.fail = (c) => (c.path?.includes('/account/77') ? 'reset' : undefined)), (r) => expect(readError(r).reason).toBe('fork-error')],
+    // TK5: a name GET with no answer answers 286's reason for it, which a timeout tells from fork-error.
+    ['timed out: its 1.0 reason, timeout', () => (rig.fail = (c) => (c.path?.includes('/account/77') ? 'timeout' : undefined)), (r) => expect(readError(r).reason).toBe('timeout')],
   ];
   it.each(nameCases)('the name GET %s, with no intent and no POST', async (_label, setup, check) => {
     const w = world(rig, OK_SCRIPT);
@@ -456,6 +458,38 @@ describe('A1.8: no answer, the refetch at once', () => {
     expectFile(await client.callTool(args(PURCHASE, toolCall('qbo_categorize_purchase-clear-class').params)), 'qbo_categorize_purchase/sent-clear-class.json');
   });
 
+  /** An unanswered send whose refetch is `refetched`, for `call`'s params: the result, the outcome asked, and whether the switch is kept. */
+  const unanswered = async (refetched: () => Json | { answer: Json }, params: Json = {}) => {
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer: { ok: true, notion: true } }] });
+    w.post = () => ((w.books['purchase/1001'] = refetched()), { status: 500, body: '{}' });
+    const { client } = await w.start();
+    const result = await client.callTool(args(PURCHASE, params));
+    return { result, outcomes: w.fake.requests().filter((r: any) => r.cmd === 'outcome').map((r: any) => r.result), switchKept: existsSync(w.switchPath) };
+  };
+  const unknownKept = { result: expected('qbo_categorize_purchase/unknown.json'), outcomes: ['unknown'], switchKept: true };
+  /** The fetched Purchase, moved by one and otherwise as it was. */
+  const movedOnly = (): Json => ((t) => ((t.Purchase.SyncToken = '4'), t))(fixture('fetched/purchase-1001.json'));
+
+  it('TK1: an account-only change (line 2 to 91, its class kept), the refetch moved by one with line 2 still on 84: unknown, the switch kept', async () => {
+    expect(await unanswered(movedOnly, { lines: [{ line_id: '2', account_id: '91' }] })).toEqual(unknownKept);
+  });
+  it('TK1 sibling: the same change, the refetch moved by one with line 2 on 91 (its class 12 kept): sent', async () => {
+    const moved = () => ((t) => ((t.Purchase.Line[1].AccountBasedExpenseLineDetail.AccountRef.value = '91'), t))(movedOnly());
+    const got = await unanswered(moved, { lines: [{ line_id: '2', account_id: '91' }] });
+    expect([JSON.parse((got.result as any).content[0].text).result, got.outcomes, got.switchKept]).toEqual(['sent', ['sent'], true]);
+  });
+  it('TK2: a clear-class change on line 2, the refetch moved with line 2 on 84 and a ClassRef whose value is no string: no class is not "no ClassRef", so unknown', async () => {
+    const moved = () => ((t) => ((t.Purchase.Line[1].AccountBasedExpenseLineDetail.ClassRef = { value: 12 }), t))(movedOnly());
+    expect(await unanswered(moved, toolCall('qbo_categorize_purchase-clear-class').params)).toEqual(unknownKept);
+  });
+  it('TK2: the refetch moved with line 1 twice, one copy with the after values and one without: every copy must hold them, so unknown', async () => {
+    const moved = () => ((t) => (t.Purchase.Line.push({ ...fixture('fetched/purchase-1001.json').Purchase.Line[0] }), t))(purchaseMoved());
+    expect(await unanswered(moved)).toEqual(unknownKept);
+  });
+  it.each([500, 404])('TK2: the refetch answered %s with a moved copy holding the after values in its body: off 2xx is no copy, so unknown', async (status) => {
+    expect(await unanswered(() => ({ answer: { status, body: JSON.stringify(purchaseMoved()) } }))).toEqual(unknownKept);
+  });
+
   it('unknown’s outcome answered not ok: unknown-recorded-none.json', async () => {
     const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer: { ok: false, reason: 'failed', cause: 'lock' } }] });
     w.post = () => ({ status: 500, body: '{}' });
@@ -538,6 +572,51 @@ describe('A1.15: QA4, an update answered 401', () => {
     const { client } = await w.start();
     expectFile(await client.callTool(args()), 'qbo_categorize_purchase/unknown.json');
     expect(after401().map((c) => c.hostname)).toEqual(['stacks.example.test']);
+  });
+  /** The call's own forced get, spied: answered by `answer` (286's client bypassed), its options and the send marks kept. */
+  const spied = (runtime: any, answer: (realm: string) => unknown) => {
+    const seen: { opts?: { force?: boolean; sentAt?: number }; marks: number[]; atPost: number[] } = { marks: [], atPost: [] };
+    const get = runtime.stacks.get.bind(runtime.stacks);
+    const mark = runtime.stacks.mark.bind(runtime.stacks);
+    jest.spyOn(runtime.stacks, 'mark').mockImplementation(() => ((n: number) => (seen.marks.push(n), n))(mark()));
+    jest.spyOn(runtime.stacks, 'get').mockImplementation(((company: string, opts?: { force?: boolean; sentAt?: number }) => {
+      if (opts?.force !== true) return get(company, opts);
+      seen.opts = opts;
+      return Promise.resolve(answer(company));
+    }) as any);
+    return seen;
+  };
+  const tokenFor = (realm_id: string) => ({ ok: true, token: { access_token: NEW, realm_id, expires_at: '2026-11-18T12:00:00Z', company_name: 'garden3d, LLC' } });
+  it('TK4: a forced token for another realm let through (286’s client spied past): the flow’s own realm check refuses it, no refetch, unknown', async () => {
+    rig.tokens.push(NEW);
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: ['outcome-unknown.json'] });
+    w.post = () => ({ status: 401, body: '' });
+    const { client, runtime } = await w.start();
+    spied(runtime, () => tokenFor(REALMS['index-space']));
+    expectFile(await client.callTool(args()), 'qbo_categorize_purchase/unknown.json');
+    expect(rig.qbo().at(-1)).toBe('POST purchase');
+  });
+  it('TK4 sibling: the same spy with the call’s realm: the refetch goes, with that token', async () => {
+    rig.tokens.push(NEW);
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: ['outcome-unknown.json'] });
+    w.post = () => ({ status: 401, body: '' });
+    const { client, runtime } = await w.start();
+    spied(runtime, () => tokenFor(REALMS.garden3d));
+    expectFile(await client.callTool(args()), 'qbo_categorize_purchase/unknown.json');
+    expect(rig.qbo().slice(-2)).toEqual(['POST purchase', 'GET purchase/1001']);
+    expect(bearer(after401()[0])).toBe(`Bearer ${NEW}`);
+  });
+  it('TK4: the forced get carries sentAt, the mark the flow took just before the update was sent (not 0, not a pre-send GET’s)', async () => {
+    rig.tokens.push(NEW);
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: ['outcome-unknown.json'] });
+    const { client, runtime } = await w.start();
+    const seen = spied(runtime, () => tokenFor(REALMS.garden3d));
+    w.post = () => ((seen.atPost = [...seen.marks]), { status: 401, body: '' });
+    await client.callTool(args());
+    // 286's transport marks GETs only, so the last mark before the POST reached QuickBooks is the flow's, after every pre-send GET's.
+    expect(seen.atPost.length).toBeGreaterThanOrEqual(2);
+    expect(seen.opts).toEqual({ force: true, sentAt: seen.atPost.at(-1) });
+    expect(seen.atPost.at(-1)).toBeGreaterThan(seen.atPost.at(-2) as number);
   });
   it('a failed forced get (403): no refetch, unknown', async () => {
     const { stacksFake } = await import('../fakes/stacks-token.js');
@@ -677,6 +756,72 @@ describe('the race: two calls on one change', () => {
     expect(storedCount).toBe(1);
     const outcomes = w.fake.requests().filter((r: any) => r.cmd === 'outcome') as Json[];
     expect(outcomes.map((o) => [o.key, o.result]).sort()).toEqual([[KEY, 'sent'], [K2, 'stale']]);
+  });
+});
+
+describe('TK8: the race with both intents in flight together and two equal capabilities live at once', () => {
+  it('both built on SyncToken 3: both intents asked before either answers, both registered before either POST; one sent, one stale', async () => {
+    const K2 = KEY.replace(/1$/, '2');
+    const w = world(rig, { intent: ['intent-ok.json', { answer: { ok: true, key: K2, n: 2 } }], outcome: ['outcome-sent.json', 'outcome-stale.json'] });
+    // The intents' children: the first is written only once the second is spawned (so both runReceipts are pending together); the
+    // second only once the first has exited (the fake counts its answers from its log); and neither's exit reaches its runReceipt until
+    // both have exited, so both calls register before either sends.
+    const real = createKit().spawn;
+    let spawned = 0;
+    let secondSpawned: () => void = () => undefined;
+    const second = new Promise<void>((resolve) => (secondSpawned = resolve));
+    const exits: Array<Promise<unknown>> = [];
+    let firstSettledAtSecondSpawn: boolean | undefined;
+    let firstSettled = false;
+    const spawn = ((...a: Parameters<typeof real>) => {
+      const i = spawned++;
+      const child = real(...a);
+      if (i > 1) return child;
+      const on = child.on.bind(child);
+      const stdin = child.stdin as NonNullable<typeof child.stdin>;
+      const end = stdin.end.bind(stdin) as (text: string) => unknown;
+      exits.push(new Promise((resolve) => on('close', resolve)));
+      if (i === 0) stdin.end = ((text: string) => (void second.then(() => end(text)), stdin)) as any;
+      else {
+        firstSettledAtSecondSpawn = firstSettled;
+        secondSpawned();
+        stdin.end = ((text: string) => (void exits[0].then(() => end(text)), stdin)) as any;
+      }
+      child.on = ((event: string, listener: (code: number | null) => void) =>
+        event === 'close' ? on('close', (code: number | null) => void Promise.all(exits).then(() => ((firstSettled ||= i === 0), listener(code)))) : on(event as any, listener)) as any;
+      return child;
+    }) as typeof real;
+    const { writeMode } = await import('../../src/write/mode.js');
+    const { categorizeTool } = await import('../../src/write/categorize.js');
+    const mode = writeMode({ wall: () => STAMP_NOW, spawn });
+    const sizes: number[] = [];
+    const registry = { ...mode.registry, register: (checked: any) => (mode.registry.register(checked), sizes.push(mode.registry.size)), has: mode.registry.has, take: mode.registry.take, get size() {
+      return mode.registry.size;
+    } };
+    const tools = [categorizeTool('purchase', { registry, sw: mode.sw, kit: mode.kit }), ...mode.tools.slice(1)];
+    // The POSTs: the first to arrive is held until the second has arrived and been answered 5010; then it is stored.
+    let staleSent: () => void = () => undefined;
+    const staled = new Promise<void>((resolve) => (staleSent = resolve));
+    let storedCount = 0;
+    w.post = async (_c, n) => {
+      if (n === 0) {
+        await staled;
+        storedCount++;
+        return stored();
+      }
+      staleSent();
+      return answerFile('stale.json');
+    };
+    const { client } = await w.start({}, { mode, tools });
+    const results = await Promise.all([client.callTool(args()), client.callTool(args())]);
+    expect([firstSettledAtSecondSpawn, sizes, storedCount, rig.posts().length]).toEqual([false, [1, 2], 1, 2]);
+    const outcomes = w.fake.requests().filter((r: any) => r.cmd === 'outcome') as Json[];
+    const sentKey = outcomes.find((o) => o.result === 'sent')?.key as string;
+    const staleKey = outcomes.find((o) => o.result === 'stale')?.key as string;
+    expect([sentKey, staleKey].sort()).toEqual([KEY, K2]);
+    expect(cmds(w).filter((c) => c === 'intent')).toHaveLength(2);
+    const want = [successWith('qbo_categorize_purchase/sent.json', { receipt: sentKey }), { content: [{ type: 'text', text: expected('qbo_categorize_purchase/stale.json').content[0].text.replace(KEY, staleKey) }], isError: true }];
+    expect([results.find((r: any) => r.isError !== true), results.find((r: any) => r.isError === true)]).toEqual(want);
   });
 });
 

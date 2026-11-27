@@ -125,17 +125,44 @@ async function forceToken(runtime: WriteRuntime, company: string, sentAt: number
   return true;
 }
 
-/** The unknown result (§6: id-mismatch's sentence first, then the recorded-none one, else the send one); never throws. */
-function unknownResult(key: string, s: { note: "id-mismatch" | null; recorded: Recorded; tid?: string }): CallToolResult {
+/** What the post-send flow knows when it answers write:unknown: the outcome asked (if any), what it answered, the note, the tid, the switch. */
+type AfterState = { result?: Outcome["result"]; recorded: Recorded; note: "id-mismatch" | null; tid?: string; writesOff: boolean };
+
+/** What QuickBooks did, for an outcome already asked other than unknown (TK7): never a later settle, which no check will make. */
+type Decided = Exclude<Outcome["result"], "unknown">;
+const DECIDED: Readonly<Record<Decided, string>> = Object.freeze({
+  sent: "QuickBooks stored the change.",
+  "sent-diff": "QuickBooks stored the change, with differences from what was asked.",
+  stale: "QuickBooks refused the change: the transaction had changed since it was read.",
+  failed: "QuickBooks refused the change.",
+});
+
+/** The sentence for a throw after an outcome other than unknown was asked: what QuickBooks did, the outcome and whether it was recorded,
+ * and that the switch is off when this attempt turned it off. */
+function decidedText(result: Decided, s: AfterState): string {
+  const recorded = s.recorded === "none" ? "wasn't confirmed recorded" : "was recorded";
+  return `${DECIDED[result]} Its outcome, ${result}, ${recorded}; this result couldn't be written.${s.writesOff ? " Writes are switched off." : ""}`;
+}
+
+/**
+ * The write:unknown answered after the send (§6: id-mismatch's sentence first, then the recorded-none one, else the send one), with the
+ * receipt; after a throw that came once an outcome other than unknown was asked, what was decided instead (TK7). Never throws.
+ */
+function unknownResult(key: string, s: AfterState): CallToolResult {
+  const decided = s.result !== undefined && s.result !== "unknown" ? s.result : undefined;
   const kase = s.note === "id-mismatch" ? "id-mismatch" : s.recorded === "none" ? "recorded-none" : "send";
   try {
     const head = { receipt: key, intuit_tid: s.tid, note: s.note ?? undefined, recorded: s.recorded === "notion" ? undefined : s.recorded };
-    return writeError("write:unknown", head, freeText("write:unknown", kase, {}));
+    return writeError("write:unknown", head, decided !== undefined ? decidedText(decided, s) : freeText("write:unknown", kase, {}));
   } catch {
-    // The last answer: the receipt, and nothing claimed about the outcome.
-    return { content: [{ type: "text", text: `reason: write:unknown\nreceipt: ${key}\nrecorded: none\n\nNo answer, and the outcome wasn't confirmed recorded.` }], isError: true };
+    // The last answer, built from fixed strings: the receipt, and nothing claimed that wasn't decided.
+    if (decided === undefined) return lastAnswer(`reason: write:unknown\nreceipt: ${key}\nrecorded: none\n\nNo answer, and the outcome wasn't confirmed recorded.`);
+    const note = s.note === null ? "" : `\nnote: ${s.note}`;
+    const recorded = s.recorded === "notion" ? "" : `\nrecorded: ${s.recorded}`;
+    return lastAnswer(`reason: write:unknown\nreceipt: ${key}${note}${recorded}\n\n${decidedText(decided, s)}`);
   }
 }
+const lastAnswer = (text: string): CallToolResult => ({ content: [{ type: "text", text }], isError: true });
 
 /** Runs the change from the switch's re-check to its result, inside the call `preSend` checked it in, the call prepared. */
 export async function runChange(ctx: ChangeContext): Promise<CallToolResult> {
@@ -173,10 +200,11 @@ async function afterSend(ctx: ChangeContext, key: string, got: { answer: UpdateA
   const { runtime, checked, intent } = ctx;
   const { sw, kit } = ctx.tools;
   const { cfg } = runtime;
-  const s: { asked: boolean; recorded: Recorded; note: "id-mismatch" | null; tid?: string } = { asked: false, recorded: "none", note: null };
+  const s: AfterState & { asked: boolean } = { asked: false, recorded: "none", note: null, writesOff: false };
   /** The attempt's one outcome request; what it answered, any failure read as `none`. */
   const record = async (o: Outcome): Promise<void> => {
     s.asked = true;
+    s.result = o.result;
     try {
       s.recorded = outcomeRecorded(await runReceipt(cfg, { cmd: "outcome", key, ...o }, { spawn: kit.spawn }));
     } catch {
@@ -189,16 +217,15 @@ async function afterSend(ctx: ChangeContext, key: string, got: { answer: UpdateA
     s.tid = read.tid;
     // QA4: before any later request, so the refetch carries the new token.
     const fresh = "answer" in got && got.answer.status === 401 ? await forceToken(runtime, intent.company, sentAt) : true;
-    let writesOff = false;
     /** A stored copy: the compare against the fetched one gives sent or sent-diff; a sent-diff turns the switch off. */
     const stored = async (txn: Transaction): Promise<CallToolResult> => {
       const compared = compare(txn, checked.fetched, checked.changes);
       const diff = compared.same ? null : compared.fields;
       // An id-mismatch has turned it off already.
-      if (diff !== null && s.note === null) writesOff = await sw.turnOff(cfg.writeSwitch);
+      if (diff !== null && s.note === null) s.writesOff = await sw.turnOff(cfg.writeSwitch);
       const after = txn.SyncToken as string;
       await record(outcome(diff === null ? "sent" : "sent-diff", { sync_token_after: after, diff, note: s.note }));
-      const change = { result: diff === null ? ("sent" as const) : ("sent-diff" as const), company: intent.company, type: intent.type, id: intent.id, sync_token: intent.sync_token, sync_token_after: after, lines: intent.lines, undo_of: intent.undo_of, diff, writes_off: writesOff };
+      const change = { result: diff === null ? ("sent" as const) : ("sent-diff" as const), company: intent.company, type: intent.type, id: intent.id, sync_token: intent.sync_token, sync_token_after: after, lines: intent.lines, undo_of: intent.undo_of, diff, writes_off: s.writesOff };
       return writeSuccess(change, { receipt: key, note: s.note ?? undefined, recorded: s.recorded });
     };
     if (read.kind === "stale") {
@@ -213,7 +240,7 @@ async function afterSend(ctx: ChangeContext, key: string, got: { answer: UpdateA
     if (read.kind === "stored") return await stored(read.txn);
     if (read.kind === "id-mismatch") {
       s.note = "id-mismatch";
-      writesOff = await sw.turnOff(cfg.writeSwitch);
+      s.writesOff = await sw.turnOff(cfg.writeSwitch);
     }
     // Step 6: no answer. The refetch, once, at once; moved with the after values is stored.
     const txn = fresh ? await reread(checked.entity, intent.id) : undefined;

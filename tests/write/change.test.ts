@@ -282,6 +282,30 @@ describe('A1.16: after the send, always a receipt', () => {
   });
 });
 
+describe('TK6: the switch is turned off before the outcome is asked', () => {
+  /** The kit's spawn, real, noting at each run whether the switch file is there. */
+  const noting = (w: World, at: boolean[]) => {
+    const real = createKit().spawn;
+    return ((...a: Parameters<typeof real>) => (at.push(existsSync(w.switchPath)), real(...a))) as typeof real;
+  };
+  it('a sent-diff: on at the intent, gone at the outcome', async () => {
+    const at: boolean[] = [];
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer: { ok: true, notion: true } }] });
+    w.post = () => storedAmount();
+    const { client } = await w.start({ spawn: noting(w, at) });
+    expect(await client.callTool(args())).toEqual(successWith('sent-diff.json', { diff: ['Line:1'] }));
+    expect(at).toEqual([true, false]);
+  });
+  it('an id-mismatch, the refetch unmoved: on at the intent, gone at the outcome', async () => {
+    const at: boolean[] = [];
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer: { ok: true, notion: true } }] });
+    w.post = () => stubOf(((f) => ((f.body.Purchase.Id = '1009'), f))(fixture('answers/update-sent.json')));
+    const { client } = await w.start({ spawn: noting(w, at) });
+    expect(JSON.stringify(await client.callTool(args()))).toContain('note: id-mismatch');
+    expect(at).toEqual([true, false]);
+  });
+});
+
 describe('TJ2: a refusal with no §6 text never reaches freeText unchecked', () => {
   it('ruleLines decides `none` before the fetched ids', () => {
     const txn = sharedId(fixture('fetched/purchase-1001.json')).Purchase;
