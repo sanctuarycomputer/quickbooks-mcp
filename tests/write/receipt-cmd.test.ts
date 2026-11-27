@@ -108,12 +108,39 @@ describe('the command line', () => {
   });
 
   it('writes the request as one JSON text on stdin', async () => {
-    const fake = make({ intent: [{ answer: { ok: true } }] });
     const request = { cmd: 'lookup', key: 'quickbooks-write:garden3d:purchase:1001:3:1' };
     const look = make({ lookup: [{ answer: { ok: true } }] });
     await runReceipt(cfg(look.cmd), request, { spawn });
     expect(look.requests()).toEqual([request]);
-    expect(fake.log()).toEqual([]);
+  });
+
+  it('splits on single spaces: two together give an empty argument (task-3-1 TD4)', async () => {
+    const { calls, spawn: s, child } = spied();
+    const got = runReceipt(cfg('/bin/cmd  a b'), PING, { spawn: s });
+    child.stdout.end('{"ok":true}');
+    await tick();
+    child.emit('close', 0);
+    await got;
+    expect(calls.map((c) => [c.file, c.args])).toEqual([['/bin/cmd', ['', 'a', 'b']]]);
+  });
+
+  it('passes an empty NOTION_API_KEY, TZ and PATH as empty, not dropped (task-3-1 TD5)', async () => {
+    const { calls, spawn: s, child } = spied();
+    const got = runReceipt(cfg('x', { notionApiKey: '', tz: '', path: '' }), PING, { spawn: s });
+    child.stdout.end('{"ok":true}');
+    await tick();
+    child.emit('close', 0);
+    await got;
+    expect(calls[0].options.env).toEqual({ NOTION_API_KEY: '', QBO_WRITE_LEDGER: '/ledger/writes.jsonl', PATH: '', TZ: '' });
+  });
+
+  it('a request JSON can’t hold (a BigInt, a cycle): not ok, and nothing spawned (task-3-1 TD8)', async () => {
+    const { calls, spawn: s } = spied();
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    expect(await runReceipt(cfg('x'), { n: BigInt(1) }, { spawn: s })).toEqual(FAILED);
+    expect(await runReceipt(cfg('x'), cycle, { spawn: s })).toEqual(FAILED);
+    expect(calls).toEqual([]);
   });
 });
 
@@ -139,14 +166,14 @@ describe('answers', () => {
     expect(await runReceipt(cfg(fake.cmd), PING, { spawn })).toEqual(FAILED);
   });
 
-  it('stdout of exactly 1 MiB is read whole (then refused only as not JSON)', async () => {
+  it('a large answer just under the cap is read whole, through the real pipe (the edge itself is the driven case’s)', async () => {
     const fake = make({ ping: [{ misbehave: 'raw', text: JSON.stringify({ ok: true, pad: 'x'.repeat(RECEIPT_MAX_BYTES - 22) }) }] });
     const got = (await runReceipt(cfg(fake.cmd), PING, { spawn })) as { ok: boolean; pad: string };
     expect([got.ok, got.pad.length]).toEqual([true, RECEIPT_MAX_BYTES - 22]);
   });
 
   it('a command that doesn’t exist (ENOENT): not ok', async () => {
-    expect(await runReceipt(cfg(join(fakes.length ? '/' : '/', 'nowhere-294', 'receipt')), PING, { spawn })).toEqual(FAILED);
+    expect(await runReceipt(cfg(join('/', 'nowhere-294', 'receipt')), PING, { spawn })).toEqual(FAILED);
   });
 
   it('a spawn that throws: not ok', async () => {
@@ -181,6 +208,16 @@ const driven = () => {
   const child = fakeChild();
   return { child, spawn: (() => child) as unknown as Spawn };
 };
+/** A driven child, and each spawn call's file, arguments and options. */
+const spied = () => {
+  const child = fakeChild();
+  const calls: Array<{ file: string; args: string[]; options: { env: Record<string, string> } }> = [];
+  const s = ((file: string, args: string[], options: { env: Record<string, string> }) => {
+    calls.push({ file, args, options });
+    return child;
+  }) as unknown as Spawn;
+  return { child, calls, spawn: s };
+};
 
 describe('the kills and the defaults, through a driven child', () => {
   it('the constants', () => {
@@ -196,6 +233,18 @@ describe('the kills and the defaults, through a driven child', () => {
     expect([child.signals, done]).toEqual([[], 'pending']);
     await jest.advanceTimersByTimeAsync(1);
     expect([child.signals, done]).toEqual([['SIGKILL'], FAILED]);
+  });
+
+  it('a finished run leaves no timer behind (task-3-1 TD3)', async () => {
+    jest.useFakeTimers();
+    const { child, spawn: s } = driven();
+    const got = runReceipt(cfg('x'), PING, { spawn: s });
+    expect(jest.getTimerCount()).toBe(1);
+    child.stdout.end('{"ok":true}');
+    await jest.advanceTimersByTimeAsync(0);
+    child.emit('close', 0);
+    expect(await got).toEqual({ ok: true });
+    expect(jest.getTimerCount()).toBe(0);
   });
 
   it('no byte cap given: 1 048 576 bytes are read, the next one kills with SIGKILL', async () => {
@@ -226,6 +275,16 @@ describe('the kills and the defaults, through a driven child', () => {
     await tick();
     child.emit('close', 1);
     expect(await got).toEqual(FAILED);
+  });
+
+  it('stderr is read (flowing), so a chatty command never blocks on a full pipe (task-3-1 TD1)', async () => {
+    const { child, spawn: s } = driven();
+    const got = runReceipt(cfg('x'), PING, { spawn: s });
+    expect(child.stderr.readableFlowing).toBe(true);
+    child.stdout.end('{"ok":true}');
+    await tick();
+    child.emit('close', 0);
+    expect(await got).toEqual({ ok: true });
   });
 
   it('stderr is drained and dropped, never part of the answer', async () => {

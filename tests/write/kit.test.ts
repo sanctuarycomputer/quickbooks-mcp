@@ -31,6 +31,23 @@ describe('createKit', () => {
     expect(kit.fs.unlink).toBe(fs.unlink);
   });
 
+  it('each of the five, given, is the one the kit holds, and the others stay the defaults (task-3-1 TD2)', () => {
+    const given = {
+      mono: () => 1,
+      wall: () => 2,
+      spawn: (() => undefined) as unknown as typeof spawn,
+      buildBody: (() => ({})) as unknown as typeof buildBody,
+      fs: { stat: fs.stat, unlink: fs.unlink },
+    };
+    for (const [key, value] of Object.entries(given)) {
+      const kit = createKit({ [key]: value });
+      expect([key, kit[key as keyof typeof kit]]).toEqual([key, value]);
+      for (const other of Object.keys(given).filter((k) => k !== key && k !== 'mono' && k !== 'wall' && k !== 'fs'))
+        expect([other, kit[other as keyof typeof kit]]).toEqual([other, (createKit() as Record<string, unknown>)[other]]);
+    }
+    expect(createKit({ fs: given.fs }).fs).toBe(given.fs);
+  });
+
   it('each given dep replaces only itself, an undefined one replaces nothing, and the kit is frozen', () => {
     const mono = () => 1;
     const kit = createKit({ mono, wall: undefined });

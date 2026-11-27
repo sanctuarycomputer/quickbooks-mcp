@@ -53,6 +53,12 @@ export function runReceipt(
   const timeoutMs = deps.timeoutMs ?? RECEIPT_TIMEOUT_MS;
   const maxBytes = deps.maxBytes ?? RECEIPT_MAX_BYTES;
   const [file, ...args] = cfg.receiptCmd.split(" ");
+  let text: string;
+  try {
+    text = JSON.stringify(request);
+  } catch {
+    return Promise.resolve(FAILED);
+  }
   return new Promise((resolve) => {
     let settled = false;
     let child: Child;
@@ -85,6 +91,6 @@ export function runReceipt(
     // The command may exit before reading its input (EPIPE): its exit code and output decide.
     child.stdin.on("error", () => undefined);
     child.on("close", (code: number | null) => finish(code === 0 ? oneObject(Buffer.concat(chunks).toString("utf8")) : FAILED));
-    child.stdin.end(JSON.stringify(request));
+    child.stdin.end(text);
   });
 }

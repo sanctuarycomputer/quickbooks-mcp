@@ -113,11 +113,14 @@ function receiptImportHits(f: string, text: string): string[] {
     if (!/["'`][^"'`]*receipt-cmd(?:\.js)?["'`]/.test(line)) continue;
     const named = /^import\s*\{([^}]*)\}\s*from\s*"\.\/receipt-cmd\.js";$/.exec(line.trim());
     if (named === null) hits.push(`${f}: ${line.trim()}`);
-    else if (f !== 'src/write/kit.ts' && named[1].split(',').some((part) => /^(?:type\s+)?spawn\b/.test(part.trim()))) hits.push(`${f}: spawn taken from the receipt runner`);
+    else if (f !== 'src/write/kit.ts' && named[1].replace(/\/\*[\s\S]*?\*\//g, '').split(',').some((part) => /^(?:type\s+)?spawn\b/.test(part.trim())))
+      hits.push(`${f}: spawn taken from the receipt runner`);
   }
   return hits;
 }
 const receiptImports = (files: string[]): string[] => files.flatMap((f) => receiptImportHits(f, read(f)));
+/** kit.ts passing spawn on (task-3-1 TD6): an export naming it, or a star re-export of anything. */
+const kitPassesSpawn = (text: string): boolean => /export\s*\{[^}]*\bspawn\b/.test(text.replace(/\/\*[\s\S]*?\*\//g, '')) || /export\s*\*/.test(text);
 
 const KEY_NAMES = ['CLIENT_ID', 'CLIENT_SECRET', 'REFRESH_TOKEN', 'REALM_ID'].map((k) => 'QUICKBOOKS_' + k);
 
@@ -247,6 +250,14 @@ describe('removals', () => {
       ['export { spawn } from "./receipt-cmd.js";', 'src/write/settle.ts: export { spawn } from "./receipt-cmd.js";'],
     ] as const)
       expect(receiptImportHits('src/write/settle.ts', form)).toEqual([hit]);
+  });
+
+  it('R3: kit.ts takes spawn but passes it on to no one (task-3-1 TD6)', () => {
+    expect(kitPassesSpawn(read('src/write/kit.ts'))).toBe(false);
+    for (const form of ['export { spawn };', 'export { createKit, /* x */ spawn };', 'export { spawn as s };', 'export * from "./receipt-cmd.js";'])
+      expect([form, kitPassesSpawn(form)]).toEqual([form, true]);
+    expect(kitPassesSpawn('export type SwitchFs = {};\nexport function createKit() {}')).toBe(false);
+    expect(receiptImportHits('src/write/settle.ts', 'import { /**/ spawn } from "./receipt-cmd.js";')).toEqual(['src/write/settle.ts: spawn taken from the receipt runner']);
   });
 
   it('A7: no QUICKBOOKS_DISABLE text in src', () => {
