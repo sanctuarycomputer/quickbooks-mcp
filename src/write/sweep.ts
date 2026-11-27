@@ -17,8 +17,15 @@ function shapeOk(stamp: unknown): stamp is { v: number; at: string; clean: boole
   if (s.clean) {
     if (Object.prototype.hasOwnProperty.call(s, "reason")) return false;
   } else if (typeof s.reason !== "string" || s.reason === "") return false;
-  const t = Date.parse(s.at);
-  return !Number.isNaN(t) && new Date(t).toISOString() === s.at;
+  return isIsoAt(s.at);
+}
+
+/** Step 2's `at` test, which the writes.jsonl lines' `at` uses too (contract §20): a string `Date.parse` reads that round-trips through
+ * `toISOString`, so no `NaN` time reaches an age. */
+export function isIsoAt(at: unknown): at is string {
+  if (typeof at !== "string") return false;
+  const t = Date.parse(at);
+  return !Number.isNaN(t) && new Date(t).toISOString() === at;
 }
 
 /** The Sweep reader at `wall()`: true only when the stamp at `path` is clean and fresh. */
