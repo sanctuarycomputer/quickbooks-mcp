@@ -25,7 +25,11 @@ export function createSwitch(fs: SwitchFs): Switch {
       } catch (e) {
         if ((e as { code?: unknown } | null)?.code === "ENOENT") return false;
         latched = true;
-        process.stderr.write(SWITCH_STUCK_LINE);
+        try {
+          process.stderr.write(SWITCH_STUCK_LINE);
+        } catch {
+          // turnOff never throws (spec V1): the latch is set, and a line that can't be written is lost.
+        }
         return false;
       }
     },

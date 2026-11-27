@@ -117,6 +117,12 @@ describe('readSweep: step 2, the shape, each case decided by its rule alone (der
   ])('%s refuses', async (_name, over, drop) => {
     expect(await readSweep(derived(over, drop), wall)).toBe(false);
   });
+  it.each<[string, unknown]>([
+    ['""', ''],
+    ['null', null],
+  ])('TE2: a clean stamp with reason %s refuses (an own key, whatever its value)', async (_name, reason) => {
+    expect(await readSweep(derived({ clean: true, reason }), wall)).toBe(false);
+  });
   it('jobs 0 passes; an unclean stamp with a reason is the right shape and refuses at step 5 alone', async () => {
     expect(await readSweep(derived({ jobs: 0 }), wall)).toBe(true);
     const unclean = derived({ clean: false, reason: 'report' });

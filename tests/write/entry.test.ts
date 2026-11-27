@@ -67,7 +67,10 @@ describe('the write server (A1.1, G3)', () => {
   it('loads write/mode.js, lists the five tools, and neither its start nor its stubs send anything or start a process', async () => {
     const r = await run(RECORD, WRITE, [...HELLO, ...STUB_CALLS], (x) => [3, 4, 5, 6].every((id) => answered(id)(x)));
     expect(answer(r, 2).tools.map((t: any) => t.name).sort()).toEqual([...WRITE_TOOLS].sort());
-    for (const id of [3, 4, 5, 6]) expect(answer(r, id)).toEqual({ isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThis tool is not built yet.' }] });
+    // The two categorize tools answer write:sweep (no stamp at the rig's path, 294 T7); undo and the check are still stubs.
+    const sweep = { isError: true, content: [{ type: 'text', text: "reason: write:sweep\n\nThe job guard hasn't run clean in the last 20 minutes; writes are held." }] };
+    for (const id of [3, 4]) expect(answer(r, id)).toEqual(sweep);
+    for (const id of [5, 6]) expect(answer(r, id)).toEqual({ isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThis tool is not built yet.' }] });
     expect(records(r, 'load')).toEqual(expect.arrayContaining(['index.js', 'write/mode.js', 'write/capability.js', 'write/guard-rules.js', 'write/stubs.js', 'write/kit.js', 'write/receipt-cmd.js']));
     expect(records(r, 'tool').sort()).toEqual([...WRITE_TOOLS].sort());
     expect(sent(r)).toEqual([]);

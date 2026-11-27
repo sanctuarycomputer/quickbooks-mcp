@@ -138,6 +138,16 @@ describe('the header block (§14 Write result grammar)', () => {
     expect(textOf({ intuit_tid: `A-${'b'.repeat(62)}` })).toBe(`reason: write:unknown\nintuit_tid: A-${'b'.repeat(62)}\n\nx`);
     for (const tid of ['a_b', '', 'a'.repeat(65), 'a b', 'a\nb']) expect(textOf({ receipt: KEY, intuit_tid: tid })).toBe(`reason: write:unknown\nreceipt: ${KEY}\n\nx`);
   });
+  it('TJ3: an intuit_tid that isn\'t a string (null, a number, an object, true) gives no line and never throws', () => {
+    for (const tid of [null, 42, { a: 1 }, true, ['a']]) expect(textOf({ receipt: KEY, intuit_tid: tid })).toBe(`reason: write:unknown\nreceipt: ${KEY}\n\nx`);
+  });
+  it('TJ4: a code off §14\'s pattern, or a note or recorded outside its values, throws: no wrong header is written', () => {
+    for (const code of ['60 00', 'a'.repeat(65), 'é']) expect(() => writeError('write:failed', { code } as any, 'x')).toThrow(TypeError);
+    expect(textOf({ code: 'A_b-1' })).toBe('reason: write:unknown\ncode: A_b-1\n\nx');
+    for (const note of ['edited-since', 'deleted', 'x']) expect(() => writeError('write:unknown', { note } as any, 'x')).toThrow(TypeError);
+    for (const recorded of ['notion', 'x']) expect(() => writeError('write:unknown', { recorded } as any, 'x')).toThrow(TypeError);
+    expect(textOf({ note: 'id-mismatch', recorded: 'ledger' })).toBe('reason: write:unknown\nnote: id-mismatch\nrecorded: ledger\n\nx');
+  });
   it('a reason or any other key\'s value that isn\'t one non-empty line throws: nothing can add a header line', () => {
     for (const key of ['receipt', 'code', 'note', 'recorded']) {
       for (const bad of ['', 'a\nb', 'a\rb', 5, null]) expect(() => writeError('write:failed', { [key]: bad } as any, 'x')).toThrow(TypeError);
@@ -158,6 +168,12 @@ describe('the change item (§14 Change result)', () => {
   it('receipt, note and recorded come from the head: no note is null, no recorded is notion; code and intuit_tid never show', () => {
     expect(itemOf(PURCHASE, { receipt: KEY, code: '6000', intuit_tid: 'tid-1' })).toMatchObject({ receipt: KEY, note: null, recorded: 'notion' });
     expect(itemOf(PURCHASE, { receipt: UNDO_KEY, note: 'id-mismatch', recorded: 'none' })).toMatchObject({ receipt: UNDO_KEY, note: 'id-mismatch', recorded: 'none' });
+  });
+  it('TJ4: an undefined or mistyped undo_of, diff or writes_off, or a note or recorded outside its values, throws', () => {
+    const bad: Json[] = [{ undo_of: undefined }, { undo_of: 5 }, { diff: undefined }, { diff: 'Line' }, { diff: [1] }, { writes_off: undefined }, { writes_off: 'true' }];
+    for (const over of bad) expect(() => writeSuccess({ ...PURCHASE, ...over } as ChangeItem, { receipt: KEY })).toThrow(TypeError);
+    for (const head of [{ note: 'x' }, { note: 'deleted' }, { recorded: 'x' }]) expect(() => writeSuccess(PURCHASE, { receipt: KEY, ...head } as any)).toThrow(TypeError);
+    expect(itemOf({ ...PURCHASE, undo_of: KEY, diff: ['Line:1'] }, { receipt: KEY, recorded: 'notion' })).toMatchObject({ undo_of: KEY, diff: ['Line:1'], recorded: 'notion' });
   });
   it('a success with no receipt, or one that isn\'t a line, throws', () => {
     for (const head of [{}, { receipt: '' }, { receipt: `${KEY}\nx` }]) expect(() => writeSuccess(PURCHASE, head)).toThrow(TypeError);
@@ -227,7 +243,7 @@ describe('freeText (spec §6)', () => {
     expect(() => freeText('write:type', '', {})).toThrow(TypeError);
     expect(() => freeText('write:closed', 'credit', {})).toThrow(TypeError);
   });
-  it.each([['write:other', ''], ['stacks-auth', ''], ['toString', ''], ['__proto__', ''], ['write:size', 'toString'], ['write:line', '__proto__'], ['write:line', 'constructor']])('%s %j has no text: it throws', (reason, kase) => {
+  it.each([['write:other', ''], ['stacks-auth', ''], ['toString', ''], ['__proto__', ''], ['constructor', ''], ['constructor', 'constructor'], ['write:size', 'toString'], ['write:size', 'constructor'], ['write:line', '__proto__'], ['write:line', 'constructor'], ['write:line', 'toString']])('%s %j has no text: it throws', (reason, kase) => {
     expect(() => freeText(reason, kase, VARS)).toThrow(TypeError);
   });
   it('a var the text needs that is missing or isn\'t a string throws; one it doesn\'t need is ignored', () => {

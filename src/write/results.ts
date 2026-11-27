@@ -6,10 +6,16 @@ import type { Failure } from "../clients/call-context.js";
 import { errorResult, REASON_TEXT } from "../helpers/tool-result.js";
 
 /** The write keys an error's header may carry after `reason`, in the grammar's order (`settled` is the write check's, 298). */
-export type Head = { receipt: string; code: string; intuit_tid: string; note: "id-mismatch"; recorded: "ledger" | "none" };
+export type Head = { receipt: string; code: string; intuit_tid: string; note: "id-mismatch"; recorded: "notion" | "ledger" | "none" };
 const HEAD_KEYS = ["receipt", "code", "intuit_tid", "note", "recorded"] as const;
-/** §5's `intuit_tid`, which §14 keeps: a value off it gives no line, as 286's renderer does. */
+/** §5's `intuit_tid`, which §14 keeps: a value off it, or not a string at all, gives no line, as 286's renderer does. */
 const TID = /^[A-Za-z0-9-]{1,64}$/;
+/** §14's `code`: QuickBooks' Fault code. */
+const CODE = /^[A-Za-z0-9_-]{1,64}$/;
+/** The values `note` and `recorded` may take, on an error and on a success. */
+const NOTES: readonly unknown[] = ["id-mismatch"];
+const ERROR_RECORDED: readonly unknown[] = ["ledger", "none"];
+const SUCCESS_RECORDED: readonly unknown[] = ["notion", "ledger", "none"];
 
 export type Refs = { account_id: string; class_id: string | null };
 /** One named line of a change. */
@@ -36,12 +42,24 @@ function oneLine(value: unknown): string {
   return value;
 }
 
-/** An error: `reason`, then each write key given, in the grammar's order, then the empty line and the free text. */
+/** A value that must be one of `allowed` (undefined when `absent` allows it): anything else is a bug, so it throws, and no wrong header is written. */
+function oneOf(value: unknown, allowed: readonly unknown[], what: string): void {
+  if (!allowed.includes(value)) throw new TypeError(`results: ${what} isn't one of its values`);
+}
+
+/**
+ * An error: `reason`, then each write key given, in the grammar's order, then the empty line and the free text. An `intuit_tid` that
+ * isn't a string of §5's form is left out, never thrown on (the result after a send must render); a `code` off §14's pattern, or a
+ * `note` or `recorded` outside its values, throws.
+ */
 export function writeError(reason: string, head: Partial<Head>, free: string): CallToolResult {
   const lines = [`reason: ${oneLine(reason)}`];
+  if (head.code !== undefined && !(typeof head.code === "string" && CODE.test(head.code))) throw new TypeError("results: code is off its pattern");
+  if (head.note !== undefined) oneOf(head.note, NOTES, "note");
+  if (head.recorded !== undefined) oneOf(head.recorded, ERROR_RECORDED, "recorded");
   for (const key of HEAD_KEYS) {
-    const value = head[key];
-    if (value === undefined || (key === "intuit_tid" && !TID.test(value))) continue;
+    const value: unknown = head[key];
+    if (value === undefined || (key === "intuit_tid" && !(typeof value === "string" && TID.test(value)))) continue;
     lines.push(`${key}: ${oneLine(value)}`);
   }
   return { content: [text(`${lines.join("\n")}\n\n${free}`)], isError: true };
@@ -49,8 +67,18 @@ export function writeError(reason: string, head: Partial<Head>, free: string): C
 
 const refs = ({ account_id, class_id }: Refs): Refs => ({ account_id, class_id });
 
-/** A stored change: the one data item, its keys in the Change result's order; no note is `null`, no recorded is `notion`. */
+/**
+ * A stored change: the one data item, its keys in the Change result's order; no note is `null`, no recorded is `notion`. Checked as it
+ * runs, each a throw: an `undo_of` not a string or null, a `diff` not null or a list of strings, a `writes_off` not a boolean, a `note`
+ * or `recorded` outside its values.
+ */
 export function writeSuccess(change: ChangeItem, head: Partial<Head>): CallToolResult {
+  const { undo_of, diff, writes_off } = change as Record<keyof ChangeItem, unknown>;
+  if (!(undo_of === null || typeof undo_of === "string")) throw new TypeError("results: undo_of is a string or null");
+  if (!(diff === null || (Array.isArray(diff) && diff.every((name) => typeof name === "string")))) throw new TypeError("results: diff is null or names");
+  if (typeof writes_off !== "boolean") throw new TypeError("results: writes_off is a boolean");
+  if (head.note !== undefined) oneOf(head.note, NOTES, "note");
+  if (head.recorded !== undefined) oneOf(head.recorded, SUCCESS_RECORDED, "recorded");
   const item = {
     result: change.result,
     receipt: oneLine(head.receipt),

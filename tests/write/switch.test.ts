@@ -95,6 +95,15 @@ describe('turnOff', () => {
     await a.turnOff(p);
     expect([await a.isOn(p), await b.isOn(p)]).toEqual([false, true]);
   });
+  it('TE1: a stderr write that throws: false, latched, and turnOff never throws (V1)', async () => {
+    jest.spyOn(process.stderr, 'write').mockImplementation(() => {
+      throw new Error('stderr');
+    });
+    const sw = createSwitch(failing('unlink', errno('EACCES')));
+    const p = on();
+    await expect(sw.turnOff(p)).resolves.toBe(false);
+    expect(await sw.isOn(p)).toBe(false);
+  });
   it('the line is the fixed one', () => {
     expect(SWITCH_STUCK_LINE).toBe("qbo-write: the switch file couldn't be deleted; categorize is off until restart\n");
   });
