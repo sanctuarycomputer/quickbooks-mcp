@@ -1,4 +1,4 @@
-<!-- Changed by Sanctuary Computer (quickbooks-mcp-285, quickbooks-mcp-286, quickbooks-mcp-293): describes the read server and, with QBO_MODE=write, the write server. -->
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285, quickbooks-mcp-286, quickbooks-mcp-293, quickbooks-mcp-294): describes the read server and, with QBO_MODE=write, the write server. -->
 # Architecture Documentation
 
 This document explains the architecture, design decisions, and code patterns used in the QuickBooks Online MCP Server.
@@ -24,7 +24,7 @@ This document explains the architecture, design decisions, and code patterns use
 
 ## Overview
 
-This fork of the QuickBooks Online MCP Server is a Model Context Protocol (MCP) server with two modes. By default (`QBO_MODE` unset or `read`) it is a read-only server: it exposes a fixed list of QuickBooks Online read tools (reports and searches) to Claude Code and other MCP-compatible clients. See [Read-only fork](#read-only-fork). With `QBO_MODE=write` it is the write server, which registers five tools, and whose guard can allow one kind of update; its tools are not built yet, so nothing sends one. See [Write mode](#write-mode).
+This fork of the QuickBooks Online MCP Server is a Model Context Protocol (MCP) server with two modes. By default (`QBO_MODE` unset or `read`) it is a read-only server: it exposes a fixed list of QuickBooks Online read tools (reports and searches) to Claude Code and other MCP-compatible clients. See [Read-only fork](#read-only-fork). With `QBO_MODE=write` it is the write server, which registers five tools, and whose guard can allow one kind of update, which its categorize and undo tools send, once each. `qbo_write_check` is not built yet. See [Write mode](#write-mode).
 
 ### Key Metrics
 
@@ -37,7 +37,7 @@ This fork of the QuickBooks Online MCP Server is a Model Context Protocol (MCP) 
 
 ## System Architecture
 
-This is read mode. In write mode the registry holds the stubs in `src/write/stubs.ts` and `qbo_companies`, and no handler or QuickBooks client is reached by a tool. The write path's requests are in `src/write/client.ts`, which no tool calls yet; they go through the same HTTP guard.
+This is read mode. In write mode the registry holds the three write tools (`categorize.ts`, `undo.ts`), the `qbo_write_check` stub in `src/write/stubs.ts` and `qbo_companies`; no handler or QuickBooks client is reached by a tool but through them. The write path's requests are in `src/write/client.ts`; the tools call it, and they go through the same HTTP guard.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -127,7 +127,7 @@ Every failure is one error, `refused to start: <reason>`.
 
 ## Call flow
 
-This is the read server's call. Steps 1 to 4 are `RegisterTool`'s; a write tool's call opens no call context, asks Stacks for nothing and checks no name before its handler, and the stub handlers do none of it either (see [Write mode](#write-mode)). Step 5 and, for a GET, step 6 hold in write mode too.
+This is the read server's call. Steps 1 to 4 are `RegisterTool`'s; a write tool's call opens no call context, asks Stacks for nothing and checks no name before its handler; the categorize handlers open and prepare their call themselves after their first three checks, undo when it first needs QuickBooks, and the `qbo_write_check` stub never does (see [Write mode](#write-mode)). Step 5 and, for a GET, step 6 hold in write mode too.
 
 1. A tool call arrives with `company`, a key from `qbo_companies`.
 2. The call context starts (`src/clients/call-context.ts`). It holds the call's company, tokens, realm and failure, and is not shared between calls. What is kept across calls is each company's token, realm, refusal and passed name check (`stacks-token.ts`, `company-state.ts`).
@@ -195,7 +195,7 @@ refuse entity-by-id
 
 ## Write mode
 
-Contract 1.1 §13 to §17 in Stacksbot's `docs/contracts/quickbooks.md` is the rule set for the words below; this section says what the code in `src/write/` does.
+Contract 1.2 §13 to §20 in Stacksbot's `docs/contracts/quickbooks.md` is the rule set for the words below; this section says what the code in `src/write/` does.
 
 **Two modes.** `QBO_MODE` unset or `read` is the read server, unchanged. Exactly `write` is the write server (`isWriteMode` in `src/clients/config.ts`). Any other value, the empty string included, is not write mode, so `loadConfig` refuses it (`refused to start: QBO_MODE is not read`). The write server refuses to start unless each of the four write keys is set and not empty (see below).
 
@@ -203,7 +203,7 @@ The read server loads nothing under `src/write` (only the probe imports `src/wri
 
 **The five tools.** `WRITE_TOOLS` in `src/allowlist.ts` lists them: `qbo_categorize_purchase`, `qbo_categorize_bill`, `qbo_undo_change`, `qbo_write_check` and `qbo_companies`. No read tool is registered. A missing, duplicate or unlisted name refuses the start before anything registers, as in read mode.
 
-The four write tools are stubs (`src/write/stubs.ts`). They have the schemas and descriptions of contract §13, and each handler answers an error result with `reason: fork-error` and the text "This tool is not built yet." Ticket 294 builds the two categorize tools and the undo, and ticket 298 builds the write check. Until then nothing in the server calls `preSend`, registers a capability or calls `sendUpdate`, so the guard refuses every update.
+Three of the write tools are built (see [The three write tools](#the-three-write-tools)); `qbo_write_check` is still a stub (`src/write/stubs.ts`): it has the schema and description of contract §13, and its handler answers an error result with `reason: fork-error` and the text "This tool is not built yet." Ticket 298 builds it. The categorize tools and the undo are the only code that calls `preSend`, registers a capability or calls `sendUpdate`, so the guard still refuses every update that did not come from one of them. `writeMode(deps)` in `src/write/mode.ts` makes the write kit (`kit.ts`: both clocks, `spawn`, `buildBody` and the switch's `fs`; production passes none, tests pass their own), the registry on the kit's monotonic clock, and the switch, one each per server, and gives them to the tools.
 
 `params` is strict. Every write tool takes a required `company` (an enum of the `QBO_COMPANIES` keys) and a required `params`. At start, `requireStrictParams` checks that `params` and every object inside it refuses an unknown key; a schema that does not (or holds a schema that can let any keys through: `z.lazy`, `any`, `unknown`, a custom schema such as `z.instanceof`, a bare transform or a `z.preprocess`, `.catch` or `z.success`; or holds schemas more than 32 deep, as a recursive one does, though a deep one that isn't is refused too) refuses the start with `refused to start: allowlist: params not strict <tool>`. What is let through and not judged: `.transform()` after a schema that is judged (its input is checked first), a schema's own checks such as `.refine` (they only take away from what it accepts), and a record's keys. A key inside `params` that the tool does not declare fails the schema, so it is the SDK's input error. A key beside `company` and `params` is stripped by the SDK, as in read mode: the handler sees only those two, and nothing says the key was dropped. `RegisterWriteTool` does not prepare the call: nothing is fetched from Stacks or sent to QuickBooks before the handler runs, and an error the handler throws is never read (an axios error carries the token and the body), so it answers `fork-error`.
 
@@ -216,15 +216,15 @@ The four write tools are stubs (`src/write/stubs.ts`). They have the schemas and
 | `QBO_WRITE_LEDGER` | The path of `writes.jsonl`. |
 | `QBO_WRITE_SWEEP_STAMP` | The path of the job sweep's stamp. |
 
-The config holds each value as given; nothing in this code opens the files or runs the command yet. `NOTION_API_KEY` is not read by this code. The write entry carries it for ticket 294's receipt command.
+The config holds each value as given. `loadWriteConfig` also keeps `NOTION_API_KEY`, `TZ` and `PATH` from the same environment, each only when set, as given and unchecked: they never refuse a start, and they are the only other keys the receipt command's environment is built from (see [The receipt command](#the-receipt-command)).
 
 **The guard's two extra rules.** The write mode's rules (`decideWrite` in `src/write/guard-rules.ts`) are asked first. Every POST with no `params` is theirs, whatever its URL: one that is not in the update form (another path, host, query or operation) is refused `write-update`, never by a read rule. A GET with no `params` is theirs when its whole URL, as written, is the by-id fetch form. They also refuse what `decide` would allow as `reports`. What they do not match goes to 291's `decide`.
 
-- `entity-by-id-write`: `GET https://quickbooks.api.intuit.com/v3/company/<R>/<purchase|bill|account|class>/<id>?minorversion=75`, with `<id>` of 1 to 20 digits. It needs a tool call and a realm the call may use, else it is refused `entity-by-id-write`. A request that carries `X-Api-Key` is refused `credential-crossing`, and one with a body `body`. (Contract §16 names this rule `entity-by-id`; the code's name is `entity-by-id-write`.) A by-id GET in any other form (any other entity but the kept `companyinfo` form, another query key or another minor version) is refused by `decide`.
+- `entity-by-id-write`: `GET https://quickbooks.api.intuit.com/v3/company/<R>/<purchase|bill|account|class>/<id>?minorversion=75`, with `<id>` of 1 to 20 digits. It needs a tool call and a realm the call may use, else it is refused `entity-by-id-write`. A request that carries `X-Api-Key` is refused `credential-crossing`, and one with a body `body`. (Contract 1.1's §16 named this rule `entity-by-id`; 1.2 renamed it `entity-by-id-write`, as the code does. The read server's `entity-by-id` rule, in §6, is unchanged.) A by-id GET in any other form (any other entity but the kept `companyinfo` form, another query key or another minor version) is refused by `decide`.
 - `write-update`: `POST` to `https://quickbooks.api.intuit.com/v3/company/<R>/purchase` or `https://quickbooks.api.intuit.com/v3/company/<R>/bill` with the query `operation=update&minorversion=75` or `minorversion=75&operation=update`. It needs a tool call, the call's company and a realm the call may use. The body must be a string that parses as a JSON object with a string `Id`, a string `SyncToken` and `sparse` equal to `true`. Last of all, it takes a capability. Whatever fails is refused `write-update`, except that a request that carries `X-Api-Key` is refused `credential-crossing` and a body that is not JSON `guard-error`.
 - `reports` is refused in write mode (`reports`). Anything else (a GET in any other form, another method, a request with `params`) is decided as in read mode, and an exception inside a rule is `guard-error`.
 
-**The capability** (`src/write/capability.ts`). It is bound to the company, the entity (`purchase` or `bill`) and the SHA-256 of the exact body text. It can be used once: `take` finds and removes an entry in one step, and only a `take` that finds one allows the request. It lives 60 seconds, measured on a clock that never goes back; it is expired at 60000 ms, and expired entries are dropped on each `register` and `take`. It is made only from a checked request: `register` throws `CapabilityError` for anything `preSend` did not make, and for a `dry` one. Several registrations of one body are separate entries, and each request uses one.
+**The capability** (`src/write/capability.ts`). It is bound to the company, the entity (`purchase` or `bill`) and the SHA-256 of the exact body text. It can be used once: `take` finds and removes an entry in one step, and only a `take` that finds one allows the request. It lives 60 seconds, measured on a clock that never goes back; it is expired at 60000 ms, and expired entries are dropped on each `register` and `take`. It is made only from a checked request: `register` throws `CapabilityError` for anything `preSend` did not make, and for a `dry` one. Each checked request registers once: `register` refuses one it has registered before, and one whose age (the registry's clock less its `checkedAt`, stamped when `preSend` made it) is not in [0, 60000) ms, so one check can be sent once and only within 60 seconds of the check. Two checks of one body are two entries, and each request uses one.
 
 **What the adapter checks before the rules.** With extra rules installed (write mode only), the guard's adapter first checks what axios, Node or the backstop would change or refuse (`checkSendable` in `src/http-guard.ts`). A GET with a `Host` header is refused. Any other request, to any URL, may carry only `Authorization`, `Content-Type` and `Accept` (any case), with string values of printable ASCII and tabs, and `Content-Type`, when present, must be exactly `application/json`; its `timeout`, when set, must be an integer from 0 to 2147483647. A request with no `params` must also have the URL axios composes as its URL. Each failure is `guard-error`, whatever rule the request would have met. All of this runs before the rules are asked, so a refused request consumes no capability: the capability is taken last, and nothing in the adapter after an allowed update refuses it.
 
@@ -255,6 +255,100 @@ Any answer or input the check cannot read is `fork-error` (a 2xx answer that is 
 **The body check.** The body is built from the fetched transaction: every field but `MetaData`, `sparse` set to `true`, the whole `Line` array in order, and in each named line `AccountRef` set to the new account and `ClassRef` set, removed (a `null` class) or left. `checkBody` then judges the text that will be sent, whatever made it. It must parse as an object with `sparse` true; it must hold no `MetaData`, not even the fetched one unchanged; every other field but `Line` and `sparse` must equal the fetched one, with none added or left out; `Line` must be a list of the same length, in the same order; an unnamed line must be equal; and a named line must be account-based and may differ only in its `AccountRef`, which must be exactly `{ value: <account_id> }`, and its `ClassRef`, which must be exactly `{ value: <class_id> }`, absent for `null`, or the fetched one when no `class_id` was given. Each change must be made on a line of its own. Anything else is `write:diff`, but a text that is not JSON is `fork-error`.
 
 **The compare** (`src/write/compare.ts`). `digests` maps names to the SHA-256 of a value's canonical JSON (keys sorted by UTF-16 code unit at every depth, no white space): one for each top-level field except `SyncToken`, `MetaData`, `sparse` and `Line`; `Line` for the list of line ids in order; and `Line:<Id>` for each line with a string `Id`, with the named lines' `AccountRef` and `ClassRef` left out. `compare` (against the fetched copy) and `compareDigests` (against an intent's digests) give `{ same: true }` or `{ same: false, fields }`, the names sorted. A name is a field whose hash differs or is on one side only, or any stored field whose own name starts `Line:`; `Line:<Id>` for a line that differs or is on one side only; `Line` when the line ids differ with no line on one side only (another order, say), when a stored line has no string `Id` or shares one, or when there is no stored list of lines and no missing line is named; and `Line:<Id>.AccountRef` or `Line:<Id>.ClassRef` for a named line whose stored ref's `value` is not the intended one (an absent `ClassRef` reads as no class; a change with no `class_id` intends the fetched class). The only things that may differ are `SyncToken`, `MetaData`, `sparse`, and a named line's two refs when they are the intended ones. A stored copy of any shape is read without throwing; what it cannot match, it names.
+
+### The three write tools
+
+`categorizeTool` (`src/write/categorize.ts`, for `purchase` and `bill`) and `undoTool` (`src/write/undo.ts`) are the handlers; each runs its checks in order, answers the first that fails, and runs nothing after it. Both hand what they checked to `runChange` (`src/write/change.ts`), the flow they share. The words are contract 1.2 §15 (Categorize order) and §18 (Undo order); what the code does is below.
+
+**Categorize.**
+
+1. `write:size`: more than 20 lines (`MAX_LINES`). Nothing is fetched, run or opened.
+2. `write:sweep`: `readSweep` on the stamp (see [The sweep stamp](#the-sweep-stamp)).
+3. `write:disabled`: `sw.isOn` on the switch file (see [The switch file](#the-switch-file)).
+4. `runInCall`, then `runtime.companies.prepareCall(company)`: Stacks' token and, on the company's first use in the process, one `companyinfo` GET. A failure answers its 1.0 reason (`forkReason`).
+5. `preSend` in `categorize` mode (steps 4 to 12 of the contract, the table under "The pre-send check" above): the transaction and preferences, type, `stacks-bill`, closed, line, account, class, noop and the body check. Only GETs go out.
+6. The names. The receipt records each line's account and class names, and nothing else gives them: the new account's and class's names are the ones step 5 read, and `namedLines` reads every other ref (a before account, a before class, a kept class) with one GET per id per call, in line order. A `Name` that is not a non-empty string, or a Fault 610 on a before ref, is `fork-error`; any other failure answers its 1.0 reason.
+7. The switch again (`runChange`, categorize only): another call's `sent-diff` may have deleted the file since step 3. Off is `write:disabled`, with no intent.
+8. The intent: `runReceipt` with the intent request, its `digests` keys sorted. Exactly `{ ok: true, key, n }` for this call's company, type, id and SyncToken goes on. A not-ok `write:cap` is `write:cap`; any other not-ok answer is `write:receipt-failed`, with a `receipt:` line only when the answer's key is this call's. Nothing is registered or sent.
+9. `registry.register(checked)` once, then `runtime.stacks.mark()` and `sendUpdate`, once. A refused registration is `fork-error`, with nothing sent.
+10. `afterSend`, below.
+
+**Undo.**
+
+1. `write:sweep`.
+2. The key without `:intent`; a key of another company than the call's is `write:not-sent`, never looked up. Then `runReceipt` `lookup` of exactly that attempt, read by `lookupOk` (a strict reader: any extra key, wrong `key`, invalid intent or outcome line, or one-sided `superseded_by` and `superseded_ahead` is not ok). A not-ok answer with `reason` `not-found` is `write:not-sent`; any other is `write:receipt-failed`.
+3. An intent with `undo_of` set is `write:undo-of-undo`.
+4. A latest outcome of `unknown`, or none, is settled first (see [Settling](#settling)): the call is prepared just before the settle's refetch; a wait or a settle that stays unknown is `write:unknown` (undo's own text: "That change's result isn't settled yet; try again in a few minutes."); the settled outcome is recorded by `applySettled`, which first deletes the switch file for a `sent-diff`; if it wasn't recorded the answer is `write:receipt-failed`.
+5. A latest outcome other than `sent` or `sent-diff` is `write:not-sent`.
+6. The call is prepared (if step 4 did not), and `preSend` runs in `undo` mode: the intent's before values are the changes, and an `afterLine` hook answers `write:changed-since` when a named line no longer holds the intent's after values. In `undo` mode `size` and `noop` are skipped, and each account and class need only exist.
+7. `runChange` with `categorize: false`: no switch check; the intent has the undone key as `undo_of`, the lines' sides swapped (names included, so no name GET), and the undone intent's reason; the cap never refuses it; then `register` once and the one send.
+
+**Order of the call's parts.** Categorize: size, sweep, switch, prepare, `preSend`, names, switch again, intent, register, send. Undo: sweep, company, lookup, undo-of-undo, settle, not-sent, prepare, `preSend`, intent, register, send.
+
+**After the send** (`afterSend` in `change.ts`, with `readAnswer` in `answer.ts`). Everything runs inside one `try`, so a throw anywhere after the send is read, below. `readAnswer` takes contract §17's steps in order: a Fault `5010` is `stale`, `6200` and `6210` are `closed`, any other Fault is `failed` (a Fault decides in any status; one whose first `code` is off `^[A-Za-z0-9_-]{1,64}$` is no Fault); a 2xx with the entity under the sent entity's key and a string `Id` is `stored` when the `Id` is the sent one and its `SyncToken` is 1 to 20 digits, and `id-mismatch` when the `Id` differs; anything else is `none`. The `intuit_tid` is kept only when it is a form §5 allows.
+
+- A `401` answer takes a forced token (`runtime.stacks.get(company, { force: true, sentAt })`) before any request, and sets it on the call only when its `realm_id` is the call's. If it can't, no refetch is made.
+- `stale`: outcome `stale`, `write:stale`. `closed` or `failed`: outcome `failed` with the code and tid, `write:closed` or `write:failed`.
+- `stored`: `compare` of the stored copy with the fetched one. The same is `sent`. A difference is `sent-diff`, and the switch is turned off first. The result is the success item with `receipt`, `writes_off` and `recorded`.
+- `id-mismatch`: the switch is turned off, then as `none`, with `note: id-mismatch`.
+- `none`, and `id-mismatch`: the transaction is read once (`rereadTxn`, through `fetchById`). A SyncToken that moved and every named line holding its after values is stored, as above. Anything else is outcome `unknown` and `write:unknown`.
+- A throw: if no outcome was asked yet, an `unknown` one is asked, and the result is `write:unknown` with the receipt. If one was, it is not asked again.
+
+**Decided texts after a throw (TL3).** When a later step throws after the outcome was decided as something other than `unknown`, the result is `write:unknown` with the receipt, and `decidedText` in `src/write/change.ts` (`DECIDED`, around lines 153-165) gives it these four sentences, one for each decided outcome, each followed by the tail `Its outcome, <outcome>, was recorded; this result couldn't be written.` (`wasn't confirmed recorded` when the outcome was `recorded: none`), and ` Writes are switched off.` when this attempt's deletion of the switch file succeeded:
+
+- `sent`: "QuickBooks stored the change."
+- `sent-diff`: "QuickBooks stored the change, with differences from what was asked."
+- `stale`: "QuickBooks refused the change: the transaction had changed since it was read."
+- `failed`: "QuickBooks refused the change."
+
+These four are texts beyond spec §6's table (§6 gives `write:unknown` four: a send that had no answer, one whose outcome wasn't confirmed recorded, an id-mismatch, and undo's step 4); they are given when a later step throws after the outcome was decided, so the result never says "QuickBooks didn't answer" about a change that was answered.
+
+### The receipt command
+
+`runReceipt` (`src/write/receipt-cmd.ts`) is the only code that loads `node:child_process`, and only `spawn`. It splits `QBO_WRITE_RECEIPT_CMD` on single spaces and runs it with `shell: false`, with `stdio: "pipe"`. The child's environment is built from the write config alone: `NOTION_API_KEY` and `TZ` when set, `QBO_WRITE_LEDGER`, and `PATH` when set; never `STACKS_QBO_TOKEN`, `QBO_COMPANIES` or `HOME`. The request is written to stdin as one JSON text; stderr is read and dropped, never logged. The answer is the one JSON object on stdout when the exit code is 0; a spawn error, a non-zero exit, no JSON, two JSON objects, a JSON value that is not an object, a run killed at 20 seconds (`RECEIPT_TIMEOUT_MS`) or one whose stdout passes 1 MiB (`RECEIPT_MAX_BYTES`) is `{ ok: false, reason: "failed", cause: "command" }`. Both kills are `SIGKILL`.
+
+The intent request is made, and answered ok, before anything is registered or sent. The outcome request is made after the send, once per attempt (or, for a settled attempt, once per settle), with the result the answer, refetch or settle gave. What the command printed is read by the strict readers in `answers.ts`: an intent answer that isn't exactly `{ ok: true, key, n }` for this attempt, or an outcome answer that isn't exactly `{ ok: true, notion: true | false }` (`recorded` is `notion` for `true`, `ledger` for `false`, `none` for anything else), is not ok.
+
+### The switch file
+
+`QBO_WRITE_SWITCH` is a file whose presence switches categorizing on (`src/write/switch.ts`, one `Switch` per server). `isOn` is true only when the latch is not set and `stat` finds a regular file; a missing file, a directory, a `stat` that fails (an `EACCES` included) and the latch are each off. Categorize asks it twice (steps 3 and 7); undo never asks it, so undo runs with the file absent.
+
+A `sent-diff` (answered, or found when an unknown is settled) and an `id-mismatch` call `turnOff`, which `unlink`s the file and answers whether that worked. Success: the result's `writes_off` is `true`, and a switch file recreated afterwards turns categorizing on again at once (no latch). ENOENT (the file was already gone): `false`, no latch. Any other failure, or a throw: `false`, one fixed line on stderr with no path or token, and the latch, which refuses every later categorize call with `write:disabled` until the process restarts, whatever the file says. A restart reads the file again, so a switch file that could not be deleted turns categorizing back on at the next start. When a result says `writes_off: false` after a `sent-diff`, the file must be deleted by hand (the README says so).
+
+### The sweep stamp
+
+`readSweep` (`src/write/sweep.ts`) reads `QBO_WRITE_SWEEP_STAMP` on every categorize and undo call, with the wall clock (`kit.wall`, epoch milliseconds), and passes only when the file is a JSON object with exactly `v`, `at`, `clean`, `jobs` and (only when not clean) `reason`, of the right types, with `jobs` an integer of at least 0 and `at` an ISO 8601 UTC time that round-trips through `toISOString`; `v` is 1; `at` is no more than 60 seconds after now; `clean` is `true`; and `at` is at most 20 minutes before now (exactly 20 minutes passes). It must be clean and at most 20 minutes old. Every other stamp, and any throw, is `write:sweep`.
+
+### Settling
+
+`settle` in `src/write/settle.ts` (pure; exported for 298's write check) decides an attempt whose latest outcome is `unknown`, or which has an intent and no outcome, from the receipt command's `lookup` and one read of the transaction. An unknown is settled at least 10 minutes after its send: the age is taken from the `unknown` outcome's `at`, or the intent's `at` if there is no outcome, against the wall clock (`9:59.999` waits, `10:00.000` settles); an `at` that does not round-trip, or a clock that is not a finite number, leaves the attempt unknown. The rows, in order, and the outcome each gives:
+
+| When | Outcome |
+|------|---------|
+| age under 10 minutes | `wait`: nothing is read |
+| `superseded_ahead` is 0 (another attempt on the same SyncToken was stored) | `failed` |
+| `superseded_ahead` is 1 (a later intent one SyncToken ahead names a line with another before) | `failed` |
+| `superseded_ahead` is 2 or more | `unsettled` |
+| the read answers Fault 610 | `unsettled`, `note: deleted` |
+| the read fails any other way (no answer, a 5xx, another Fault, a 1.0 reason such as a failed prepare) | stays unknown |
+| SyncToken not moved | `failed` |
+| moved by one and every named line holds its after values | `compareDigests` against the intent's digests: `sent`, or `sent-diff` naming the fields |
+| moved by more than one and holds the after values | `sent`, `note: edited-since` |
+| anything else (moved without the after values, a lower or non-digit SyncToken) | `unsettled` |
+
+`applySettled` then turns the switch off for a `sent-diff` and records the settled outcome with the receipt command. Undo settles a due unknown first, as step 4 of its order: it prepares its call just before the read, acts on the settled outcome (a `sent-diff` deletes the switch file), and refuses with `write:receipt-failed` when that outcome wasn't recorded; a settle that comes out `sent` or `sent-diff` goes on to undo, any other settled outcome is `write:not-sent`.
+
+### Contract 1.2's differences from 1.1
+
+Contract 1.2 changes no request, tool result or fixture file. Its differences from 1.1:
+
+- `entity-by-id-write`: §16's write rule has the name the code gives it (it was `entity-by-id` in 1.1; difference 2, 293 QA5).
+- §17 Compare's `Line` row names a stored copy that has a line with no string `Id`, two lines that share one, or no `Line` array (difference 3).
+- §20 states that an intent's `digests` keys are in code-unit order, as the receipt command already requires; the change flow sends them sorted (`intentFor`).
+- §17 reads a Fault whose first code is off `^[A-Za-z0-9_-]{1,64}$`, and a stored entity whose `SyncToken` isn't 1 to 20 digits, as no answer, so the refetch decides (differences 4 and 5).
+- §20's Receipt causes gains `command`: the write server's own cause, never sent by the command, for a command that couldn't be run, exited non-zero, ran past 20 seconds or printed anything but one JSON object.
+
+Two differences are in the code and not in the contract: difference 1, that an update answered 401 takes a forced Stacks token before the refetch (§17 already says a 401 drops the kept token, so the contract stands), and difference 6, the in-process latch above, which adds an off-state after a failed deletion of the switch file.
 
 **The write probe.** `node dist/guard-probe.js --mode write <METHOD> <URL> --realm <R> [--body <file>] [--header <k:v>]... [--stacks-url <u>] [--key <k>]...` asks write mode's dry decision (`decideDry`) and sends nothing. `--mode` takes only `write`, given once; `--body` (a UTF-8 file, read exactly, given once) and `--header` (once per name) are accepted only with `--mode`. It prints one line and exits:
 
@@ -307,8 +401,19 @@ src/
 ├── guard-probe.ts              # Probe: asks decide (or, with --mode write, the dry decision) about one request, sends nothing
 │
 ├── write/                      # Write mode only; loaded by index.ts when QBO_MODE=write (guard-probe.ts loads guard-rules.ts and canonical.ts)
-│   ├── mode.ts                 # Makes the registry, the guard's extra rules and the five tools
-│   ├── stubs.ts                # The four write tools, not built yet
+│   ├── mode.ts                 # Makes the kit, the registry, the switch, the guard's extra rules and the five tools
+│   ├── kit.ts                  # The write kit: clocks, spawn, buildBody and the switch's fs
+│   ├── categorize.ts           # qbo_categorize_purchase and qbo_categorize_bill: contract §15's order
+│   ├── undo.ts                 # qbo_undo_change: contract §18's order
+│   ├── change.ts               # The change flow both share: intent, register, send once, read, refetch, compare, outcome
+│   ├── answer.ts               # Reads the update's answer (contract §17 Send answers)
+│   ├── answers.ts              # Reads the receipt command's answers, strictly
+│   ├── settle.ts               # Settling an unanswered send (contract §17 Settling)
+│   ├── receipt-cmd.ts          # Runs the receipt command: child process, no shell, 20 s kill
+│   ├── switch.ts               # The switch file and the in-process latch
+│   ├── sweep.ts                # The sweep stamp's reader
+│   ├── results.ts              # The write tools' results (contract §14) and their free texts
+│   ├── stubs.ts                # qbo_write_check, not built yet
 │   ├── guard-rules.ts          # The two extra guard rules and the dry decision
 │   ├── capability.ts           # The capability registry
 │   ├── pre-send.ts             # The pre-send check and the checked request
@@ -374,7 +479,7 @@ Define the MCP tool interface:
 - Zod schema for input validation
 - Links to handler function
 
-Write mode's four tools are in `src/write/stubs.ts`. Each definition carries its handler (the four share one until they are built), and there is no file under `src/handlers` for them; `qbo_companies` is shared with the read server.
+Write mode's tools are `categorizeTool` in `src/write/categorize.ts` (called for `purchase` and `bill`), `undoTool` in `src/write/undo.ts` and the `qbo_write_check` stub in `src/write/stubs.ts`. Each definition carries its handler, and there is no file under `src/handlers` for them; `qbo_companies` is shared with the read server.
 
 ### 5. Helpers (`src/helpers/format-error.ts`)
 
@@ -605,7 +710,7 @@ MCP client sends a tool invocation
 1. **No credentials in this server**: it holds no QuickBooks refresh token, client id or client secret; the token client gets an access token from Stacks and keeps it in memory until 5 minutes before it expires
 2. **No sign-in material**: the server, in either mode, refuses to start if any of the four removed sign-in keys is present
 3. **Redaction**: every access token the call held, and the Stacks key, are kept out of results, errors and logs; an `intuit_tid` that contains any of them is dropped. Inside write mode's code, the errors its requests reject with do hold the token, and `sendUpdate` checks an `intuit_tid` for the call's tokens only (see Known limits under [Write mode](#write-mode))
-4. **Read only in read mode**: only the allowlisted read tools are registered; write mode registers exactly its five listed tools, and its four write tools are not built yet
+4. **Read only in read mode**: only the allowlisted read tools are registered; write mode registers exactly its five listed tools, three of which change books and one (`qbo_write_check`) is not built yet
 5. **Input Validation**: Zod schemas validate all inputs
 
 ---

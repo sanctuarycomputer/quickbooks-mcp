@@ -1,14 +1,14 @@
-<!-- Changed by Sanctuary Computer (quickbooks-mcp-285, quickbooks-mcp-286, quickbooks-mcp-293): describes the read-only fork and its write mode. -->
+<!-- Changed by Sanctuary Computer (quickbooks-mcp-285, quickbooks-mcp-286, quickbooks-mcp-293, quickbooks-mcp-294): describes the read-only fork and its write mode. -->
 # QuickBooks Online MCP Server
 
 ## This fork
 
 This is Sanctuary Computer's fork of the QuickBooks Online MCP server. It starts as a read-only server, and with `QBO_MODE=write` as a write server (see [Write mode](#write-mode)).
 
-- By default it is read only. It registers 31 read tools (listed under [Available Tools](#available-tools)) and `qbo_companies`. Nothing else is registered: no create, update or delete tools. Write mode registers five tools instead, four of them not built yet.
+- By default it is read only. It registers 31 read tools (listed under [Available Tools](#available-tools)) and `qbo_companies`. Nothing else is registered: no create, update or delete tools. Write mode registers five tools instead: the three write tools (`qbo_categorize_purchase`, `qbo_categorize_bill` and `qbo_undo_change`) and `qbo_companies` are built, and `qbo_write_check` is still a stub.
 - There is no sign-in in this fork, and it never holds or stores a QuickBooks refresh token, client id or client secret. It gets an access token for the company a call names from Stacks, and keeps it in memory until 5 minutes before it expires (see [Configuration](#configuration) and [How a call works](#how-a-call-works)).
 - Every read tool takes a required `company`. `qbo_companies` lists the company keys and names you can pass.
-- Files this fork changed carry a "Changed by Sanctuary Computer (quickbooks-mcp-NNN)" notice, and files it added a "Sanctuary Computer (quickbooks-mcp-NNN)" one, where NNN is the ticket that made the change (285, 286, 291 or 293), where the format allows a comment (source, tests, `jest.config.js`, the docs and `.env.example`); `package.json` and `package-lock.json` can't hold one, and the fork's pull request lists their changes. Deleted files are listed there too.
+- Files this fork changed carry a "Changed by Sanctuary Computer (quickbooks-mcp-NNN)" notice, and files it added a "Sanctuary Computer (quickbooks-mcp-NNN)" one, where NNN is the ticket that made the change (285, 286, 291, 293 or 294), where the format allows a comment (source, tests, `jest.config.js`, the docs and `.env.example`); `package.json` and `package-lock.json` can't hold one, and the fork's pull request lists their changes. Deleted files are listed there too.
 - Licence mismatch: `LICENSE` holds the Apache-2.0 text (with "January 2025" typed for "January 2004" and a filled-in "Copyright 2025 Intuit, Inc."), while `package.json` says MIT. This fork leaves both as they are. See the ticket 283 fork review.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the start check, the token client and the guard work.
@@ -127,17 +127,73 @@ In read mode the server registers these 31 read tools and `qbo_companies`, and n
 
 ## Write mode
 
-With `QBO_MODE=write` the server is the write server. It registers five tools and no read tool: `qbo_categorize_purchase`, `qbo_categorize_bill`, `qbo_undo_change`, `qbo_write_check` and `qbo_companies`. The four write tools are not built yet: each answers `reason: fork-error` ("This tool is not built yet.") until tickets 294 and 298 build them. Until then no tool sends anything to QuickBooks. The write server needs the five keys above and four more, and refuses to start without them. The read server loads nothing under `src/write` and ignores these keys. `.env.example` lists them, commented out.
+With `QBO_MODE=write` the server is the write server. It registers five tools and no read tool: `qbo_categorize_purchase`, `qbo_categorize_bill`, `qbo_undo_change`, `qbo_write_check` and `qbo_companies`. The first three change books (see [The three write tools](#the-three-write-tools)); `qbo_write_check` is not built yet (ticket 298) and answers `reason: fork-error` ("This tool is not built yet."). The write server needs the five keys above and four more, and refuses to start without them. The read server loads nothing under `src/write` and ignores these keys. `.env.example` lists them, commented out. The rules for every word below are contract 1.2 §13 to §20 (`docs/contracts/quickbooks.md` in Stacksbot).
 
 | Key | Required in write mode | What it is |
 |-----|------------------------|------------|
-| `QBO_WRITE_RECEIPT_CMD` | yes | The receipt command. |
-| `QBO_WRITE_SWITCH` | yes | The path of the off switch's file. |
-| `QBO_WRITE_LEDGER` | yes | The path of `writes.jsonl`. |
-| `QBO_WRITE_SWEEP_STAMP` | yes | The path of the job sweep's stamp. |
-| `NOTION_API_KEY` | no | Not read by this code. The write entry carries it for ticket 294's receipt command. |
+| `QBO_WRITE_RECEIPT_CMD` | yes | The receipt command: a program and its arguments, split on single spaces and run with no shell (see [The receipt command](#the-receipt-command)). |
+| `QBO_WRITE_SWITCH` | yes | The path of the switch file (see [The switch file](#the-switch-file)). |
+| `QBO_WRITE_LEDGER` | yes | The path of `writes.jsonl`. It is handed to the receipt command; this server never opens it. |
+| `QBO_WRITE_SWEEP_STAMP` | yes | The path of the job sweep's stamp (see [The sweep stamp](#the-sweep-stamp)). |
+| `NOTION_API_KEY` | no | Read once at start, as given, and passed to the receipt command when set. |
+| `TZ` | no | Read once at start, as given, and passed to the receipt command when set. |
+| `PATH` | no | The server's own `PATH`, read once at start, as given, and passed to the receipt command when set. |
 
-A write key that is not set or is empty refuses the start: `refused to start: <KEY> is not set` or `<KEY> is empty`. See [Write mode](docs/ARCHITECTURE.md#write-mode) in the architecture document for the guard rules, the capability, the pre-send check and the compare.
+A write key that is not set or is empty refuses the start: `refused to start: <KEY> is not set` or `<KEY> is empty`. The three keys that are passed on never refuse a start, set or not. See [Write mode](docs/ARCHITECTURE.md#write-mode) in the architecture document for the guard rules, the capability, the pre-send check, the compare, the send and the settling.
+
+### The three write tools
+
+Each takes a required `company` and a required `params`. `qbo_categorize_purchase` and `qbo_categorize_bill` take `params` `{ id, lines: [{ line_id, account_id, class_id? }], reason }`: they move the named expense lines of one Purchase or Bill to another account, and optionally another class (`class_id: null` clears it; leaving it out keeps the line's class). `qbo_undo_change` takes `params` `{ receipt }`: the receipt key a categorize result gave, which puts each line's earlier account and class back. A tool stops at the first check that fails and answers that reason (`write:size`, `write:sweep` and so on); nothing after it runs.
+
+**Categorize runs these checks, in this order** (contract §15):
+
+1. Size: at most 20 lines (`write:size`). Nothing is fetched.
+2. The sweep stamp is clean and fresh (`write:sweep`).
+3. The switch file exists (`write:disabled`).
+4. The call is opened and prepared: Stacks gives the company's token, and on the company's first use its QuickBooks name is checked. A failure answers its 1.0 reason.
+5. The pre-send check (`preSend`): the transaction and the company's preferences are fetched fresh; then its type, `stacks-bill`, closed books, its lines, each new account (an Expense, Other Expense or Cost of Goods Sold account that is active), each new class (active), that some line really changes, and that the request to send differs from the transaction only in the named lines' refs (`write:not-found`, `write:type`, `write:stacks-bill`, `write:closed`, `write:line`, `write:account`, `write:class`, `write:noop`, `write:diff`). Only GETs are sent.
+6. The names of the accounts and classes the receipt will carry: one GET per account or class id, for each ref not already read in step 5. A name that is not a non-empty string, or a deleted before account or class, answers `fork-error`; any other failure answers its 1.0 reason.
+7. The switch file is looked at again (a `sent-diff` in another call may have deleted it meanwhile): off answers `write:disabled`, with no intent.
+8. The intent: the receipt command is asked to record what is about to be sent (see [The receipt command](#the-receipt-command)). Only an answer that is exactly ok goes on; a cap is `write:cap`, anything else `write:receipt-failed`, and nothing was sent.
+9. The update is registered with the guard, once, and sent once. It is never sent again, an answer of 401 or 429 included.
+10. The answer is read (below).
+
+**Undo runs these checks, in this order** (contract §18): the sweep stamp (`write:sweep`); the receipt key's company is the call's, and the receipt command's `lookup` of exactly that attempt answers ok (`write:not-sent` for an unknown key or another company's, `write:receipt-failed` for any other not-ok answer); the attempt is not itself an undo (`write:undo-of-undo`); an attempt whose latest outcome is `unknown`, or which has none, is settled first (see [Settling](#settling)), and an age under 10 minutes or a settle that leaves it unknown answers `write:unknown`; the latest outcome is `sent` or `sent-diff` (else `write:not-sent`); the call is prepared; then the pre-send check with the intent's earlier values as the changes (`write:not-found`, `write:type`, `write:stacks-bill`, `write:closed`, `write:line`, `write:changed-since` when a line no longer holds what the change set, `write:account` or `write:class` when a before value no longer exists, `write:diff`); then the undo's own intent (it names `undo_of`, is never counted against the daily cap, and a `write:cap` answer is a `write:receipt-failed`), and the one send. An undo ignores the switch file, so a `sent-diff` can be put back at once. It still needs the sweep stamp.
+
+**After the send, the answer is read** (contract §17, in this order): a Fault `5010` is `write:stale`; `6200` or `6210` is `write:closed`; any other Fault is `write:failed`; a Fault decides in any HTTP status, and a Fault whose code is not 1 to 64 characters of letters, digits, `_` and `-` is no Fault. A 2xx that holds the entity with the sent `Id` and a SyncToken of 1 to 20 digits is stored, and what QuickBooks stored is compared with what was asked: the same is `sent`, and a difference is `sent-diff`, which names the fields and deletes the switch file. An entity with another `Id` deletes the switch file too (`note: id-mismatch`). Anything else, and any failure to get an answer, is no answer: the server reads the transaction once at once, and a SyncToken that moved with every named line holding its new values is stored; anything else is `write:unknown`. After an update answered 401 the server takes a new Stacks token for the call before it reads anything else; if it can't, or the token is for another realm, no refetch is made, so an answer that decided nothing is `write:unknown`.
+
+From the send on, every result carries `receipt:` with the attempt key, and records its outcome with the receipt command. A header `recorded: ledger` or `recorded: none` says the outcome reached the ledger only, or that the server had no confirmation. A failure after the send never says "nothing was sent": it answers `write:unknown`.
+
+### The receipt command
+
+`QBO_WRITE_RECEIPT_CMD` is run as a child process, with no shell: the value is split on single spaces, the first word is the program. It gets one JSON request on stdin and must print one JSON object on stdout and exit 0; anything else is not ok. Its environment is only `NOTION_API_KEY`, `QBO_WRITE_LEDGER`, `PATH` and `TZ` (`NOTION_API_KEY`, `PATH` and `TZ` only when the server was started with them; never `STACKS_QBO_TOKEN`, `QBO_COMPANIES` or `HOME`). It is killed with `SIGKILL` after 20 seconds, or if it prints more than 1 MiB. Every answer is read strictly: the intent must be exactly `{ ok: true, key, n }` for this call's transaction and SyncToken, or nothing is registered or sent.
+
+The server asks it for an **intent** before any send (what is about to be changed, the transaction's digests and the reason), and for an **outcome** after it, once for each attempt of the call. The intent comes first, always: a crash between the two leaves an intent with no outcome, which is settled later.
+
+### The switch file
+
+`QBO_WRITE_SWITCH` is a file whose presence switches categorizing on. It must be a regular file; one that is missing, a directory, or can't be `stat`ed counts as absent. Absent, categorize answers `write:disabled` and does nothing else. Undo runs without it.
+
+The server deletes the file itself on a `sent-diff` (answered, or found later when an unknown is settled) and on an `id-mismatch`: categorizing stops until someone looks. The result then says `writes_off: true`. If the file can't be deleted (anything but "it is already gone"), the result says `writes_off: false`, the server writes one line to stderr, and an in-process latch refuses every later categorize call with `write:disabled` until the server restarts, whatever the file says. A deleted file that is recreated switches categorizing on again at once; a restart reads the file again, so the latch does not outlast one.
+
+**When a result says `writes_off: false` after a `sent-diff`, delete the switch file by hand.** The server stopped categorizing in this process only; the file is still there, and the next restart would read it and start categorizing again.
+
+### The sweep stamp
+
+`QBO_WRITE_SWEEP_STAMP` is a JSON file the job guard writes at the end of each run: `{ v: 1, at, clean, jobs, reason? }`. Categorize and undo read it on every call and answer `write:sweep` unless it is clean and at most 20 minutes old (exactly 20 minutes passes). A stamp that is missing, unreadable, not exactly that shape, version 2, unclean, or dated more than 60 seconds ahead also answers `write:sweep`.
+
+### Settling
+
+An attempt whose latest outcome is `unknown`, or which has an intent and no outcome, is settled by undo. It waits until at least 10 minutes have passed since the `unknown` outcome (or the intent, with no outcome): under that, undo answers `write:unknown` and fetches nothing. After that the ledger and a read of the transaction decide, in this order: another attempt on the same SyncToken that was stored, or a later intent one SyncToken ahead that doesn't build on this one: `failed`; two or more ahead: `unsettled`; the transaction deleted: `unsettled`; no answer from QuickBooks: still unknown; the SyncToken not moved: `failed`; moved by one with the new values: `sent` or, with differences, `sent-diff`; moved by more than one with the new values: `sent` with `note: edited-since`; anything else: `unsettled`. A settled `sent-diff` deletes the switch file. The settled outcome is recorded with the receipt command, and undo goes on only when that was recorded.
+
+### Contract 1.2's differences from 1.1
+
+- The guard rule for GETs by id in write mode is named `entity-by-id-write` (1.1's §16 said `entity-by-id`, which is the read server's rule).
+- A stored copy whose lines lack a string `Id`, share one, or have no `Line` array is named `Line` by the compare (the code already did; 1.1's table left the case out).
+- An intent's digests are sent with their keys in code-unit order.
+- A Fault whose code is off its pattern, and a stored entity whose SyncToken is not digits, are read as no answer, and the refetch decides.
+- The receipt command's causes gain `command`: the server's own cause, when the command couldn't be run or answered off-shape.
+- Not in the contract: the in-process latch above (known difference 6), which adds an off-state after a failed deletion; and, as 1.1 already says, a 401 on an update drops the kept token (the server takes a new one before the next request).
 
 To ask what write mode's guard would decide for a request, without sending anything:
 
@@ -151,7 +207,7 @@ It prints `allow <rule>` or `allowed-with-capability write-update` (exit 0), or 
 
 ## How a call works
 
-This is the read server's call; the write server's tools are not built yet. There is no sign-in. The fork gets a short-lived access token for each company from Stacks and keeps it in memory until 5 minutes before it expires.
+This is the read server's call; the write tools' own order is under [The three write tools](#the-three-write-tools). There is no sign-in. The fork gets a short-lived access token for each company from Stacks and keeps it in memory until 5 minutes before it expires.
 
 1. A tool call arrives with `company`.
 2. The call context starts. It holds that call's company, tokens and failure, and is not shared between calls. What is kept across calls is each company's token, realm, refusal and passed name check.
