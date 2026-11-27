@@ -38,7 +38,8 @@ export type IntentRequest = {
 };
 /** What a write tool holds of its server's write mode: one registry, one switch, one kit. */
 export type ChangeTools = { readonly registry: Registry; readonly sw: Switch; readonly kit: WriteKit };
-export type ChangeContext = { runtime: WriteRuntime; tools: ChangeTools; checked: CheckedRequest; intent: IntentRequest; categorize: boolean };
+/** `writesOff`: this call deleted the switch file before the change flow (undo's step-4 settle, task-8-3 TQ1), so a success says `true`. */
+export type ChangeContext = { runtime: WriteRuntime; tools: ChangeTools; checked: CheckedRequest; intent: IntentRequest; categorize: boolean; writesOff?: boolean };
 
 /** §20's outcome request's values. */
 type Outcome = {
@@ -227,7 +228,12 @@ async function afterSend(ctx: ChangeContext, key: string, got: { answer: UpdateA
   const { runtime, checked, intent } = ctx;
   const { sw, kit } = ctx.tools;
   const { cfg } = runtime;
-  const s: AfterState & { asked: boolean } = { asked: false, recorded: "none", note: null, writesOff: false };
+  const s: AfterState & { asked: boolean } = { asked: false, recorded: "none", note: null, writesOff: ctx.writesOff === true };
+  /** The switch turned off by this attempt; `writesOff` stays true once this call deleted the file (a later ENOENT deletes nothing). */
+  const turnOff = async (): Promise<void> => {
+    const deleted = await sw.turnOff(cfg.writeSwitch);
+    s.writesOff = s.writesOff || deleted;
+  };
   /** The attempt's one outcome request; what it answered, any failure read as `none`. */
   const record = async (o: Outcome): Promise<void> => {
     s.asked = true;
@@ -249,7 +255,7 @@ async function afterSend(ctx: ChangeContext, key: string, got: { answer: UpdateA
       const compared = compare(txn, checked.fetched, checked.changes);
       const diff = compared.same ? null : compared.fields;
       // An id-mismatch has turned it off already.
-      if (diff !== null && s.note === null) s.writesOff = await sw.turnOff(cfg.writeSwitch);
+      if (diff !== null && s.note === null) await turnOff();
       const after = txn.SyncToken as string;
       await record(outcome(diff === null ? "sent" : "sent-diff", { sync_token_after: after, diff, note: s.note }));
       const change = { result: diff === null ? ("sent" as const) : ("sent-diff" as const), company: intent.company, type: intent.type, id: intent.id, sync_token: intent.sync_token, sync_token_after: after, lines: intent.lines, undo_of: intent.undo_of, diff, writes_off: s.writesOff };
@@ -267,7 +273,7 @@ async function afterSend(ctx: ChangeContext, key: string, got: { answer: UpdateA
     if (read.kind === "stored") return await stored(read.txn);
     if (read.kind === "id-mismatch") {
       s.note = "id-mismatch";
-      s.writesOff = await sw.turnOff(cfg.writeSwitch);
+      await turnOff();
     }
     // Step 6: no answer. The refetch, once, at once; moved with the after values is stored.
     const txn = fresh ? await reread(checked.entity, intent.id) : undefined;

@@ -43,7 +43,9 @@ const FORK_ERROR: Failure = Object.freeze({ reason: "fork-error" });
 const recorded = (): Failure => ({ reason: "fork-error", ...currentCall()?.failure });
 
 /** One account's or class's `Name`, by one GET: a non-empty string, else fork-error; a Fault 610 is fork-error (a line can't name a
- * deleted ref); any other failure answers the 1.0 reason 286 recorded on the call. */
+ * deleted ref); any other failure answers the 1.0 reason 286 recorded on the call (fork-error if none). A Fault is read as §17 reads one,
+ * before the status and the Name: a `Fault.Error` array whose first item has a string `code`, in any status (task-8-3 TP3); one other
+ * than 610 is a failed GET like a status off 2xx, so a 2xx holding one answers fork-error (286 records nothing for a 2xx). */
 async function readName(entity: "account" | "class", refId: string): Promise<string> {
   let answer;
   try {
@@ -53,7 +55,8 @@ async function readName(entity: "account" | "class", refId: string): Promise<str
   }
   const { status, data } = answer;
   const errors = prop(prop(data, "Fault"), "Error");
-  if (Array.isArray(errors) && prop(errors[0], "code") === "610") throw new NameFailed(FORK_ERROR);
+  const code = Array.isArray(errors) ? prop(errors[0], "code") : undefined;
+  if (typeof code === "string") throw new NameFailed(code === "610" ? FORK_ERROR : recorded());
   if (status < 200 || status > 299) throw new NameFailed(recorded());
   const found = prop(data, entity === "account" ? "Account" : "Class");
   const name = prop(found, "Name");

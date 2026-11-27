@@ -152,6 +152,53 @@ describe('A1.1: the order, and every check run', () => {
     expect([w.fake.log(), rig.posts()]).toEqual([[], []]);
   });
 
+  it('T9 TJ6: a refused AccountType with a control character of each class is written cleaned in the free text', async () => {
+    const w = world(rig, OK_SCRIPT);
+    (w.books['account/84'] as Json).Account.AccountType = '\u2029A\u0000B\tC\u007fD\u0085E\u009fF\u2028G\r\n';
+    const { client } = await w.start();
+    expect(await client.callTool(args())).toEqual({ content: [{ type: 'text', text: 'reason: write:account\n\nAccount 84 is an A B C D E F G account; choose an Expense, Other Expense or Cost of Goods Sold account.' }], isError: true });
+    expect([w.fake.log(), rig.posts()]).toEqual([[], []]);
+  });
+
+  describe('T9 TP3: a name GET reads any Fault (a first Error item with a string code, in any status) before the Name (§17)', () => {
+    const faultOf = (errors: unknown): Json => ({ Error: errors, type: 'ValidationFault' });
+    const coded = (code: unknown): Json => faultOf([{ Message: 'm', Detail: 'd', code }]);
+    /** The kept class 12 of line 2, read by the name GET only: a call that changes line 2's account alone. */
+    const keptClass = () => args(PURCHASE, { lines: [{ line_id: '2', account_id: '91' }] });
+    it.each<[string, string, () => ToolCall, Json]>([
+      ['Fault 6000 beside the Account', 'account/77', () => args(), coded('6000')],
+      ['Fault 6000 beside the Class', 'class/12', keptClass, coded('6000')],
+      ['a first code off §17’s pattern ("60 00") beside the Account (still a Fault)', 'account/77', () => args(), coded('60 00')],
+      ['a first code off §17’s pattern ("") beside the Class (still a Fault)', 'class/12', keptClass, coded('')],
+    ])('a 200 holding %s: fork-error (the reason 286 recorded, none for a 2xx), with no intent and no POST', async (_label, path, call, fault) => {
+      const w = world(rig, OK_SCRIPT);
+      (w.books[path] as Json).Fault = fault;
+      const { client } = await w.start();
+      expect(await client.callTool(call())).toEqual(forkReason({ reason: 'fork-error' }));
+      expect(rig.qbo().at(-1)).toBe(`GET ${path}`);
+      expect([w.fake.log(), rig.posts()]).toEqual([[], []]);
+    });
+    it('a 400 holding Fault 6000 beside the Account: the reason 286 recorded for it, as any failed name GET answers', async () => {
+      const w = world(rig, OK_SCRIPT);
+      w.books['account/77'] = { answer: { status: 400, body: JSON.stringify({ ...(w.books['account/77'] as Json), Fault: coded('6000') }) } };
+      const { client } = await w.start();
+      const r = await client.callTool(args());
+      expect(readError(r).reason).toBe('http-400');
+      expect([w.fake.log(), rig.posts()]).toEqual([[], []]);
+    });
+    it.each<[string, string, () => ToolCall, Json, string]>([
+      ['a first code that is the number 6000 beside the Account', 'account/77', () => args(), coded(6000), 'Uncategorized Expense'],
+      ['a first code that is the number 6000 beside the Class', 'class/12', keptClass, coded(6000), 'Client Delivery'],
+      ['a first item with no string code, then one with the string 6000, beside the Account', 'account/77', () => args(), faultOf([{ code: 610 }, { code: '6000' }]), 'Uncategorized Expense'],
+    ])('a 200 holding %s (no Fault): the Name is read and the intent asked', async (_label, path, call, fault, name) => {
+      const w = world(rig, { intent: [{ answer: { ok: false } }] });
+      (w.books[path] as Json).Fault = fault;
+      const { client } = await w.start();
+      expectFile(await client.callTool(call()), 'qbo_categorize_purchase/receipt-failed.json');
+      expect(JSON.stringify((w.fake.requests()[0] as Json).lines[0].before)).toContain(`"${name}"`);
+    });
+  });
+
   it('an after account step 9 read with no usable Name: fork-error, and no second GET of it', async () => {
     const w = world(rig, OK_SCRIPT);
     delete (w.books['account/84'] as Json).Account.Name;

@@ -156,6 +156,26 @@ describe('the header block (§14 Write result grammar)', () => {
   });
 });
 
+describe('T9 TJ6: a header value holds no control character and no line or paragraph separator', () => {
+  /** One of each class: C0 (TAB, CR and LF among them), DEL, C1 (U+0085 among them), U+2028, U+2029. */
+  const BAD: Array<[string, string]> = [
+    ['U+0000', '\u0000'], ['U+0009 (TAB)', '\t'], ['U+000A (LF)', '\n'], ['U+000B', '\u000b'], ['U+000D (CR)', '\r'], ['U+001B', '\u001b'], ['U+001F', '\u001f'],
+    ['U+007F', '\u007f'], ['U+0080', '\u0080'], ['U+0085', '\u0085'], ['U+009F', '\u009f'], ['U+2028', '\u2028'], ['U+2029', '\u2029'],
+  ];
+  it.each(BAD)('%s in a reason, an error\'s receipt or a success\'s receipt throws, at its start, middle or end', (_label, c) => {
+    for (const value of [`${c}x`, `write:failed${c}x`, `x${c}`]) {
+      expect(() => writeError(value, {}, 'x')).toThrow(TypeError);
+      expect(() => writeError('write:failed', { receipt: value }, 'x')).toThrow(TypeError);
+      expect(() => writeSuccess(PURCHASE, { receipt: value })).toThrow(TypeError);
+    }
+  });
+  it.each<[string, string]>([['U+0020', ' '], ['U+00A0', '\u00a0'], ['U+00A1', '\u00a1'], ['U+200B', '\u200b'], ['U+2027', '\u2027'], ['U+202A', '\u202a'], ['U+FEFF', '\ufeff']])('%s is no control character: written as given', (_label, c) => {
+    const receipt = `${KEY}${c}x`;
+    expect((writeError('write:failed', { receipt }, 'x').content[0] as Json).text).toBe(`reason: write:failed\nreceipt: ${receipt}\n\nx`);
+    expect(JSON.parse((writeSuccess(PURCHASE, { receipt }).content[0] as Json).text).receipt).toBe(receipt);
+  });
+});
+
 describe('the change item (§14 Change result)', () => {
   const itemOf = (change: Json, head: Json) => JSON.parse((writeSuccess(change as ChangeItem, head).content[0] as Json).text);
   it('exactly the 13 keys, in the table\'s order, as one compact line, with no isError', () => {

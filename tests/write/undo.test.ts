@@ -228,7 +228,7 @@ describe('A2.2: a due unknown is settled first; the prepare point', () => {
     const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], outcome: [NOT_OK] });
     w.books['purchase/1001'] = afterBook((txn) => (txn.TotalAmt = 121));
     const { client } = await w.start();
-    expect(await client.callTool(undo())).toEqual(errorText(SETTLE_FAILED));
+    expect(await client.callTool(undo())).toEqual(errorText(`${SETTLE_FAILED} Writes are switched off.`));
     expect(JSON.stringify(w.fake.requests()[1])).toBe(JSON.stringify({ cmd: 'outcome', key: KEY, result: 'sent-diff', sync_token_after: '4', diff: ['TotalAmt'], error: null, note: null }));
     expect([existsSync(w.switchPath), rig.posts()]).toEqual([false, []]);
   });
@@ -240,11 +240,11 @@ describe('A2.2: a due unknown is settled first; the prepare point', () => {
     expect(await client.callTool(undo())).toEqual(errorText(SETTLE_FAILED));
   });
 
-  it('a settled sent-diff, recorded: the switch file is deleted and the undo still sends (the switch never stops it)', async () => {
+  it('a settled sent-diff, recorded: the switch file is deleted and the undo still sends (the switch never stops it), writes_off true', async () => {
     const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK, OK] });
     w.books['purchase/1001'] = afterBook((txn) => (txn.TotalAmt = 121));
     const { client } = await w.start();
-    expectFile(await client.callTool(undo()), `${UNDO}/sent.json`);
+    expect(await client.callTool(undo())).toEqual(sentWith({ writes_off: true }));
     expect([existsSync(w.switchPath), rig.posts().length]).toEqual([false, 1]);
   });
 
@@ -989,6 +989,8 @@ const NOT_FAULTS: Array<[string, Json]> = [
   ['a first code that is null', faultCoded(null)],
   ['an empty Error array', faultWith([])],
   ['an Error that isn’t an array (an object with code 610)', faultWith({ Message: 'm', code: '610' })],
+  // T9 TP1: only the first item's code counts; a string code on a later item makes no Fault.
+  ['a first item whose code is the number 610, then one whose code is the string 6000', faultWith([{ Message: 'm', code: 610 }, { Message: 'm', code: '6000' }])],
 ];
 
 describe('task-8-2 TN1: the settle’s refetch reads any Fault before the entity, in any status (§17 Send answers; Settling rows 5-6)', () => {
@@ -1059,6 +1061,126 @@ describe('task-8-2 TN1-TN3: step 6’s refetch after the undo’s own unanswered
     expectFile(await client.callTool(undo()), `${UNDO}/sent.json`);
     expect(w.fake.requests()[2]).toMatchObject({ cmd: 'outcome', key: NEW, result: 'sent', sync_token_after: '5' });
     expect(rig.posts()).toHaveLength(1);
+  });
+});
+
+describe('T9 TP2: the shared reader reads the entity only in a 2xx and only with the asked Id as a string (§17 steps 4 and 6)', () => {
+  /** The moved copy with its Id the number 1001. */
+  const numberId = (txn: Json): Json => ({ ...txn, Id: 1001 });
+  it.each<[string, Json]>([
+    ['a 302 holding the moved Purchase', answered(302, { Purchase: afterBook().Purchase })],
+    ['a 200 holding the moved Purchase with its Id the number 1001', answered(200, { Purchase: numberId(afterBook().Purchase) })],
+  ])('the settle’s refetch: %s is no transaction, so it stays unknown (unknown.json), only the lookup run', async (_label, book) => {
+    const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], intent: ['intent-undo.json'], outcome: [OK, OK] });
+    w.books['purchase/1001'] = book;
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/unknown.json`);
+    expect([cmds(w), rig.posts()]).toEqual([['lookup'], []]);
+  });
+  const putBack = (): Json => afterBook((t) => ((t.SyncToken = '5'), (t.Line[0].AccountBasedExpenseLineDetail = { AccountRef: { value: '77' } }))).Purchase;
+  it.each<[string, Json]>([
+    ['a 302 holding the put-back Purchase', answered(302, { Purchase: putBack() })],
+    ['a 200 holding the put-back Purchase with its Id the number 1001', answered(200, { Purchase: numberId(putBack()) })],
+  ])('step 6’s refetch after the undo’s own unanswered send: %s is no transaction, so write:unknown, never sent again', async (_label, refetched) => {
+    const w = undoWorld({ lookup: [lookup()], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK] });
+    w.post = () => ((w.books['purchase/1001'] = refetched), { status: 500, body: '{}' });
+    const { client } = await w.start();
+    expect(await client.callTool(undo())).toEqual(errorText(`reason: write:unknown\nreceipt: ${NEW}\n\nQuickBooks didn't answer; the change will be settled by a later check.`));
+    expect(w.fake.requests()[2]).toMatchObject({ cmd: 'outcome', key: NEW, result: 'unknown' });
+    expect(rig.posts()).toHaveLength(1);
+  });
+});
+
+describe('T9 TQ1: once step 4’s settle deleted the switch file, every result of the call says so (§14 writes_off, §18 step 4)', () => {
+  const SWITCHED = ' Writes are switched off.';
+  const due = (outcome: Json[] = [OK, OK]) => ({ lookup: [lookup(unknownAt(DUE))], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome });
+  /** The settle's refetch: moved by one with the after values and TotalAmt 121, so it settles sent-diff. */
+  const diffBook = () => afterBook((txn) => (txn.TotalAmt = 121));
+  /** The kit's fs with an unlink that fails EACCES (the latch). */
+  const stuckFs = () => {
+    const real = createKit().fs;
+    const unlink = async () => {
+      throw Object.assign(new Error('EACCES'), { code: 'EACCES' });
+    };
+    return { stat: real.stat, unlink: unlink as unknown as typeof real.unlink };
+  };
+  const unknownText = (free: string) => errorText(`reason: write:unknown\nreceipt: ${NEW}\n\n${free}`);
+  it.each<[string, (w: World) => void, Json]>([
+    [
+      'step 9: the lines changed since (the second GET has line 1 on 91)',
+      (w) => {
+        let gets = 0;
+        w.onGet = (path) => {
+          if (path === 'purchase/1001' && ++gets === 2) w.books['purchase/1001'] = afterBook((txn) => ((txn.TotalAmt = 121), (txn.Line[0].AccountBasedExpenseLineDetail.AccountRef.value = '91')));
+        };
+      },
+      errorText(`reason: write:changed-since\n\nSomeone changed these lines since; nothing was sent.${SWITCHED}`),
+    ],
+    [
+      'step 6: a 1.0 reason (preferences answered 500)',
+      (w) => (w.books.preferences = { answer: { status: 500, body: '{}' } }),
+      // The 1.0 result's own text, then the sentence.
+      null as unknown as Json,
+    ],
+    [
+      'the undo’s own send answered Fault 5010 (stale)',
+      (w) => (w.post = () => ({ status: 400, body: JSON.stringify({ Fault: { Error: [{ Message: 'm', code: '5010' }], type: 'ValidationFault' }, time: TIME }) })),
+      errorText(`reason: write:stale\nreceipt: ${NEW}\n\nSomeone edited the transaction meanwhile; nothing was overwritten.${SWITCHED}`),
+    ],
+    ['the undo’s own send unanswered, the refetch unmoved', (w) => (w.post = () => ({ status: 500, body: '{}' })), unknownText(`QuickBooks didn't answer; the change will be settled by a later check.${SWITCHED}`)],
+    [
+      'the undo’s own send answered with another id (its sentence says it already: not twice)',
+      (w) => (w.post = () => ({ status: 200, body: JSON.stringify({ Purchase: { ...diffBook().Purchase, Id: '1009', SyncToken: '5' }, time: TIME }) })),
+      errorText(`reason: write:unknown\nreceipt: ${NEW}\nnote: id-mismatch\n\nQuickBooks answered with another transaction's id; writes are switched off.`),
+    ],
+  ])('a settled sent-diff, then %s: the result ends with the sentence once', async (_label, setup, want) => {
+    const w = undoWorld(due());
+    w.books['purchase/1001'] = diffBook();
+    setup(w);
+    const { client } = await w.start();
+    const r: any = await client.callTool(undo());
+    if (want === null) {
+      expect(r.isError).toBe(true);
+      expect(r.content[0].text).toMatch(/^reason: http-500\n/);
+      expect(r.content[0].text.endsWith(`.${SWITCHED}`)).toBe(true);
+    } else expect(r).toEqual(want);
+    expect(r.content[0].text.match(/writes are switched off/gi)).toHaveLength(1);
+    expect(existsSync(w.switchPath)).toBe(false);
+  });
+  it('a settled sent-diff, then the undo’s own send stored with a difference too: writes_off true (this call deleted the file once)', async () => {
+    const w = undoWorld(due());
+    w.books['purchase/1001'] = diffBook();
+    const echo = storeEcho(w);
+    w.post = (c) => {
+      const body = JSON.parse(echo(c).body as string);
+      body.Purchase.TotalAmt = 122;
+      return { status: 200, body: JSON.stringify(body) };
+    };
+    const { client } = await w.start();
+    const r: any = await client.callTool(undo());
+    expect(JSON.parse(r.content[0].text)).toMatchObject({ result: 'sent-diff', writes_off: true });
+  });
+  it('a settled sent ("sent", no difference): the switch file stays, writes_off false, no sentence', async () => {
+    const w = undoWorld(due());
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/sent.json`);
+    expect(existsSync(w.switchPath)).toBe(true);
+  });
+  const UNDELETED: Array<[string, (w: World) => Json]> = [
+    ['the unlink fails EACCES (the latch: nothing was deleted)', () => ({ fs: stuckFs() })],
+    ['the switch file already absent (ENOENT: nothing was deleted)', (w) => (rmSync(w.switchPath, { force: true }), {})],
+  ];
+  it.each(UNDELETED)('a settled sent-diff where %s: the undo’s success has writes_off false', async (_label, setup) => {
+    const w = undoWorld(due());
+    w.books['purchase/1001'] = diffBook();
+    const { client } = await w.start(setup(w));
+    expect(await client.callTool(undo())).toEqual(sentWith({ writes_off: false }));
+  });
+  it.each(UNDELETED)('a settled sent-diff where %s, its outcome not recorded: the settle’s sentence alone', async (_label, setup) => {
+    const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], outcome: [NOT_OK] });
+    w.books['purchase/1001'] = diffBook();
+    const { client } = await w.start(setup(w));
+    expect(await client.callTool(undo())).toEqual(errorText(SETTLE_FAILED));
   });
 });
 

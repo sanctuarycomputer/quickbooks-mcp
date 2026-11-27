@@ -5,6 +5,7 @@
 // checked request carries `checkedAt`, read from `deps.mono` (the registry's kind of clock) when it is made (293 QA1), and the names
 // steps 9-10 read, keyed `account:<id>` and `class:<id>` (spec §3 "gap: intent names", plan-1 P12).
 import { clearFailure, currentCall, type CallStore, type Failure } from "../clients/call-context.js";
+import { cleanName } from "../helpers/name-fold.js";
 import { fetchById, fetchPreferences, type Answer, type UpdateEntity } from "./client.js";
 import type { Change, Transaction } from "./compare.js";
 import { buildBody, checkBody, entityKey, entityKeys, isId, isRecord, lineRefs, MAX_LINES, prop, ruleClosed, ruleIds, ruleLines, ruleNoop, ruleStacksBill, ruleSubjectLine, ruleType, type RuleAnswer } from "./rules.js";
@@ -163,6 +164,9 @@ async function readRef(call: CallStore, mode: Mode, entity: "account" | "class",
   return found as Record<string, unknown>;
 }
 
+/** What an `AccountType` that §5's name rule cleans to nothing reads as in the free text. */
+const UNTYPED = "untyped";
+
 const mustBeActive = ({ Active }: Record<string, unknown>, reason: string, id: string): void => {
   if (typeof Active !== "boolean") broken();
   if (!Active) refuse(reason, { case: "inactive", id });
@@ -177,7 +181,8 @@ async function checkRefs(call: CallStore, mode: Mode, accounts: unknown[], class
     const { AccountType } = account;
     if (typeof AccountType !== "string") return broken();
     mustBeActive(account, "write:account", id as string);
-    if (AccountType !== "Expense" && AccountType !== "Other Expense" && AccountType !== "Cost of Goods Sold") refuse("write:account", { case: "type", id: id as string, AccountType });
+    // Matched as read; written cleaned by §5's name rule, a type cleaned to nothing reading `untyped` (task-6-1 TJ6).
+    if (AccountType !== "Expense" && AccountType !== "Other Expense" && AccountType !== "Cost of Goods Sold") refuse("write:account", { case: "type", id: id as string, AccountType: cleanName(AccountType) ?? UNTYPED });
   }
   for (const id of new Set(classes)) {
     const found = await readRef(call, mode, "class", id, names);

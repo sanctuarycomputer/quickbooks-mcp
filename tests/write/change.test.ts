@@ -386,6 +386,18 @@ describe('task-8-2 TN1-TN3: step 6’s refetch reads any Fault before the entity
   ])('%s (no Fault) beside the moved Purchase in a 200: stored, sent.json, one POST', async (_label, top) => {
     expect(await unanswered(answered(200, { ...top, Purchase: moved() }))).toEqual({ result: expected('sent.json'), outcomes: ['sent'], posts: 1 });
   });
+  // T9 TP1: only the first Error item's code counts (§17 "whose first item has a string `code`").
+  it('T9 TP1: a first item whose code is the number 610, then one whose code is the string 6000 (no Fault), beside the moved Purchase in a 200: stored, sent.json', async () => {
+    const top = faultWith([{ Message: 'm', code: 610 }, { Message: 'm', code: '6000' }]);
+    expect(await unanswered(answered(200, { ...top, Purchase: moved() }))).toEqual({ result: expected('sent.json'), outcomes: ['sent'], posts: 1 });
+  });
+  // T9 TP2: the entity only in a 2xx (a 3xx is step 6's no answer), and only with the sent Id as a string.
+  it.each<[string, Json]>([
+    ['a 302 holding the moved Purchase', answered(302, { Purchase: moved() })],
+    ['a 200 holding the moved Purchase with its Id the number 1001', answered(200, { Purchase: { ...moved(), Id: 1001 } })],
+  ])('T9 TP2: %s is no transaction: unknown.json, the unknown outcome asked, one POST', async (_label, refetched) => {
+    expect(await unanswered(refetched)).toEqual({ result: expected('unknown.json'), outcomes: ['unknown'], posts: 1 });
+  });
 
   const BILL_KEY = 'quickbooks-write:garden3d:bill:2001:0:1';
   const bill = () => ({ name: 'qbo_categorize_bill', arguments: JSON.parse(readFileSync(fakePath('tool-calls/qbo_categorize_bill.json'), 'utf8')) });

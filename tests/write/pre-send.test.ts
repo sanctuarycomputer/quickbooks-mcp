@@ -350,7 +350,22 @@ describe('A2.6: account', () => {
     expect(new Set(all.filter((a) => a.Active && TYPES.includes(a.AccountType)).map((a) => a.AccountType)).size).toBe(3);
   });
   it.each(refusedTypes.map((a) => [a.AccountType, a.Id]))('refused type %s', (type, id) => oneChange({ name: '', input: to(id), refusal: R('write:account', { case: 'type', id, AccountType: type }), gets: [...P_READS, `account/${id}`] }));
-  it.each(['expense', 'Expense ', 'Other Expenses', ''])('a type close to an allowed one: %j', (type) => oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: type }), gets: READS }));
+  // T9 TJ6: the type is matched as read and written cleaned by §5's name rule; a type cleaned to nothing reads `untyped`.
+  it.each([['expense', 'expense'], ['Expense ', 'Expense'], ['Other Expenses', 'Other Expenses'], ['', 'untyped']])('a type close to an allowed one: %j, written %j', (type, shown) => oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: shown }), gets: READS }));
+  const CLASSES: Array<[string, string]> = [
+    ['U+0000', '\u0000'], ['U+0009 (TAB)', '\t'], ['U+000A (LF)', '\n'], ['U+000D (CR)', '\r'], ['U+001F', '\u001f'],
+    ['U+007F', '\u007f'], ['U+0080', '\u0080'], ['U+0085', '\u0085'], ['U+009F', '\u009f'], ['U+2028', '\u2028'], ['U+2029', '\u2029'],
+  ];
+  it.each(CLASSES)('T9 TJ6: %s in a refused type becomes a space, and the ends are trimmed', async (_label, c) => {
+    for (const [type, shown] of [[`Bank${c}x`, 'Bank x'], [`${c}Bank${c}`, 'Bank'], [`Expense${c}`, 'Expense'], [c, 'untyped'], [`${c} ${c}`, 'untyped']]) {
+      await oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: shown }), gets: READS });
+    }
+  });
+  it.each<[string, string, string]>([
+    ['kept to its first 200 code points, then its end trimmed', `${'x'.repeat(199)} ${'y'.repeat(50)}`, 'x'.repeat(199)],
+    ['200 code points, not code units', '\u{1F600}'.repeat(201), '\u{1F600}'.repeat(200)],
+    ['a character that is no control kept inside (U+00A0, U+200B)', 'Bank\u00a0x\u200by', 'Bank\u00a0x\u200by'],
+  ])('T9 TJ6: a refused type %s', (_label, type, shown) => oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: shown }), gets: READS }));
   it.each(['84', '91', '92'])('account %s passes', async (id) => {
     await allowed({ ...P(), ...to(id) });
   });

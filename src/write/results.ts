@@ -36,9 +36,10 @@ export type ChangeItem = {
 
 const text = (t: string) => ({ type: "text" as const, text: t });
 
-/** A header value: one non-empty line, so nothing can add a header line of its own. */
+/** A header value: one non-empty line with no control character (`\p{Cc}`: C0, DEL, C1) and no U+2028 or U+2029, so nothing can add a
+ * header line of its own or break one (task-6-1 TJ6). */
 function oneLine(value: unknown): string {
-  if (typeof value !== "string" || value === "" || /[\r\n]/.test(value)) throw new TypeError("results: a header value is one non-empty line");
+  if (typeof value !== "string" || value === "" || /[\p{Cc}\u2028\u2029]/u.test(value)) throw new TypeError("results: a header value is one non-empty line");
   return value;
 }
 
