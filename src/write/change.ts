@@ -6,7 +6,8 @@
 // with the receipt, asking the outcome only when it wasn't asked yet (A1.16): the update is never sent again.
 // Changed in T8 (undo): a `write:cap` answer refuses categorize only; undo is never counted against the cap (§18 step 13), so for undo it is
 // a not-ok intent like any other (receipt-failed). The last answer for an undecided outcome keeps `note: id-mismatch` and states `recorded`
-// from the outcome's answer (task-7-2 TL2). `holdsAfter` is exported for undo's changed-since check (§18 step 9).
+// from the outcome's answer (task-7-2 TL2). `holdsAfter` is exported for undo's changed-since check (§18 step 9). `rereadTxn` reads a
+// refetched body as §17 does, any Fault before the entity, for step 6 here and undo's settle alike (task-8-2 TN1).
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { currentCall, setCallToken, type Failure } from "../clients/call-context.js";
 import type { WriteRuntime } from "../helpers/register-tool.js";
@@ -20,6 +21,7 @@ import type { CheckedRequest } from "./pre-send.js";
 import { runReceipt } from "./receipt-cmd.js";
 import { forkReason, freeText, writeError, writeSuccess } from "./results.js";
 import { entityKey, isRecord, prop } from "./rules.js";
+import type { Reread } from "./settle.js";
 import type { Switch } from "./switch.js";
 
 /** §20's intent request, its keys in the vectors' order. */
@@ -105,13 +107,28 @@ export function holdsAfter(txn: Transaction, changes: readonly ResolvedChange[])
   });
 }
 
-/** Step 6's refetch, once: the transaction as QuickBooks holds it now, or undefined for any failure (no answer, a status off 2xx, a
- * Fault, another entity or `Id`). */
+/**
+ * A refetch of the sent transaction, read as §17 reads a body (task-8-2 TN1), shared by step 6 here and undo's settle: a Fault first, in any
+ * HTTP status and whatever else the body holds (a `Fault.Error` array whose first item has a string `code`), with its code. Only with no
+ * Fault, the transaction under the key of the entity sent with the asked `Id`, in a 2xx; anything else `failed`. A first code off §17's
+ * pattern needs no test of its own: 1.2 reads it as no answer, which on a refetch is Settling row 6 and step 6's `unknown`, exactly as
+ * "another Fault" is, and `610` is on the pattern. A throw is the caller's to read.
+ */
+export async function rereadTxn(entity: UpdateEntity, id: string): Promise<Reread> {
+  const { status, data } = await fetchById(entity, id);
+  const errors = prop(prop(data, "Fault"), "Error");
+  const code = Array.isArray(errors) ? prop(errors[0], "code") : undefined;
+  if (typeof code === "string") return { kind: "fault", code };
+  const txn = prop(data, entityKey(entity));
+  return status >= 200 && status <= 299 && isRecord(txn) && txn.Id === id ? { kind: "txn", txn } : { kind: "failed" };
+}
+
+/** Step 6's refetch, once: the transaction as QuickBooks holds it now, or undefined for any failure (a Fault, 610 included; no answer;
+ * a status off 2xx; another entity or `Id`). */
 async function reread(entity: UpdateEntity, id: string): Promise<Transaction | undefined> {
   try {
-    const { status, data } = await fetchById(entity, id);
-    const txn = prop(data, entityKey(entity));
-    return status >= 200 && status <= 299 && isRecord(txn) && txn.Id === id ? txn : undefined;
+    const got = await rereadTxn(entity, id);
+    return got.kind === "txn" ? got.txn : undefined;
   } catch {
     return undefined;
   }

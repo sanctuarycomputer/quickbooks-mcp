@@ -348,6 +348,66 @@ describe('task-8-1 TM1: step 6’s refetch stores only a copy holding every name
   });
 });
 
+describe('task-8-2 TN1-TN3: step 6’s refetch reads any Fault before the entity, in any status, and the entity under the type sent (§17)', () => {
+  const TIME = '2026-11-18T09:00:00.000-08:00';
+  /** A GET answered `status` with `top`'s keys and the time. */
+  const answered = (status: number, top: Json): Json => ({ answer: { status, body: JSON.stringify({ ...top, time: TIME }) } });
+  const faultWith = (errors: unknown): Json => ({ Fault: { Error: errors, type: 'ValidationFault' } });
+  const faultCoded = (code: unknown): Json => faultWith([{ Message: 'm', Detail: 'd', code }]);
+  /** Purchase 1001 moved by one with the after values (update-sent.json's stored copy), and as fetched. */
+  const moved = (): Json => fixture('answers/update-sent.json').body.Purchase;
+  const unmoved = (): Json => fixture('fetched/purchase-1001.json').Purchase;
+  /** An unanswered categorize of purchase 1001 whose refetch is `refetched`: the result, the outcomes asked, the POSTs. */
+  const unanswered = async (refetched: Json) => {
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [{ answer: { ok: true, notion: true } }] });
+    w.post = () => ((w.books['purchase/1001'] = refetched), { status: 500, body: '{}' });
+    const { client } = await w.start();
+    const result = await client.callTool(args());
+    return { result, outcomes: w.fake.requests().filter((r: any) => r.cmd === 'outcome').map((r: any) => r.result), posts: rig.posts().length };
+  };
+  it.each<[string, Json]>([
+    ['a 200 holding Fault 6000 beside the moved Purchase', answered(200, { ...faultCoded('6000'), Purchase: moved() })],
+    ['a 200 holding Fault 6000 beside the unmoved Purchase', answered(200, { ...faultCoded('6000'), Purchase: unmoved() })],
+    ['a 500 holding Fault 6000 beside the moved Purchase', answered(500, { ...faultCoded('6000'), Purchase: moved() })],
+    ['a 404 holding Fault 6000 beside the moved Purchase', answered(404, { ...faultCoded('6000'), Purchase: moved() })],
+    ['a 200 holding Fault 610 beside the moved Purchase', answered(200, { ...faultCoded('610'), Purchase: moved() })],
+    ['a 200 whose first code is off §17’s pattern ("610 ") beside the moved Purchase', answered(200, { ...faultCoded('610 '), Purchase: moved() })],
+    ['a 200 whose first code is off §17’s pattern ("") beside the moved Purchase', answered(200, { ...faultCoded(''), Purchase: moved() })],
+    ['a 200 holding the moved copy under Bill', answered(200, { Bill: moved() })],
+  ])('%s: unknown.json, the unknown outcome asked, one POST', async (_label, refetched) => {
+    expect(await unanswered(refetched)).toEqual({ result: expected('unknown.json'), outcomes: ['unknown'], posts: 1 });
+  });
+  it.each<[string, Json]>([
+    ['a first code that is the number 610', faultCoded(610)],
+    ['a first code that is the number 6000', faultCoded(6000)],
+    ['a first code that is null', faultCoded(null)],
+    ['an empty Error array', faultWith([])],
+    ['an Error that isn’t an array (an object with code 610)', faultWith({ Message: 'm', code: '610' })],
+  ])('%s (no Fault) beside the moved Purchase in a 200: stored, sent.json, one POST', async (_label, top) => {
+    expect(await unanswered(answered(200, { ...top, Purchase: moved() }))).toEqual({ result: expected('sent.json'), outcomes: ['sent'], posts: 1 });
+  });
+
+  const BILL_KEY = 'quickbooks-write:garden3d:bill:2001:0:1';
+  const bill = () => ({ name: 'qbo_categorize_bill', arguments: JSON.parse(readFileSync(fakePath('tool-calls/qbo_categorize_bill.json'), 'utf8')) });
+  /** bill/2001 moved by one with line 1 on 91 (the call's after value). */
+  const billMoved = (): Json => {
+    const b = fixture('fetched/bill-2001.json').Bill;
+    b.SyncToken = '1';
+    b.Line[0].AccountBasedExpenseLineDetail.AccountRef.value = '91';
+    return b;
+  };
+  it.each<[string, () => Json, Json]>([
+    ['under Bill: stored, qbo_categorize_bill/sent.json', () => ({ Bill: billMoved(), time: TIME }), JSON.parse(readFileSync(fakePath('tool-results/qbo_categorize_bill/sent.json'), 'utf8'))],
+    ['under Purchase: unknown with the bill receipt', () => ({ Purchase: billMoved(), time: TIME }), { content: [{ type: 'text', text: expected('unknown.json').content[0].text.replace(KEY, BILL_KEY) }], isError: true }],
+  ])('a Bill categorize unanswered, the refetched bill/2001 moved with the after values %s', async (_label, refetched, want) => {
+    const w = world(rig, { intent: ['intent-bill.json'], outcome: [{ answer: { ok: true, notion: true } }] });
+    w.post = () => ((w.books['bill/2001'] = refetched()), { status: 500, body: '{}' });
+    const { client } = await w.start();
+    expect(await client.callTool(bill())).toEqual(want);
+    expect(rig.qbo().slice(-2)).toEqual(['POST bill', 'GET bill/2001']);
+  });
+});
+
 describe('TJ2: a refusal with no §6 text never reaches freeText unchecked', () => {
   it('ruleLines decides `none` before the fetched ids', () => {
     const txn = sharedId(fixture('fetched/purchase-1001.json')).Purchase;

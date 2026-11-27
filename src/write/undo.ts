@@ -9,13 +9,12 @@ import { z } from "zod";
 import { runInCall, type Failure } from "../clients/call-context.js";
 import type { WriteRuntime, WriteToolDefinition } from "../helpers/register-tool.js";
 import { lookupOk, type LineChange, type Lookup, type Side } from "./answers.js";
-import { holdsAfter, intentFor, refusalResult, refuse, runChange, type ChangeTools } from "./change.js";
-import { fetchById, type UpdateEntity } from "./client.js";
+import { holdsAfter, intentFor, refusalResult, refuse, rereadTxn, runChange, type ChangeTools } from "./change.js";
 import { preSend } from "./pre-send.js";
 import { runReceipt } from "./receipt-cmd.js";
 import { forkReason } from "./results.js";
-import { entityKey, isRecord, prop } from "./rules.js";
-import { applySettled, settle, type Reread } from "./settle.js";
+import { isRecord } from "./rules.js";
+import { applySettled, settle } from "./settle.js";
 import { readSweep } from "./sweep.js";
 
 export const undoParams = z.strictObject({
@@ -23,16 +22,6 @@ export const undoParams = z.strictObject({
     .string()
     .regex(/^quickbooks-write:(sanctuary-computer|garden3d|index-space|usb-club):(purchase|bill):[0-9]{1,20}:[0-9]{1,20}:[1-9][0-9]{0,5}(:intent)?$/),
 });
-
-/** The settle's refetch of the undone transaction, as settle.ts reads it: a Fault 610 (row 5), the transaction with the asked `Id` in a
- * 2xx (rows 7-10), or a failure (row 6). A throw is the settle's to read as a failure. */
-async function rereadTxn(entity: UpdateEntity, id: string): Promise<Reread> {
-  const { status, data } = await fetchById(entity, id);
-  const errors = prop(prop(data, "Fault"), "Error");
-  if (Array.isArray(errors) && prop(errors[0], "code") === "610") return { kind: "fault", code: "610" };
-  const txn = prop(data, entityKey(entity));
-  return status >= 200 && status <= 299 && isRecord(txn) && txn.Id === id ? { kind: "txn", txn } : { kind: "failed" };
-}
 
 /** A side as the intent request holds it, its keys in the intent line's order. */
 const sideOf = ({ account_id, account_name, class_id, class_name }: Side): Side => ({ account_id, account_name, class_id, class_name });
@@ -64,6 +53,7 @@ async function undo(tools: ChangeTools, company: string, receipt: string, runtim
   let latest: string = found.outcome === null ? "unknown" : found.outcome.result;
   if (latest === "unknown") {
     const settled = await settle(found, {
+      // change.ts's `rereadTxn`, step 6's own reader: any Fault before the entity (610 is row 5, any other row 6), in any status (TN1).
       reread: async () => ((await prepare()) === null ? rereadTxn(intent.type, intent.id) : { kind: "failed" }),
       wall: kit.wall,
     });

@@ -820,6 +820,38 @@ describe('task-8-1 TM2: an undo of a Bill’s change (§13 purchase or bill; §1
     expect(await client.callTool(undo(BKEY))).toEqual(errorText(`reason: write:unknown\nreceipt: ${BNEW}\n\nQuickBooks didn't answer; the change will be settled by a later check.`));
     expect(rig.qbo().slice(-2)).toEqual(['POST bill', 'GET bill/2001']);
   });
+
+  // task-8-2 TN2: step 6's refetch and the settle's are read under the entity sent (`Bill`), never under `Purchase`.
+  /** bill/2001 as the undo left it: SyncToken 2, line 1 back on 77. */
+  const billPutBack = (): Json => {
+    const answer = billAfter('fetched/bill-2001.json');
+    answer.Bill.SyncToken = '2';
+    answer.Bill.Line[0].AccountBasedExpenseLineDetail.AccountRef.value = '77';
+    return answer;
+  };
+  it('task-8-2 TN2: no answer, bill/2001 refetched moved with line 1 back on 77: sent (stored from the refetched Bill), one POST', async () => {
+    const w = billWorld(billLookup());
+    w.post = () => ((w.books['bill/2001'] = billPutBack()), { status: 500, body: '{}' });
+    const { client } = await w.start();
+    expect(await client.callTool(undo(BKEY))).toEqual(billSent);
+    expect(w.fake.requests()[2]).toMatchObject({ cmd: 'outcome', key: BNEW, result: 'sent', sync_token_after: '2' });
+    expect(rig.posts()).toHaveLength(1);
+  });
+  it('task-8-2 TN2: no answer, bill/2001’s refetch holding that copy under Purchase: write:unknown with its own bill receipt', async () => {
+    const w = billWorld(billLookup());
+    w.post = () => ((w.books['bill/2001'] = { Purchase: billPutBack().Bill, time: TIME }), { status: 500, body: '{}' });
+    const { client } = await w.start();
+    expect(await client.callTool(undo(BKEY))).toEqual(errorText(`reason: write:unknown\nreceipt: ${BNEW}\n\nQuickBooks didn't answer; the change will be settled by a later check.`));
+    expect(w.fake.requests()[2]).toMatchObject({ cmd: 'outcome', key: BNEW, result: 'unknown' });
+    expect(rig.posts()).toHaveLength(1);
+  });
+  it('task-8-2 TN2: a due unknown, bill/2001’s refetch holding the moved copy under Purchase: it stays unknown (unknown.json), no outcome asked', async () => {
+    const w = billWorld(billLookup('2001', unknownAt(DUE)));
+    w.books['bill/2001'] = { Purchase: billAfter('fetched/bill-2001.json').Bill, time: TIME };
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo(BKEY)), `${UNDO}/unknown.json`);
+    expect([cmds(w), rig.posts()]).toEqual([['lookup'], []]);
+  });
 });
 
 describe('task-8-1 TM3: step 2’s not-found is the reason, not the cause', () => {
@@ -940,6 +972,92 @@ describe('task-8-1 TM6: undo on its server’s mono and switch (spec §3 T1, T2)
     expect(r.content[0].text).toMatch(first);
     expect(existsSync(w.switchPath)).toBe(true);
     expectFile(await client.callTool(categorize()), 'qbo_categorize_purchase/disabled.json');
+    expect(rig.posts()).toHaveLength(1);
+  });
+});
+
+/** A GET answered `status` with `top`'s keys (a Fault, an entity, both) and the time. */
+const answered = (status: number, top: Json): Json => ({ answer: { status, body: JSON.stringify({ ...top, time: TIME }) } });
+/** A Fault whose `Error` is `errors` as given. */
+const faultWith = (errors: unknown): Json => ({ Fault: { Error: errors, type: 'ValidationFault' } });
+/** A Fault whose one Error item has `code` as given (a string, a number, null). */
+const faultCoded = (code: unknown): Json => faultWith([{ Message: 'm', Detail: 'd', code }]);
+/** Bodies that hold no Fault (§17: a non-empty `Fault.Error` array whose first item has a string `code`). */
+const NOT_FAULTS: Array<[string, Json]> = [
+  ['a first code that is the number 610', faultCoded(610)],
+  ['a first code that is the number 6000', faultCoded(6000)],
+  ['a first code that is null', faultCoded(null)],
+  ['an empty Error array', faultWith([])],
+  ['an Error that isn’t an array (an object with code 610)', faultWith({ Message: 'm', code: '610' })],
+];
+
+describe('task-8-2 TN1: the settle’s refetch reads any Fault before the entity, in any status (§17 Send answers; Settling rows 5-6)', () => {
+  const unmoved = () => fixture('fetched/purchase-1001.json').Purchase;
+  it.each<[string, Json]>([
+    ['a 200 holding Fault 6000 beside the moved Purchase', answered(200, { ...faultCoded('6000'), Purchase: afterBook().Purchase })],
+    ['a 200 holding Fault 6000 beside the unmoved Purchase', answered(200, { ...faultCoded('6000'), Purchase: unmoved() })],
+    ['a 500 holding Fault 6000 beside the moved Purchase', answered(500, { ...faultCoded('6000'), Purchase: afterBook().Purchase })],
+    ['a 404 holding Fault 6000 beside the moved Purchase', answered(404, { ...faultCoded('6000'), Purchase: afterBook().Purchase })],
+    ['a 200 whose first code is off §17’s pattern ("610 ") beside the moved Purchase', answered(200, { ...faultCoded('610 '), Purchase: afterBook().Purchase })],
+    ['a 200 whose first code is off §17’s pattern ("") beside the unmoved Purchase', answered(200, { ...faultCoded(''), Purchase: unmoved() })],
+  ])('%s: it stays unknown (unknown.json), only the lookup run, nothing sent', async (_label, book) => {
+    const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], intent: ['intent-undo.json'], outcome: [OK, OK] });
+    w.books['purchase/1001'] = book;
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/unknown.json`);
+    expect([cmds(w), rig.posts()]).toEqual([['lookup'], []]);
+  });
+});
+
+describe('task-8-2 TN3: no Fault is read where §17 sees none (a string first code), on the settle’s refetch', () => {
+  it.each(NOT_FAULTS)('%s, with no entity: it stays unknown (unknown.json), only the lookup run', async (_label, top) => {
+    const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], outcome: [OK] });
+    w.books['purchase/1001'] = answered(400, top);
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/unknown.json`);
+    expect([cmds(w), rig.posts()]).toEqual([['lookup'], []]);
+  });
+  it.each(NOT_FAULTS)('%s, beside the moved Purchase in a 200: the Purchase is read, settled sent, then the undo sends', async (_label, top) => {
+    const w = undoWorld({ lookup: [lookup(unknownAt(DUE))], intent: ['intent-undo.json'], outcome: [OK, OK] });
+    w.books['purchase/1001'] = answered(200, { ...top, Purchase: afterBook().Purchase });
+    // The settle's refetch reads the body above; step 6's fetch (the second GET) reads the plain book.
+    let gets = 0;
+    w.onGet = (path) => {
+      if (path === 'purchase/1001' && ++gets === 2) w.books['purchase/1001'] = afterBook();
+    };
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/sent.json`);
+    expect(w.fake.requests()[1]).toMatchObject({ cmd: 'outcome', key: KEY, result: 'sent', sync_token_after: '4' });
+  });
+});
+
+describe('task-8-2 TN1-TN3: step 6’s refetch after the undo’s own unanswered send reads any Fault before the entity (§17 step 6)', () => {
+  const own = () => ({ lookup: [lookup()], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK] });
+  /** Purchase 1001 as the undo leaves it: SyncToken 5, line 1 back on 77 with no class. */
+  const putBack = (): Json => afterBook((t) => ((t.SyncToken = '5'), (t.Line[0].AccountBasedExpenseLineDetail = { AccountRef: { value: '77' } }))).Purchase;
+  const unanswered = (w: World, refetched: Json) => (w.post = () => ((w.books['purchase/1001'] = refetched), { status: 500, body: '{}' }));
+  it.each<[string, Json]>([
+    ['a 200 holding Fault 6000 beside the put-back Purchase', answered(200, { ...faultCoded('6000'), Purchase: putBack() })],
+    ['a 200 holding Fault 6000 beside the unmoved Purchase', answered(200, { ...faultCoded('6000'), Purchase: afterBook().Purchase })],
+    ['a 500 holding Fault 6000 beside the put-back Purchase', answered(500, { ...faultCoded('6000'), Purchase: putBack() })],
+    ['a 404 holding Fault 6000 beside the put-back Purchase', answered(404, { ...faultCoded('6000'), Purchase: putBack() })],
+    ['a 200 holding Fault 610 beside the put-back Purchase', answered(200, { ...faultCoded('610'), Purchase: putBack() })],
+    ['a 200 whose first code is off §17’s pattern ("610 ") beside the put-back Purchase', answered(200, { ...faultCoded('610 '), Purchase: putBack() })],
+    ['a 200 holding the put-back copy under Bill (task-8-2 TN2’s twin)', answered(200, { Bill: putBack() })],
+  ])('%s: write:unknown with its own receipt, the unknown outcome asked, never sent again', async (_label, refetched) => {
+    const w = undoWorld(own());
+    unanswered(w, refetched);
+    const { client } = await w.start();
+    expect(await client.callTool(undo())).toEqual(errorText(`reason: write:unknown\nreceipt: ${NEW}\n\nQuickBooks didn't answer; the change will be settled by a later check.`));
+    expect(w.fake.requests()[2]).toMatchObject({ cmd: 'outcome', key: NEW, result: 'unknown' });
+    expect(rig.posts()).toHaveLength(1);
+  });
+  it.each<[string, Json]>([['no Fault at all', {}], ...NOT_FAULTS])('%s beside the put-back Purchase in a 200: stored (sent.json), one POST', async (_label, top) => {
+    const w = undoWorld(own());
+    unanswered(w, answered(200, { ...top, Purchase: putBack() }));
+    const { client } = await w.start();
+    expectFile(await client.callTool(undo()), `${UNDO}/sent.json`);
+    expect(w.fake.requests()[2]).toMatchObject({ cmd: 'outcome', key: NEW, result: 'sent', sync_token_after: '5' });
     expect(rig.posts()).toHaveLength(1);
   });
 });
