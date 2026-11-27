@@ -1,7 +1,8 @@
 // Sanctuary Computer (quickbooks-mcp-294): a fake QBO_WRITE_RECEIPT_CMD for the write tools' tests (spec §4, "The fake receipt command").
 // Run as `node receipt-cmd.mjs <script.json>`. It reads one JSON object on stdin, appends `{ request, env }` (its whole environment) as one
-// line to the script's `log`, answers `bad-request` to any request the real command's shape check refuses, and otherwise answers the
-// script's next answer for that `cmd`: a receipt-cmd/ vector's `answer` by file name, `{ "answer": … }`, or `{ "misbehave": … }`.
+// line to the script's `log` with `refused`, answers `bad-request` to stdin over 1 MiB, to no JSON and to any request the real command's
+// shape check refuses, and otherwise answers the script's next answer for that `cmd`: a receipt-cmd/ vector's `answer` by file name,
+// `{ "answer": … }`, or `{ "misbehave": … }`. A refused run uses up no step: the next is counted over the runs not refused.
 // Touches nothing but the log; no network.
 import { appendFileSync, readFileSync } from "node:fs";
 
@@ -10,9 +11,11 @@ const VECTORS = new URL("./receipt-cmd/", import.meta.url);
 
 // ---- The real command's shape check, ported line for line from Stacksbot's scripts/quickbooks/write-receipt.mjs at 72d97af8
 // (ATTEMPT…NOTES :32-36, LINE_KEYS :50-79, isIsoAt :80-81, SIDE_KEYS…digestsValid :82-118, lineValid :120-158, keyOf…outcomeLine
-// :160-187, REQUEST_FIELDS…requestShapeOk :193-210). Left out: the `notion` line kind (LINE_KEYS.notion and lineValid's notion branch),
-// which no request builds. Like the real one, a request may carry keys beyond its fields. A4.4 replays every logged request through the
-// real check to keep the two equal.
+// :160-187, REQUEST_FIELDS…requestShapeOk :193-210), and readStdin's cap (STDIN_MAX_BYTES :29, :807-814). Left out: the `notion` line
+// kind (LINE_KEYS.notion and lineValid's notion branch), which no request builds. Like the real one, a request may carry keys beyond its
+// fields. Unreachable from a request, so no test decides them: lineValid's key count, key types and key parts, and `m` under 1 (the
+// probe line is built from the request with n and m 1), and requestShapeOk's hasOwn beside typeHolds (a missing field is undefined,
+// which typeHolds refuses). A4.4 replays every logged request through the real check to keep the two equal.
 const ATTEMPT =
   /^quickbooks-write:(sanctuary-computer|garden3d|index-space|usb-club):(purchase|bill):[0-9]{1,20}:[0-9]{1,20}:[1-9][0-9]{0,5}$/;
 const DIGEST_HEX = /^[0-9a-f]{64}$/;
@@ -159,14 +162,19 @@ function requestShapeOk(req) {
 }
 // ---- End of the port.
 
-const log = (request) => appendFileSync(script.log, JSON.stringify({ request, env: { ...process.env } }) + "\n");
+const STDIN_MAX_BYTES = 1 << 20;
+const log = (request, refused) => appendFileSync(script.log, JSON.stringify({ request, env: { ...process.env }, refused }) + "\n");
 const answer = (value) => process.stdout.write(JSON.stringify(value) + "\n");
 
-/** This run's answer for `cmd`: the next of the script's list, counted by the earlier runs the log holds. */
+/** This run's answer for `cmd`: the next of the script's list, counted by the runs the log holds that weren't refused. */
 function next(cmd) {
   let seen = 0;
   try {
-    for (const line of readFileSync(script.log, "utf8").split("\n")) if (line !== "" && JSON.parse(line).request?.cmd === cmd) seen++;
+    for (const line of readFileSync(script.log, "utf8").split("\n")) {
+      if (line === "") continue;
+      const entry = JSON.parse(line);
+      if (!entry.refused && entry.request?.cmd === cmd) seen++;
+    }
   } catch {
     // No log yet: this is the first run.
   }
@@ -177,19 +185,24 @@ function next(cmd) {
 async function main() {
   const first = (script.answers?.["*"] ?? [])[0];
   if (first?.misbehave === "close-stdin") {
-    log(null);
+    log(null, true);
     process.exit(0);
   }
-  let text = "";
-  for await (const chunk of process.stdin) text += chunk;
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of process.stdin) {
+    size += chunk.length;
+    chunks.push(chunk);
+  }
   let request;
   try {
-    request = JSON.parse(text);
+    request = size > STDIN_MAX_BYTES ? undefined : JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {
     request = undefined;
   }
-  log(request ?? null);
-  if (!requestShapeOk(request)) return answer({ ok: false, reason: "bad-request", cause: "bad-request" });
+  const ok = requestShapeOk(request);
+  log(request === undefined ? null : request, !ok);
+  if (!ok) return answer({ ok: false, reason: "bad-request", cause: "bad-request" });
   const step = next(request.cmd);
   if (step === undefined) return answer({ ok: false, reason: "failed", cause: "script-exhausted" });
   if (typeof step === "string") return answer(JSON.parse(readFileSync(new URL(step, VECTORS), "utf8")).answer);
