@@ -201,4 +201,29 @@ describe('A1.16, with a module mocked', () => {
     );
     expect([runs, w.fake.requests().map((r: any) => r.cmd)]).toEqual([2, ['intent']]);
   });
+
+  it('T9 TQ1: an undo whose step 4 settled a sent-diff (the switch file deleted), its own sent success unrenderable: the decided text says writes are off, once', async () => {
+    writeSuccess.mockImplementationOnce(boom);
+    const { vector } = await import('./receipt-fake.js');
+    const NEW = 'quickbooks-write:garden3d:purchase:1001:4:1';
+    const TIME = '2026-11-18T09:00:00.000-08:00';
+    const lookup = vector('lookup-ok.json').answer;
+    lookup.outcome = { ...lookup.outcome, at: '2026-11-18T14:50:00.000Z', result: 'unknown', sync_token_after: null };
+    const OK = { answer: { ok: true, notion: true } };
+    const w = world(rig, { lookup: [{ answer: lookup }], intent: [{ answer: { ok: true, key: NEW, n: 1 } }], outcome: [OK, OK] });
+    const book = fixture('fetched/purchase-1001-after.json');
+    book.Purchase.TotalAmt = 121;
+    w.books['purchase/1001'] = book;
+    w.post = (c: { body: string }) => {
+      const { sparse: _sparse, ...body } = JSON.parse(c.body);
+      const txn = { ...body, SyncToken: String(Number(body.SyncToken) + 1), MetaData: { CreateTime: '2026-11-10T09:00:00-08:00' } };
+      w.books['purchase/1001'] = { Purchase: txn, time: TIME };
+      return { status: 200, body: JSON.stringify({ Purchase: txn, time: TIME }) };
+    };
+    const { client } = await w.start();
+    const undo = JSON.parse(readFileSync(fakePath('tool-calls/qbo_undo_change.json'), 'utf8'));
+    const r: any = await client.callTool({ name: 'qbo_undo_change', arguments: { ...undo, params: { receipt: KEY } } });
+    expect(r).toEqual({ content: [{ type: 'text', text: `reason: write:unknown\nreceipt: ${NEW}\n\nQuickBooks stored the change. Its outcome, sent, was recorded; this result couldn't be written. Writes are switched off.` }], isError: true });
+    expect([existsSync(w.switchPath), rig.posts().length]).toEqual([false, 1]);
+  });
 });
