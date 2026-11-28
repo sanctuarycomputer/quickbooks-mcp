@@ -1,5 +1,7 @@
 // Sanctuary Computer (quickbooks-mcp-293): the pre-send rules, the update's body and the check of it, contract 1.1 §15
 // (docs/contracts/quickbooks.md in Stacksbot). Pure: no network, no state, nothing given is changed.
+// Changed by Sanctuary Computer (quickbooks-mcp-294): each rule answers its reason with a detail, the case spec §6's free text needs
+// and the ids it names (plan-1 P10), or null.
 import type { UpdateEntity } from "./client.js";
 import type { Change, Transaction } from "./compare.js";
 
@@ -7,6 +9,10 @@ import type { Change, Transaction } from "./compare.js";
 export const MAX_LINES = 20;
 /** Each update entity's key in QuickBooks' answer. */
 export const entityKey = (entity: UpdateEntity): "Purchase" | "Bill" => (entity === "purchase" ? "Purchase" : "Bill");
+
+/** A rule's refusal: its reason, and its case (`case`, absent for a reason with one text) with the ids and type §6's text names. */
+export type RuleAnswer = { reason: string; detail: Record<string, string> } | null;
+const no = (reason: string, detail: Record<string, string> = {}): RuleAnswer => ({ reason, detail });
 
 const ACCOUNT_LINE = "AccountBasedExpenseLineDetail";
 
@@ -30,16 +36,18 @@ const classOf = (line: unknown): string | null | undefined => {
 export const entityKeys = (answer: Record<string, unknown>): string[] => Object.keys(answer).filter((key) => key !== "time");
 
 /** Step 5, on the answer as fetched, `{ Purchase: … }` (a queried row is wrapped the same way). */
-export function ruleType(entity: UpdateEntity, answer: Record<string, unknown>): "write:type" | null {
+export function ruleType(entity: UpdateEntity, answer: Record<string, unknown>): RuleAnswer {
   const keys = entityKeys(answer);
-  if (keys.length !== 1 || keys[0] !== entityKey(entity)) return "write:type";
-  return prop(answer.Purchase, "Credit") === true ? "write:type" : null;
+  if (keys.length !== 1 || keys[0] !== entityKey(entity)) return no("write:type", { case: "entity", T: entityKey(entity) });
+  return prop(answer.Purchase, "Credit") === true ? no("write:type", { case: "credit" }) : null;
 }
 
 /** Step 6. */
-export function ruleStacksBill(entity: UpdateEntity, txn: Transaction): "write:stacks-bill" | null {
+export function ruleStacksBill(entity: UpdateEntity, txn: Transaction): RuleAnswer {
   const starts = (value: unknown, prefix: string): boolean => typeof value === "string" && value.startsWith(prefix);
-  return entity === "bill" && (starts(txn.DocNumber, "Stacks_") || starts(txn.PrivateNote, "garden3d invoice")) ? "write:stacks-bill" : null;
+  if (entity !== "bill") return null;
+  if (starts(txn.DocNumber, "Stacks_")) return no("write:stacks-bill", { case: "doc-number" });
+  return starts(txn.PrivateNote, "garden3d invoice") ? no("write:stacks-bill", { case: "private-note" }) : null;
 }
 
 /** A string `YYYY-MM-DD` naming a real calendar date. */
@@ -50,39 +58,54 @@ function isDate(value: unknown): value is string {
   return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value);
 }
 
-/** Step 7, on `Preferences.AccountingInfoPrefs`. Once a close date is set, a `TxnDate` that is no date can't be shown to be after it. */
-export function ruleClosed(txn: Transaction, accountingInfoPrefs: Record<string, unknown>): "write:closed" | null {
+/**
+ * Step 7, on `Preferences.AccountingInfoPrefs`. Once a close date is set, a `TxnDate` that is no date can't be shown to be after it.
+ * A close date that is no date is `unreadable`; one the transaction isn't after is `before-send`, or undo's own `undo` (§6).
+ */
+export function ruleClosed(txn: Transaction, accountingInfoPrefs: Record<string, unknown>, undo = false): RuleAnswer {
   if (!Object.keys(accountingInfoPrefs).includes("BookCloseDate")) return null;
   const { BookCloseDate: closed } = accountingInfoPrefs;
-  return isDate(closed) && isDate(txn.TxnDate) && txn.TxnDate > closed ? null : "write:closed";
+  if (!isDate(closed)) return no("write:closed", { case: "unreadable" });
+  return isDate(txn.TxnDate) && txn.TxnDate > closed ? null : no("write:closed", { case: undo ? "undo" : "before-send" });
 }
 
 /** Step 8's part on every fetched line, and undo's whole `line`: each has an `Id`, and no two share one. */
-export function ruleIds(txn: Transaction): "write:line" | null {
+export function ruleIds(txn: Transaction): RuleAnswer {
   const ids = linesOf(txn).map((line) => prop(line, "Id"));
-  return ids.every((id) => typeof id === "string" && id !== "") && new Set(ids).size === ids.length ? null : "write:line";
+  return ids.every((id) => typeof id === "string" && id !== "") && new Set(ids).size === ids.length ? null : no("write:line", { case: "ids" });
 }
 
-/** Step 8: the fetched lines' ids, and each named line, at least one, is an account-based one named once. */
-export function ruleLines(txn: Transaction, changes: readonly Pick<Change, "line_id">[]): "write:line" | null {
+/**
+ * Step 8: the fetched lines' ids, and each named line, at least one, is an account-based one named once. In the step's own
+ * order: no line named is `none` (the schema's `minItems` keeps it from a tool); then the fetched ids (`ids`); then, in call
+ * order, the first named line that is `missing` or `not-account`; then the first line named again (`twice`).
+ */
+export function ruleLines(txn: Transaction, changes: readonly Pick<Change, "line_id">[]): RuleAnswer {
   const named = changes.map((change) => change.line_id);
-  if (named.length === 0 || new Set(named).size !== named.length) return "write:line";
-  const ok = named.every((id) => isAccountLine(linesOf(txn).find((line) => prop(line, "Id") === id)));
-  return ok ? ruleIds(txn) : "write:line";
+  if (named.length === 0) return no("write:line", { case: "none" });
+  const ids = ruleIds(txn);
+  if (ids !== null) return ids;
+  for (const id of named) {
+    const line = linesOf(txn).find((one) => prop(one, "Id") === id);
+    if (line === undefined) return no("write:line", { case: "missing", id });
+    if (!isAccountLine(line)) return no("write:line", { case: "not-account", id });
+  }
+  const twice = named.find((id, i) => named.indexOf(id) !== i);
+  return twice === undefined ? null : no("write:line", { case: "twice", id: twice });
 }
 
-/** §19's *subject line*: the fetched lines' ids, and at least one account-based line. */
-export function ruleSubjectLine(txn: Transaction): "write:line" | null {
-  return linesOf(txn).some(isAccountLine) ? ruleIds(txn) : "write:line";
+/** §19's *subject line*: the fetched lines' ids, and at least one account-based line (`subject`: the write check's own case, 298). */
+export function ruleSubjectLine(txn: Transaction): RuleAnswer {
+  return linesOf(txn).some(isAccountLine) ? ruleIds(txn) : no("write:line", { case: "subject" });
 }
 
 /** Step 11: no named line's account or class would change. */
-export function ruleNoop(txn: Transaction, changes: readonly Change[]): "write:noop" | null {
+export function ruleNoop(txn: Transaction, changes: readonly Change[]): RuleAnswer {
   const changed = changes.some(({ line_id, account_id, class_id }) => {
     const line = linesOf(txn).find((one) => prop(one, "Id") === line_id);
     return prop(refOf(line, "AccountRef"), "value") !== account_id || (class_id !== undefined && classOf(line) !== class_id);
   });
-  return changed ? null : "write:noop";
+  return changed ? null : no("write:noop");
 }
 
 /** The account and class values on every account-based line, as stored; an absent `ClassRef` is none. */

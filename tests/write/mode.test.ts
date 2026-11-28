@@ -24,6 +24,11 @@ const STUBS = ['qbo_categorize_purchase', 'qbo_categorize_bill', 'qbo_undo_chang
 const lf = (text: string): string => text.replace(/\r\n/g, '\n');
 const call = (name: string): Json => JSON.parse(readFileSync(fakePath(`tool-calls/${name}.json`), 'utf8'));
 const NOT_BUILT = { isError: true, content: [{ type: 'text', text: 'reason: fork-error\n\nThis tool is not built yet.' }] };
+// The two categorize tools (294 T7) and undo (T8) are built: with the rig's env (no stamp at /nowhere/stamp) each call answers write:sweep,
+// nothing sent; qbo_write_check alone is a stub.
+const SWEEP = { isError: true, content: [{ type: 'text', text: "reason: write:sweep\n\nThe job guard hasn't run clean in the last 20 minutes; writes are held." }] };
+const SIZE = { isError: true, content: [{ type: 'text', text: 'reason: write:size\n\nAt most 20 lines can be changed in one call.' }] };
+const answerOf = (name: string) => (name === 'qbo_write_check' ? NOT_BUILT : SWEEP);
 
 // First in the file: 291's guard has never started in this module registry.
 describe('before 291’s start', () => {
@@ -108,11 +113,12 @@ describe('the stubs (A1.2)', () => {
     ['qbo_undo_change', 'qbo_undo_change'],
     ['qbo_write_check', 'qbo_write_check'],
     ['qbo_write_check', 'qbo_write_check-dry-run'],
-  ])('%s, called as %s: fork-error, not built yet, and nothing is sent', async (name, file) => {
+  ])('%s, called as %s: categorize and undo write:sweep (no stamp), the write check fork-error, not built yet; nothing is sent', async (name, file) => {
     const { client } = await rig.start();
     const result = await client.callTool({ name, arguments: call(file) });
-    expect(result).toEqual(NOT_BUILT);
-    expect(readError(result)).toEqual({ reason: 'fork-error', free: 'This tool is not built yet.', warnings: [] });
+    expect(result).toEqual(answerOf(name));
+    // 286's reader knows the 1.0 reasons only; a write reason is checked whole above.
+    if (name === 'qbo_write_check') expect(readError(result)).toEqual({ reason: 'fork-error', free: 'This tool is not built yet.', warnings: [] });
     expect(rig.net.calls).toEqual([]);
   });
 
@@ -133,9 +139,10 @@ describe('the stubs (A1.2)', () => {
     ['an attempt of 6 digits', 'qbo_undo_change', receipt(R.replace(/1$/, '999999'))],
     ['settle true', 'qbo_write_check', { settle: true }],
   ];
-  it.each(ACCEPTED)('takes %s', async (_label, name, params) => {
+  it.each(ACCEPTED)('takes %s', async (label, name, params) => {
     const { client } = await rig.start();
-    expect(await client.callTool({ name, arguments: { company: 'garden3d', params } })).toEqual(NOT_BUILT);
+    // Q4: the 21-line call answers write:size (size runs first), every other categorize call and undo write:sweep, the check the stub.
+    expect(await client.callTool({ name, arguments: { company: 'garden3d', params } })).toEqual(label.startsWith('21 lines') ? SIZE : answerOf(name));
   });
 
   const REFUSED: Array<[string, string, Json]> = [
@@ -411,6 +418,28 @@ describe('A3.10: the guard write mode starts', () => {
   it('what writeMode gives can’t be swapped after', () => {
     const mode = writeMode();
     for (const o of [mode, mode.registry, mode.extraRules, mode.tools]) expect(Object.isFrozen(o)).toBe(true);
+  });
+
+  it('one switch per server, on the kit’s fs, so one latch: a failed delete in one server leaves another on (quickbooks-mcp-294 T6)', async () => {
+    const file = { isFile: () => true };
+    const fsOf = (unlink: () => Promise<void>) => ({ stat: jest.fn(async () => file), unlink: jest.fn(unlink) });
+    const stuck = fsOf(async () => Promise.reject(Object.assign(new Error('denied'), { code: 'EACCES' })));
+    const fine = fsOf(async () => undefined);
+    const one = writeMode({ fs: stuck as any });
+    const other = writeMode({ fs: fine as any });
+    expect(Object.keys(one).sort()).toEqual(['extraRules', 'kit', 'registry', 'sw', 'tools']);
+    expect(one.sw).not.toBe(other.sw);
+    expect(Object.isFrozen(one.sw)).toBe(true);
+    const stderr = jest.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    expect([await one.sw.isOn('/switch'), await other.sw.isOn('/switch')]).toEqual([true, true]);
+    expect(await one.sw.turnOff('/switch')).toBe(false);
+    expect(stderr).toHaveBeenCalledTimes(1);
+    expect([await one.sw.isOn('/switch'), await other.sw.isOn('/switch')]).toEqual([false, true]);
+    expect([stuck.stat.mock.calls, stuck.unlink.mock.calls, fine.stat.mock.calls]).toEqual([[['/switch']], [['/switch']], [['/switch'], ['/switch']]]);
+    expect(await other.sw.turnOff('/switch')).toBe(true);
+    expect(fine.unlink.mock.calls).toEqual([['/switch']]);
+    // The kit's fs is the switch's: the same object.
+    expect(one.kit.fs).toBe(stuck);
   });
 });
 

@@ -12,6 +12,7 @@ import { WRITE_KEYS, writeEnv, writeRig } from './write-rig.js';
 
 const FIVE = ['STACKS_QBO_URL', 'STACKS_QBO_TOKEN', 'QUICKBOOKS_ENVIRONMENT', 'QBO_COMPANIES', 'QBO_MODE'];
 const FOUR = Object.keys(WRITE_KEYS);
+const PASSED = ['NOTION_API_KEY', 'TZ', 'PATH'];
 const NOT_WRITE = [undefined, '', 'read', 'Write', 'WRITE', 'readwrite', ' write', 'write ', 'write\n', 'true'];
 writeRig();
 
@@ -55,10 +56,22 @@ describe('loadWriteConfig: accepted', () => {
     const odd = Object.fromEntries(FOUR.map((k) => [k, ' ']));
     expect(loadWriteConfig(writeEnv(odd))).toMatchObject({ receiptCmd: ' ', writeSwitch: ' ', writeLedger: ' ', sweepStamp: ' ' });
   });
-  it('reads the five, then the four, each once, in contract §3’s order, and nothing else (NOTION_API_KEY is not read)', () => {
-    const { env, touched } = recording({ ...writeEnv(), NOTION_API_KEY: 'x', PATH: '/usr/bin' });
+  // Changed by quickbooks-mcp-294 (plan T3, Q4): the receipt command's three passed keys are read here too, once, after the four, so
+  // its child's environment is built from the config alone (spec A1.2, L-SEC-3). Still no start refusal for any of them.
+  it('reads the five, then the four, each once, in contract §3’s order, then NOTION_API_KEY, TZ and PATH, and nothing else', () => {
+    const { env, touched } = recording({ ...writeEnv(), NOTION_API_KEY: 'x', PATH: '/usr/bin', HOME: '/h' });
     loadWriteConfig(env);
-    expect(touched).toEqual([...FIVE, ...FOUR]);
+    expect(touched).toEqual([...FIVE, ...FOUR, ...PASSED]);
+  });
+  it('keeps NOTION_API_KEY, TZ and PATH as given, each absent when unset (quickbooks-mcp-294)', () => {
+    expect(loadWriteConfig(writeEnv({ NOTION_API_KEY: 'n', TZ: 'America/New_York', PATH: '/bin:/usr/bin' }))).toMatchObject({
+      notionApiKey: 'n',
+      tz: 'America/New_York',
+      path: '/bin:/usr/bin',
+    });
+    const bare = loadWriteConfig(writeEnv());
+    for (const key of ['notionApiKey', 'tz', 'path']) expect(Object.prototype.hasOwnProperty.call(bare, key)).toBe(false);
+    expect(loadWriteConfig(writeEnv({ NOTION_API_KEY: '', TZ: '', PATH: '' }))).toMatchObject({ notionApiKey: '', tz: '', path: '' });
   });
 });
 

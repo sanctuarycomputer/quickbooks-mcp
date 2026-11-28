@@ -2,6 +2,9 @@
 // Changed by Sanctuary Computer (quickbooks-mcp-291): src/http-guard.ts may load http, https and http2 (it pins and wraps them), and nothing else on the network list.
 // Changed by Sanctuary Computer (quickbooks-mcp-286): and node:tls, for the one value it reads (tls.checkServerIdentity, the identity check it hands Node);
 // TB10-2: any other read of tls (destructuring, a bracket, an alias, another import binding) is refused. T13-4: so is a write to tls.checkServerIdentity (assigned or deleted).
+// Changed by Sanctuary Computer (quickbooks-mcp-294): src/write/receipt-cmd.ts may load node:child_process for `spawn` alone, by one named
+// import line (ruling d-20261127-041558577: contract §20's no-shell receipt command); every other load, there or elsewhere, is still a hit, and
+// only src/write/kit.ts may take `spawn` from it, by a named import (plan-3 R5, plan-4 W4).
 import { describe, it, expect } from '@jest/globals';
 import fs from 'fs';
 import path from 'path';
@@ -66,9 +69,21 @@ const NETWORK_IMPORT = moduleLoad('open|http|https|http2|net|tls|dns|dgram|child
 const GUARD_FILE = 'src/http-guard.ts';
 const GUARD_LOADS = ['"node:http"', '"node:https"', '"node:http2"', '"node:tls"'];
 
-/** The network-module loads a file's text spells; for the guard file only, its own four and axios' adapter name (`getAdapter("http")`) are left out. */
+// The receipt runner (quickbooks-mcp-294) is the one file that may load node:child_process, by this one line, once.
+const RECEIPT_FILE = 'src/write/receipt-cmd.ts';
+const SPAWN_IMPORT = 'import { spawn } from "node:child_process";';
+
+/** The text with the receipt runner's one spawn import taken out, once, when it stands as its own line. */
+function withoutSpawnImport(text: string): string {
+  const lines = text.split('\n');
+  const i = lines.findIndex((line) => line.replace(/\r$/, '') === SPAWN_IMPORT);
+  return i === -1 ? text : [...lines.slice(0, i), ...lines.slice(i + 1)].join('\n');
+}
+
+/** The network-module loads a file's text spells; for the guard file only, its own four and axios' adapter name (`getAdapter("http")`) are left out;
+ * for the receipt runner only, its one spawn import. */
 function networkLoads(f: string, text: string): string[] {
-  const t = f === GUARD_FILE ? text.split('getAdapter("http")').join('getAdapter()') : text;
+  const t = f === GUARD_FILE ? text.split('getAdapter("http")').join('getAdapter()') : f === RECEIPT_FILE ? withoutSpawnImport(text) : text;
   const all = t.match(new RegExp(NETWORK_IMPORT.source, 'g')) ?? [];
   return f === GUARD_FILE ? all.filter((m) => !GUARD_LOADS.includes(m)) : all;
 }
@@ -89,6 +104,23 @@ function tlsReads(text: string): string[] {
   for (const line of rest.split('\n')) if (/\btls\b/.test(line)) out.push(line.trim());
   return out;
 }
+
+/** Each line naming the receipt runner's module that isn't a named `import { … } from` of it, and each named import taking `spawn` outside kit.ts. */
+function receiptImportHits(f: string, text: string): string[] {
+  const hits: string[] = [];
+  for (const raw of text.split('\n')) {
+    const line = raw.replace(/\r$/, '');
+    if (!/["'`][^"'`]*receipt-cmd(?:\.js)?["'`]/.test(line)) continue;
+    const named = /^import\s*\{([^}]*)\}\s*from\s*"\.\/receipt-cmd\.js";$/.exec(line.trim());
+    if (named === null) hits.push(`${f}: ${line.trim()}`);
+    else if (f !== 'src/write/kit.ts' && named[1].replace(/\/\*[\s\S]*?\*\//g, '').split(',').some((part) => /^(?:type\s+)?spawn\b/.test(part.trim())))
+      hits.push(`${f}: spawn taken from the receipt runner`);
+  }
+  return hits;
+}
+const receiptImports = (files: string[]): string[] => files.flatMap((f) => receiptImportHits(f, read(f)));
+/** kit.ts passing spawn on (task-3-1 TD6): an export naming it, or a star re-export of anything. */
+const kitPassesSpawn = (text: string): boolean => /export\s*\{[^}]*\bspawn\b/.test(text.replace(/\/\*[\s\S]*?\*\//g, '')) || /export\s*\*/.test(text);
 
 const KEY_NAMES = ['CLIENT_ID', 'CLIENT_SECRET', 'REFRESH_TOKEN', 'REALM_ID'].map((k) => 'QUICKBOOKS_' + k);
 
@@ -172,6 +204,60 @@ describe('removals', () => {
     expect(tlsReads(`${TLS_IMPORT}\n// tls.checkServerIdentity, Node's own\nsend.c = tls.checkServerIdentity;`)).toEqual([]);
     // A comparison reads the member; it is not a write (T13-4).
     expect(tlsReads(`${TLS_IMPORT}\nif (f === tls.checkServerIdentity) g();\nif (tls.checkServerIdentity == f) g();`)).toEqual([]);
+  });
+
+  it('R3: the receipt runner’s exemption covers its one spawn import, in that file only (quickbooks-mcp-294)', () => {
+    expect(networkLoads(RECEIPT_FILE, SPAWN_IMPORT)).toEqual([]);
+    expect(networkLoads(RECEIPT_FILE, `// x\r\n${SPAWN_IMPORT}\r\nconst a = 1;`)).toEqual([]);
+    expect(networkLoads('src/write/kit.ts', SPAWN_IMPORT)).toEqual(['"node:child_process"']);
+    expect(networkLoads(GUARD_FILE, SPAWN_IMPORT)).toEqual(['"node:child_process"']);
+    expect(networkLoads(RECEIPT_FILE, `${SPAWN_IMPORT}\n${SPAWN_IMPORT}`)).toEqual(['"node:child_process"']);
+    for (const form of [
+      'import { spawn, exec } from "node:child_process";',
+      'import { exec } from "node:child_process";',
+      'import cp from "node:child_process";',
+      'import * as cp from "node:child_process";',
+      'import { spawn } from "child_process";',
+      'const cp = require("child_process");',
+      'const cp = await import("node:child_process");',
+      'export { spawn } from "node:child_process";',
+      `  ${SPAWN_IMPORT}`,
+      `${SPAWN_IMPORT} // and more`,
+    ])
+      expect([form, networkLoads(RECEIPT_FILE, form).length]).toEqual([form, 1]);
+    expect(networkLoads(RECEIPT_FILE, 'import { spawn as s } from "node:child_process";')).toHaveLength(1);
+  });
+
+  it('R3: the receipt runner holds its one import and runs no shell (quickbooks-mcp-294)', () => {
+    const text = read(RECEIPT_FILE);
+    expect(text.split('\n').filter((line) => line.replace(/\r$/, '') === SPAWN_IMPORT)).toHaveLength(1);
+    expect(text.split('"node:child_process"')).toHaveLength(2);
+    expect(text).toContain('shell: false');
+    expect(text).not.toMatch(/shell:\s*true/);
+  });
+
+  it('R3: only src/write/kit.ts takes spawn from the receipt runner, and only by a named import (quickbooks-mcp-294)', () => {
+    expect(receiptImports(srcFiles())).toEqual([]);
+    expect(receiptImportHits('src/write/kit.ts', 'import { spawn, type Spawn } from "./receipt-cmd.js";')).toEqual([]);
+    expect(receiptImportHits('src/write/settle.ts', 'import { runReceipt } from "./receipt-cmd.js";')).toEqual([]);
+    for (const [form, hit] of [
+      ['import { runReceipt, spawn } from "./receipt-cmd.js";', 'src/write/settle.ts: spawn taken from the receipt runner'],
+      ['import { spawn as s } from "./receipt-cmd.js";', 'src/write/settle.ts: spawn taken from the receipt runner'],
+      ['import * as r from "./receipt-cmd.js";', 'src/write/settle.ts: import * as r from "./receipt-cmd.js";'],
+      ['export * from "./receipt-cmd.js";', 'src/write/settle.ts: export * from "./receipt-cmd.js";'],
+      ['import r from "./receipt-cmd.js";', 'src/write/settle.ts: import r from "./receipt-cmd.js";'],
+      ['const r = await import("./receipt-cmd.js");', 'src/write/settle.ts: const r = await import("./receipt-cmd.js");'],
+      ['export { spawn } from "./receipt-cmd.js";', 'src/write/settle.ts: export { spawn } from "./receipt-cmd.js";'],
+    ] as const)
+      expect(receiptImportHits('src/write/settle.ts', form)).toEqual([hit]);
+  });
+
+  it('R3: kit.ts takes spawn but passes it on to no one (task-3-1 TD6)', () => {
+    expect(kitPassesSpawn(read('src/write/kit.ts'))).toBe(false);
+    for (const form of ['export { spawn };', 'export { createKit, /* x */ spawn };', 'export { spawn as s };', 'export * from "./receipt-cmd.js";'])
+      expect([form, kitPassesSpawn(form)]).toEqual([form, true]);
+    expect(kitPassesSpawn('export type SwitchFs = {};\nexport function createKit() {}')).toBe(false);
+    expect(receiptImportHits('src/write/settle.ts', 'import { /**/ spawn } from "./receipt-cmd.js";')).toEqual(['src/write/settle.ts: spawn taken from the receipt runner']);
   });
 
   it('A7: no QUICKBOOKS_DISABLE text in src', () => {

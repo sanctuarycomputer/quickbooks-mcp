@@ -1,6 +1,8 @@
 // Sanctuary Computer (quickbooks-mcp-286): the read server's start configuration, contract 1.1 §3 (docs/contracts/quickbooks.md in Stacksbot).
 // The only reader of the five keys and of write mode's four. Each refusal is `refused to start: <KEY> <reason>`, naming the key and never its value.
 // Changed by Sanctuary Computer (quickbooks-mcp-293): isWriteMode, and loadWriteConfig for the write server; loadConfig is the read server's, as it was.
+// Changed by Sanctuary Computer (quickbooks-mcp-294): loadWriteConfig also keeps NOTION_API_KEY, TZ and PATH, as given and unchecked, for the
+// receipt command's environment (contract §20), so that environment is built from this config alone.
 import { readFileSync } from "fs";
 import { parseCompanies, type Company } from "./companies.js";
 
@@ -18,6 +20,10 @@ export type WriteConfig = Config & {
   readonly writeSwitch: string;
   readonly writeLedger: string;
   readonly sweepStamp: string;
+  /** Passed to the receipt command, each only when set (quickbooks-mcp-294). */
+  readonly notionApiKey?: string;
+  readonly tz?: string;
+  readonly path?: string;
 };
 
 const refuse = (key: string, reason: string): never => {
@@ -94,16 +100,26 @@ function writeKey(env: Record<string, string | undefined>, key: string): string 
   return value;
 }
 
-/** The write server's loadConfig: the five keys in the same order, `QBO_MODE` exactly `write`, then the four write keys in contract §3's. */
+/** Each of the receipt command's passed keys that is set, as given (quickbooks-mcp-294). */
+function passedKeys(env: Record<string, string | undefined>): { notionApiKey?: string; tz?: string; path?: string } {
+  const out: { notionApiKey?: string; tz?: string; path?: string } = {};
+  const notionApiKey = env.NOTION_API_KEY;
+  const tz = env.TZ;
+  const path = env.PATH;
+  if (notionApiKey !== undefined) out.notionApiKey = notionApiKey;
+  if (tz !== undefined) out.tz = tz;
+  if (path !== undefined) out.path = path;
+  return out;
+}
+
+/** The write server's loadConfig: the five keys in the same order, `QBO_MODE` exactly `write`, then the four write keys in contract §3's,
+ * then the receipt command's three passed keys. */
 export function loadWriteConfig(env: Record<string, string | undefined>): WriteConfig {
   const four = firstFour(env);
   if (!isWriteMode(env)) return refuse("QBO_MODE", "is not write");
-  return Object.freeze({
-    ...four,
-    mode: "write",
-    receiptCmd: writeKey(env, "QBO_WRITE_RECEIPT_CMD"),
-    writeSwitch: writeKey(env, "QBO_WRITE_SWITCH"),
-    writeLedger: writeKey(env, "QBO_WRITE_LEDGER"),
-    sweepStamp: writeKey(env, "QBO_WRITE_SWEEP_STAMP"),
-  });
+  const receiptCmd = writeKey(env, "QBO_WRITE_RECEIPT_CMD");
+  const writeSwitch = writeKey(env, "QBO_WRITE_SWITCH");
+  const writeLedger = writeKey(env, "QBO_WRITE_LEDGER");
+  const sweepStamp = writeKey(env, "QBO_WRITE_SWEEP_STAMP");
+  return Object.freeze({ ...four, mode: "write", receiptCmd, writeSwitch, writeLedger, sweepStamp, ...passedKeys(env) });
 }

@@ -122,6 +122,9 @@ async function refused(input: Json, refusal: Json | string, expected: string[], 
   return ran;
 }
 
+/** A write refusal: its reason and its detail (spec §3 "gap: free texts", §6), as preSend and the pure rules answer it. */
+const R = (reason: string, detail: Json = {}): Json => ({ reason, detail });
+
 // 297's allowed calls.
 const P = () => asInput('account-and-class').input; // Purchase 1001, line 1 to account 84 and class 12
 const B = () => asInput('account-change').input; // Bill 2001, line 1 to account 91
@@ -146,7 +149,7 @@ async function oneChange({ base = P, edit, input, refusal, gets: expected, pure 
   edit?.();
   const changed = { ...call, ...input };
   await refused(changed, refusal, expected);
-  if (pure) expect(pure(JSON.parse(JSON.stringify(books[`${changed.entity}/${changed.id}`])), changed)).toBe(refusal);
+  if (pure) expect(pure(JSON.parse(JSON.stringify(books[`${changed.entity}/${changed.id}`])), changed)).toEqual(refusal);
 }
 
 describe('A2.1: the fetches', () => {
@@ -198,29 +201,31 @@ describe('A2.1: the fetches', () => {
 // A2.2-A2.4: every mode keeps these.
 const typeOf = (answer: Json, input: Json) => ruleType(input.entity, answer);
 const stacksBillOf = (answer: Json, input: Json) => ruleStacksBill(input.entity, entityOf(answer));
-const closedOf = (answer: Json) => ruleClosed(entityOf(answer), prefs());
+const closedOf = (answer: Json, input: Json) => ruleClosed(entityOf(answer), prefs(), input.mode === 'undo');
 const linesOf = (answer: Json, input: Json) => ruleLines(entityOf(answer), input.lines);
 const closeDate = (value: unknown) => () => {
   prefs().BookCloseDate = value;
 };
 const HEADER_ROWS: Row[] = [
-  { name: 'type: a purchase answered with a Bill', edit: () => (books['purchase/1001'] = fixture('fetched/bill-2001.json')), refusal: 'write:type', gets: P_READS, pure: typeOf },
-  { name: 'type: a bill answered with a Purchase', base: B, edit: () => (books['bill/2001'] = fixture('fetched/purchase-1001.json')), refusal: 'write:type', gets: B_READS, pure: typeOf },
-  { name: 'type: a purchase answered with a Vendor', edit: () => (books['purchase/1001'] = { Vendor: { Id: '1001' } }), refusal: 'write:type', gets: P_READS, pure: typeOf },
-  { name: 'type: a second entity beside the asked one', edit: () => ((books['purchase/1001'] as Json).Bill = bill()), refusal: 'write:type', gets: P_READS, pure: typeOf },
-  { name: 'type: a Credit purchase', edit: () => (purchase().Credit = true), refusal: 'write:type', gets: P_READS, pure: typeOf },
-  { name: 'stacks-bill: DocNumber', base: B, edit: () => (bill().DocNumber = 'Stacks_'), refusal: 'write:stacks-bill', gets: B_READS, pure: stacksBillOf },
-  { name: 'stacks-bill: PrivateNote', base: B, edit: () => (bill().PrivateNote = 'garden3d invoice 0001'), refusal: 'write:stacks-bill', gets: B_READS, pure: stacksBillOf },
-  { name: 'closed: on the close date', edit: closeDate('2026-11-10'), refusal: 'write:closed', gets: P_READS, pure: closedOf },
-  { name: 'closed: before the close date', edit: closeDate('2026-12-01'), refusal: 'write:closed', gets: P_READS, pure: closedOf },
+  { name: 'type: a purchase answered with a Bill', edit: () => (books['purchase/1001'] = fixture('fetched/bill-2001.json')), refusal: R('write:type', { case: 'entity', T: 'Purchase' }), gets: P_READS, pure: typeOf },
+  { name: 'type: a bill answered with a Purchase', base: B, edit: () => (books['bill/2001'] = fixture('fetched/purchase-1001.json')), refusal: R('write:type', { case: 'entity', T: 'Bill' }), gets: B_READS, pure: typeOf },
+  { name: 'type: a purchase answered with a Vendor', edit: () => (books['purchase/1001'] = { Vendor: { Id: '1001' } }), refusal: R('write:type', { case: 'entity', T: 'Purchase' }), gets: P_READS, pure: typeOf },
+  { name: 'type: a second entity beside the asked one', edit: () => ((books['purchase/1001'] as Json).Bill = bill()), refusal: R('write:type', { case: 'entity', T: 'Purchase' }), gets: P_READS, pure: typeOf },
+  { name: 'type: a Credit purchase', edit: () => (purchase().Credit = true), refusal: R('write:type', { case: 'credit' }), gets: P_READS, pure: typeOf },
+  { name: 'stacks-bill: DocNumber', base: B, edit: () => (bill().DocNumber = 'Stacks_'), refusal: R('write:stacks-bill', { case: 'doc-number' }), gets: B_READS, pure: stacksBillOf },
+  { name: 'stacks-bill: PrivateNote', base: B, edit: () => (bill().PrivateNote = 'garden3d invoice 0001'), refusal: R('write:stacks-bill', { case: 'private-note' }), gets: B_READS, pure: stacksBillOf },
+  { name: 'closed: on the close date', edit: closeDate('2026-11-10'), refusal: R('write:closed', { case: 'before-send' }), gets: P_READS, pure: closedOf },
+  { name: 'closed: before the close date', edit: closeDate('2026-12-01'), refusal: R('write:closed', { case: 'before-send' }), gets: P_READS, pure: closedOf },
   ...[null, '', '2026-02-30', '2026-13-01', '2026-00-10', '2026/01/31', '2026-01-31 ', 'x2026-01-31', '2026-1-31', '2026-01-31T00:00:00', '2026-01-31T', '+012026-01-31', '-002026-01-31', 20260131, ['2026-01-31'], {}, false].map(
-    (value): Row => ({ name: `closed: a close date of ${JSON.stringify(value)}`, edit: closeDate(value), refusal: 'write:closed', gets: P_READS, pure: closedOf }),
+    (value): Row => ({ name: `closed: a close date of ${JSON.stringify(value)}`, edit: closeDate(value), refusal: R('write:closed', { case: 'unreadable' }), gets: P_READS, pure: closedOf }),
   ),
-  ...['', '2026/11/10', '2026-11-31', '9999'].map((value): Row => ({ name: `closed: a TxnDate of ${JSON.stringify(value)}`, edit: () => (purchase().TxnDate = value), refusal: 'write:closed', gets: P_READS, pure: closedOf })),
+  ...['', '2026/11/10', '2026-11-31', '9999'].map((value): Row => ({ name: `closed: a TxnDate of ${JSON.stringify(value)}`, edit: () => (purchase().TxnDate = value), refusal: R('write:closed', { case: 'before-send' }), gets: P_READS, pure: closedOf })),
 ];
 describe.each(['categorize', 'undo', 'dry'])('A2.2-A2.4 in %s', (mode) => {
   const as = (base: () => Json) => () => (mode === 'dry' ? DRY(base()) : { ...base(), mode });
-  it.each(HEADER_ROWS)('$name', (row) => oneChange({ ...row, base: as(row.base ?? P) }));
+  // Undo's closed is its own case (§6: "have since closed"); every other detail is the same in each mode.
+  const inMode = (refusal: Json): Json => (mode === 'undo' && refusal.detail.case === 'before-send' ? R(refusal.reason, { case: 'undo' }) : refusal);
+  it.each(HEADER_ROWS)('$name', (row) => oneChange({ ...row, base: as(row.base ?? P), refusal: inMode(row.refusal as Json) }));
 
   it.each<[string, () => Json, () => void]>([
     ['Credit false', P, () => (purchase().Credit = false)],
@@ -242,27 +247,27 @@ describe.each(['categorize', 'undo', 'dry'])('A2.2-A2.4 in %s', (mode) => {
     await allowed(as(base)());
     const call = base();
     const answer = JSON.parse(JSON.stringify(books[`${call.entity}/${call.id}`]));
-    expect([typeOf(answer, call), stacksBillOf(answer, call), closedOf(answer)]).toEqual([null, null, null]);
+    expect([typeOf(answer, call), stacksBillOf(answer, call), closedOf(answer, call), closedOf(answer, { mode: 'undo' })]).toEqual([null, null, null, null]);
   });
 });
 
 describe('297\'s refused transactions', () => {
-  it.each([
-    ['purchase', '1002', 'write:type'],
-    ['bill', '2002', 'write:stacks-bill'],
-    ['bill', '2003', 'write:stacks-bill'],
-    ['purchase', '1004', 'write:closed'],
-    ['purchase', '1003', 'write:line'],
-  ])('%s %s: %s', (entity, id, reason) => refused({ ...P(), entity, id }, reason, [`${entity}/${id}`, 'preferences']));
+  it.each<[string, string, string, Json]>([
+    ['purchase', '1002', 'write:type', { case: 'credit' }],
+    ['bill', '2002', 'write:stacks-bill', { case: 'doc-number' }],
+    ['bill', '2003', 'write:stacks-bill', { case: 'private-note' }],
+    ['purchase', '1004', 'write:closed', { case: 'before-send' }],
+    ['purchase', '1003', 'write:line', { case: 'not-account', id: '1' }],
+  ])('%s %s: %s %j', (entity, id, reason, detail) => refused({ ...P(), entity, id }, R(reason, detail), [`${entity}/${id}`, 'preferences']));
 });
 
 const PASSES = () => Promise.resolve(null);
 const LINE_ROWS: Row[] = [
-  { name: 'a named line that is missing', input: { lines: [{ line_id: '9', account_id: '84', class_id: '12' }] }, refusal: 'write:line', gets: P_READS, pure: linesOf },
-  { name: 'an item-based named line', edit: () => (purchase().Line[0].DetailType = 'ItemBasedExpenseLineDetail'), refusal: 'write:line', gets: P_READS, pure: linesOf },
-  { name: 'a line named twice', input: { lines: [...P().lines, { line_id: '1', account_id: '91' }] }, refusal: 'write:line', gets: P_READS, pure: linesOf },
-  { name: 'no line named', input: { lines: [] }, refusal: 'write:line', gets: P_READS, pure: linesOf },
-  { name: 'a named line beside one that is missing', input: { lines: [...P().lines, { line_id: '9', account_id: '84' }] }, refusal: 'write:line', gets: P_READS, pure: linesOf },
+  { name: 'a named line that is missing', input: { lines: [{ line_id: '9', account_id: '84', class_id: '12' }] }, refusal: R('write:line', { case: 'missing', id: '9' }), gets: P_READS, pure: linesOf },
+  { name: 'an item-based named line', edit: () => (purchase().Line[0].DetailType = 'ItemBasedExpenseLineDetail'), refusal: R('write:line', { case: 'not-account', id: '1' }), gets: P_READS, pure: linesOf },
+  { name: 'a line named twice', input: { lines: [...P().lines, { line_id: '1', account_id: '91' }] }, refusal: R('write:line', { case: 'twice', id: '1' }), gets: P_READS, pure: linesOf },
+  { name: 'no line named', input: { lines: [] }, refusal: R('write:line', { case: 'none' }), gets: P_READS, pure: linesOf },
+  { name: 'a named line beside one that is missing', input: { lines: [...P().lines, { line_id: '9', account_id: '84' }] }, refusal: R('write:line', { case: 'missing', id: '9' }), gets: P_READS, pure: linesOf },
 ];
 // Every mode keeps these, on a line no one names.
 const ID_ROWS: Array<[string, () => void]> = [
@@ -278,39 +283,41 @@ const ID_ROWS: Array<[string, () => void]> = [
 describe('A2.5: line', () => {
   it.each(LINE_ROWS)('$name', (row) => oneChange(row));
   it.each(ID_ROWS)('a fetched line with %s, in every mode', async (_name, edit) => {
-    await oneChange({ name: '', edit, refusal: 'write:line', gets: P_READS, pure: linesOf });
-    await oneChange({ name: '', base: UNDO, edit, refusal: 'write:line', gets: P_READS });
-    await oneChange({ name: '', base: DRY, edit, refusal: 'write:line', gets: P_READS, pure: (answer) => ruleSubjectLine(entityOf(answer)) });
+    const ids = R('write:line', { case: 'ids' });
+    await oneChange({ name: '', edit, refusal: ids, gets: P_READS, pure: linesOf });
+    await oneChange({ name: '', base: UNDO, edit, refusal: ids, gets: P_READS });
+    await oneChange({ name: '', base: DRY, edit, refusal: ids, gets: P_READS, pure: (answer) => ruleSubjectLine(entityOf(answer)) });
   });
 
   it('a transaction whose lines are all gone, in every mode', async () => {
     purchase().Line = [];
-    for (const input of [P(), DRY()]) await refused(input, 'write:line', P_READS);
-    await refused(UNDO(), 'write:diff', [...P_READS, 'account/84', 'class/12']);
+    await refused(P(), R('write:line', { case: 'missing', id: '1' }), P_READS);
+    await refused(DRY(), R('write:line', { case: 'subject' }), P_READS);
+    await refused(UNDO(), R('write:diff'), [...P_READS, 'account/84', 'class/12']);
   });
 
-  it('undo: no line named', () => oneChange({ name: '', base: UNDO, input: { lines: [] }, refusal: 'write:line', gets: P_READS }));
+  it('undo: no line named', () => oneChange({ name: '', base: UNDO, input: { lines: [] }, refusal: R('write:line', { case: 'none' }), gets: P_READS }));
 
   it('undo: a line named twice, one that is missing, or one that is item-based is refused by the body check, never allowed', async () => {
     const reads = [...P_READS, 'account/84', 'class/12'];
-    await refused({ ...UNDO(), lines: [...P().lines, ...P().lines] }, 'write:diff', reads);
-    await refused({ ...UNDO(), lines: [...P().lines, { line_id: '9', account_id: '84' }] }, 'write:diff', reads);
+    await refused({ ...UNDO(), lines: [...P().lines, ...P().lines] }, R('write:diff'), reads);
+    await refused({ ...UNDO(), lines: [...P().lines, { line_id: '9', account_id: '84' }] }, R('write:diff'), reads);
     purchase().Line[0].DetailType = 'ItemBasedExpenseLineDetail';
-    await refused(UNDO(), 'write:diff', reads);
+    await refused(UNDO(), R('write:diff'), reads);
   });
 
   it('a named line that says it is account-based and holds no such detail', async () => {
     for (const detail of [undefined, null, 'x', []]) {
       purchase().Line[0].AccountBasedExpenseLineDetail = detail;
-      for (const input of [P(), UNDO()]) await refused(input, 'write:diff', [...P_READS, 'account/84', 'class/12']);
+      for (const input of [P(), UNDO()]) await refused(input, R('write:diff'), [...P_READS, 'account/84', 'class/12']);
     }
   });
 
   it('dry (E3): no account-based line, and the rules on a transaction with no lines at all', async () => {
     purchase().Line.forEach((line: Json) => (line.DetailType = 'ItemBasedExpenseLineDetail'));
-    await refused(DRY(), 'write:line', P_READS);
-    expect(ruleSubjectLine(purchase())).toBe('write:line');
-    expect([ruleSubjectLine({}), ruleLines({}, P().lines)]).toEqual(['write:line', 'write:line']);
+    await refused(DRY(), R('write:line', { case: 'subject' }), P_READS);
+    expect(ruleSubjectLine(purchase())).toEqual(R('write:line', { case: 'subject' }));
+    expect([ruleSubjectLine({}), ruleLines({}, P().lines)]).toEqual([R('write:line', { case: 'subject' }), R('write:line', { case: 'missing', id: '1' })]);
     purchase().Line[1].DetailType = 'AccountBasedExpenseLineDetail';
     expect(ruleSubjectLine(purchase())).toBeNull();
     net.calls.length = 0;
@@ -329,11 +336,12 @@ describe('A2.6: account', () => {
   const READS = [...P_READS, 'account/84'];
   const to = (account_id: string): Json => ({ lines: [{ ...P().lines[0], account_id }] });
   it('missing, by either 610', async () => {
-    await oneChange({ name: '', edit: () => delete books['account/84'], refusal: 'write:account', gets: READS });
-    await oneChange({ name: '', edit: () => (books['account/84'] = answered(200, fixture('faults/get-deleted.json'))), refusal: 'write:account', gets: READS });
+    const missing = R('write:account', { case: 'missing', id: '84' });
+    await oneChange({ name: '', edit: () => delete books['account/84'], refusal: missing, gets: READS });
+    await oneChange({ name: '', edit: () => (books['account/84'] = answered(200, fixture('faults/get-deleted.json'))), refusal: missing, gets: READS });
   });
-  it('inactive', () => oneChange({ name: '', edit: () => (account('84').Active = false), refusal: 'write:account', gets: READS }));
-  it('297\'s inactive account', () => oneChange({ name: '', input: to('86'), refusal: 'write:account', gets: [...P_READS, 'account/86'] }));
+  it('inactive', () => oneChange({ name: '', edit: () => (account('84').Active = false), refusal: R('write:account', { case: 'inactive', id: '84' }), gets: READS }));
+  it('297\'s inactive account', () => oneChange({ name: '', input: to('86'), refusal: R('write:account', { case: 'inactive', id: '86' }), gets: [...P_READS, 'account/86'] }));
   const all = [...byId('accounts').values()].map(entityOf);
   const TYPES = ['Expense', 'Other Expense', 'Cost of Goods Sold'];
   const refusedTypes = all.filter((a) => !TYPES.includes(a.AccountType));
@@ -341,26 +349,55 @@ describe('A2.6: account', () => {
     expect(new Set(refusedTypes.map((a) => a.AccountType)).size).toBe(13);
     expect(new Set(all.filter((a) => a.Active && TYPES.includes(a.AccountType)).map((a) => a.AccountType)).size).toBe(3);
   });
-  it.each(refusedTypes.map((a) => [a.AccountType, a.Id]))('refused type %s', (_type, id) => oneChange({ name: '', input: to(id), refusal: 'write:account', gets: [...P_READS, `account/${id}`] }));
-  it.each(['expense', 'Expense ', 'Other Expenses', ''])('a type close to an allowed one: %j', (type) => oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: 'write:account', gets: READS }));
+  it.each(refusedTypes.map((a) => [a.AccountType, a.Id]))('refused type %s', (type, id) => oneChange({ name: '', input: to(id), refusal: R('write:account', { case: 'type', id, AccountType: type }), gets: [...P_READS, `account/${id}`] }));
+  // T9 TJ6: the type is matched as read and written cleaned by §5's name rule; a type cleaned to nothing reads `untyped`; one cleaned to an
+  // allowed type is written as read, JSON-quoted (task-9-1 TR7).
+  it.each([['expense', 'expense'], ['Expense ', '"Expense "'], ['Other Expenses', 'Other Expenses'], ['', 'untyped']])('a type close to an allowed one: %j, written %j', (type, shown) => oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: shown }), gets: READS }));
+  /** Each class of character, and how a JSON-quoted type writes it (task-9-1 TR7). */
+  const CLASSES: Array<[string, string, string]> = [
+    ['U+0000', '\u0000', '\\u0000'], ['U+0009 (TAB)', '\t', '\\t'], ['U+000A (LF)', '\n', '\\n'], ['U+000D (CR)', '\r', '\\r'], ['U+001F', '\u001f', '\\u001f'],
+    ['U+007F', '\u007f', '\\u007f'], ['U+0080', '\u0080', '\\u0080'], ['U+0085', '\u0085', '\\u0085'], ['U+009F', '\u009f', '\\u009f'], ['U+2028', '\u2028', '\\u2028'], ['U+2029', '\u2029', '\\u2029'],
+  ];
+  it.each(CLASSES)('T9 TJ6: %s in a refused type becomes a space, and the ends are trimmed; beside an allowed type, it is written escaped (TR7)', async (_label, c, esc) => {
+    for (const [type, shown] of [[`Bank${c}x`, 'Bank x'], [`${c}Bank${c}`, 'Bank'], [`Expense${c}`, `"Expense${esc}"`], [`Cost${c}of Goods Sold`, `"Cost${esc}of Goods Sold"`], [`${c}Other Expense`, `"${esc}Other Expense"`], [c, 'untyped'], [`${c} ${c}`, 'untyped']]) {
+      await oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: shown }), gets: READS });
+    }
+  });
+  it.each<[string, string, string]>([
+    ['kept to its first 200 code points, then its end trimmed', `${'x'.repeat(199)} ${'y'.repeat(50)}`, 'x'.repeat(199)],
+    ['200 code points, not code units', '\u{1F600}'.repeat(201), '\u{1F600}'.repeat(200)],
+    ['a character that is no control kept inside (U+00A0, U+200B)', 'Bank\u00a0x\u200by', 'Bank\u00a0x\u200by'],
+    // task-9-1 TR7: refused only for what the name rule takes off, the type is written as read, JSON-quoted, so the sentence stays true.
+    ['cleaned to Expense only by a trailing U+00A0 (white space escaped, the plain space kept)', 'Expense\u00a0', '"Expense\\u00a0"'],
+    ['cleaned to Other Expense only by U+3000 and U+FEFF at its ends', '\u3000Other Expense\ufeff', '"\\u3000Other Expense\\ufeff"'],
+    ['cleaned to Expense by a space either side: the plain spaces kept as they are', ' Expense ', '" Expense "'],
+    ['cleaned to Cost of Goods Sold only by the 200 cut: its first 200 code points, quoted, then …', `Cost of Goods Sold${' '.repeat(190)}\u{1F600}`, `"Cost of Goods Sold${' '.repeat(182)}"…`],
+    ['200 code points exactly, cleaned to Expense: quoted whole, no …', `Expense${' '.repeat(193)}`, `"Expense${' '.repeat(193)}"`],
+    ['a 201st code point that is a pair, cut by code points (no lone half)', `Expense${'\t'.repeat(193)}\u{1F600}`, `"Expense${'\\t'.repeat(193)}"…`],
+    // task-9-1 follow-up T11: a pair in the first 200 code points survives the name rule (it trims, then keeps 200 code points), so the
+    // type never cleans to an allowed one: it is written cleaned, never quoted, and the quoted form's cut only ever meets BMP characters.
+    ['199 BMP characters, a pair at the 200th code point, one more: cleaned, the pair whole', `Expense\t${' '.repeat(191)}\u{1F600}x`, `Expense ${' '.repeat(191)}\u{1F600}`],
+    ['a pair at the 199th code point: cleaned, the pair whole, then the 200th', `Expense${' '.repeat(191)}\u{1F600}xy`, `Expense${' '.repeat(191)}\u{1F600}x`],
+  ])('T9 TJ6: a refused type %s', (_label, type, shown) => oneChange({ name: '', edit: () => (account('84').AccountType = type), refusal: R('write:account', { case: 'type', id: '84', AccountType: shown }), gets: READS }));
   it.each(['84', '91', '92'])('account %s passes', async (id) => {
     await allowed({ ...P(), ...to(id) });
   });
   it('each distinct account is checked: the second one refuses', async () => {
     const lines = [...P().lines, { line_id: '2', account_id: '31' }];
-    await refused({ ...P(), lines }, 'write:account', [...READS, 'account/31']);
+    await refused({ ...P(), lines }, R('write:account', { case: 'type', id: '31', AccountType: 'Bank' }), [...READS, 'account/31']);
   });
 });
 
 describe('A2.7: class', () => {
   const READS = [...P_READS, 'account/84', 'class/12'];
   it('missing, by either 610', async () => {
-    await oneChange({ name: '', edit: () => delete books['class/12'], refusal: 'write:class', gets: READS });
-    await oneChange({ name: '', edit: () => (books['class/12'] = answered(404, fixture('faults/get-deleted.json'))), refusal: 'write:class', gets: READS });
+    const missing = R('write:class', { case: 'missing', id: '12' });
+    await oneChange({ name: '', edit: () => delete books['class/12'], refusal: missing, gets: READS });
+    await oneChange({ name: '', edit: () => (books['class/12'] = answered(404, fixture('faults/get-deleted.json'))), refusal: missing, gets: READS });
   });
-  it('inactive', () => oneChange({ name: '', edit: () => (cls('12').Active = false), refusal: 'write:class', gets: READS }));
+  it('inactive', () => oneChange({ name: '', edit: () => (cls('12').Active = false), refusal: R('write:class', { case: 'inactive', id: '12' }), gets: READS }));
   it('297\'s inactive class, named second', () =>
-    oneChange({ name: '', input: { lines: [...P().lines, { line_id: '2', account_id: '84', class_id: '19' }] }, refusal: 'write:class', gets: [...READS, 'class/19'] }));
+    oneChange({ name: '', input: { lines: [...P().lines, { line_id: '2', account_id: '84', class_id: '19' }] }, refusal: R('write:class', { case: 'inactive', id: '19' }), gets: [...READS, 'class/19'] }));
   it('an omitted or null class makes no class GET and passes', async () => {
     for (const name of ['account-keeps-class', 'class-cleared', 'account-change']) {
       net.calls.length = 0;
@@ -382,7 +419,7 @@ describe('A2.8: noop', () => {
     ['both lines unchanged', [SAME, { line_id: '1', account_id: '77', class_id: null }], ['account/84', 'account/77', 'class/12']],
   ])('%s', async (_name, lines, reads) => {
     await allowed(P());
-    await refused(two(...lines), 'write:noop', [...P_READS, ...reads]);
+    await refused(two(...lines), R('write:noop'), [...P_READS, ...reads]);
     // Undo and the write check's dry run skip it (A2.13).
     await allowed({ ...two(...lines), mode: 'undo' });
   });
@@ -400,7 +437,7 @@ describe('A2.8: noop', () => {
     expect(ruleNoop(line({ AccountRef: { value: '77' }, ClassRef: { name: 'x' } }), [{ line_id: '1', account_id: '77', class_id: null }])).toBeNull();
     expect(ruleNoop(line({ AccountRef: { value: '77' }, ClassRef: { value: null } }), [{ line_id: '1', account_id: '77', class_id: null }])).toBeNull();
     expect(ruleNoop(line({}), [{ line_id: '1', account_id: '77' }])).toBeNull();
-    expect(ruleNoop(line({ AccountRef: { value: '77', name: 'x' } }), [{ line_id: '1', account_id: '77', class_id: null }])).toBe('write:noop');
+    expect(ruleNoop(line({ AccountRef: { value: '77', name: 'x' } }), [{ line_id: '1', account_id: '77', class_id: null }])).toEqual(R('write:noop'));
   });
 });
 
@@ -408,7 +445,7 @@ describe('A2.9: size', () => {
   it('20 lines pass; 21 are refused with nothing fetched', async () => {
     withLines(books['purchase/1001'] as Json, 21);
     await allowed({ ...P(), lines: changesOf(20) });
-    await refused({ ...P(), lines: changesOf(21) }, 'write:size', []);
+    await refused({ ...P(), lines: changesOf(21) }, R('write:size'), []);
   });
   it('is categorize\'s alone: an undo of 21 lines passes (E2)', async () => {
     withLines(books['purchase/1001'] as Json, 21);
@@ -416,9 +453,9 @@ describe('A2.9: size', () => {
   });
   it('is first: it wins over a line named twice, a malformed line, another company and the hook (E1)', async () => {
     const beforeFetch = jest.fn(() => Promise.resolve('write:sweep'));
-    await refused({ ...P(), lines: Array(21).fill(changesOf(1)[0]), beforeFetch }, 'write:size', []);
-    await refused({ ...P(), lines: Array(21).fill(null) }, 'write:size', []);
-    await refused({ ...P(), lines: changesOf(21), company: 'index-space' }, 'write:size', []);
+    await refused({ ...P(), lines: Array(21).fill(changesOf(1)[0]), beforeFetch }, R('write:size'), []);
+    await refused({ ...P(), lines: Array(21).fill(null) }, R('write:size'), []);
+    await refused({ ...P(), lines: changesOf(21), company: 'index-space' }, R('write:size'), []);
     expect(beforeFetch).not.toHaveBeenCalled();
   });
 });
@@ -429,22 +466,22 @@ describe('the order (contract §15, §18), each pair by a call that fails both',
   const badIds = () => withoutId(books['bill/2001'] as Json);
   type Pair = [name: string, edit: () => void, input: Json, reason: string | Json, gets: string[]];
   const pairs: Pair[] = [
-    ['size before everything: 21 lines on a Stacks bill', stacksBill, { ...B(), lines: changesOf(21) }, 'write:size', []],
-    ['not-found before preferences', () => ((books['bill/2001'] = MISSING()), (books.preferences = answered(500, {}))), B(), 'write:not-found', ['bill/2001']],
+    ['size before everything: 21 lines on a Stacks bill', stacksBill, { ...B(), lines: changesOf(21) }, R('write:size'), []],
+    ['not-found before preferences', () => ((books['bill/2001'] = MISSING()), (books.preferences = answered(500, {}))), B(), R('write:not-found', { case: 'categorize', T: 'Bill', id: '2001' }), ['bill/2001']],
     ['preferences before type', () => ((books['purchase/1001'] as Json).Purchase.Credit = true, (books.preferences = {})), P(), 'fork-error', P_READS],
-    ['type before line: a Credit purchase with a line named twice', () => (purchase().Credit = true), { ...P(), lines: [...P().lines, ...P().lines] }, 'write:type', P_READS],
-    ['type before stacks-bill', () => ((books['bill/2001'] as Json).Purchase = {}, stacksBill()), B(), 'write:type', B_READS],
-    ['type before closed', () => (lateClose(), (purchase().Credit = true)), P(), 'write:type', P_READS],
-    ['stacks-bill before closed', () => (lateClose(), stacksBill()), B(), 'write:stacks-bill', B_READS],
-    ['closed before line', () => (lateClose(), badIds()), B(), 'write:closed', B_READS],
-    ['line before account', () => (badIds(), delete books['account/91']), B(), 'write:line', B_READS],
-    ['account before class', () => (delete books['account/84'], delete books['class/12']), P(), 'write:account', [...P_READS, 'account/84']],
-    ['class before noop', () => (cls('12').Active = false), { ...P(), lines: [{ line_id: '2', account_id: '84', class_id: '12' }] }, 'write:class', [...P_READS, 'account/84', 'class/12']],
-    ['account before noop', () => (account('84').Active = false), { ...P(), lines: [{ line_id: '2', account_id: '84' }] }, 'write:account', [...P_READS, 'account/84']],
-    ['undo: closed before line', () => (lateClose(), badIds()), UNDO(B()), 'write:closed', B_READS],
-    ['undo: line before account', () => (badIds(), delete books['account/91']), UNDO(B()), 'write:line', B_READS],
-    ['dry: closed before line', () => (lateClose(), badIds()), DRY(B()), 'write:closed', B_READS],
-    ['dry: line before account', () => (badIds(), delete books['account/77']), DRY(B()), 'write:line', B_READS],
+    ['type before line: a Credit purchase with a line named twice', () => (purchase().Credit = true), { ...P(), lines: [...P().lines, ...P().lines] }, R('write:type', { case: 'credit' }), P_READS],
+    ['type before stacks-bill', () => ((books['bill/2001'] as Json).Purchase = {}, stacksBill()), B(), R('write:type', { case: 'entity', T: 'Bill' }), B_READS],
+    ['type before closed', () => (lateClose(), (purchase().Credit = true)), P(), R('write:type', { case: 'credit' }), P_READS],
+    ['stacks-bill before closed', () => (lateClose(), stacksBill()), B(), R('write:stacks-bill', { case: 'doc-number' }), B_READS],
+    ['closed before line', () => (lateClose(), badIds()), B(), R('write:closed', { case: 'before-send' }), B_READS],
+    ['line before account', () => (badIds(), delete books['account/91']), B(), R('write:line', { case: 'ids' }), B_READS],
+    ['account before class', () => (delete books['account/84'], delete books['class/12']), P(), R('write:account', { case: 'missing', id: '84' }), [...P_READS, 'account/84']],
+    ['class before noop', () => (cls('12').Active = false), { ...P(), lines: [{ line_id: '2', account_id: '84', class_id: '12' }] }, R('write:class', { case: 'inactive', id: '12' }), [...P_READS, 'account/84', 'class/12']],
+    ['account before noop', () => (account('84').Active = false), { ...P(), lines: [{ line_id: '2', account_id: '84' }] }, R('write:account', { case: 'inactive', id: '84' }), [...P_READS, 'account/84']],
+    ['undo: closed before line', () => (lateClose(), badIds()), UNDO(B()), R('write:closed', { case: 'undo' }), B_READS],
+    ['undo: line before account', () => (badIds(), delete books['account/91']), UNDO(B()), R('write:line', { case: 'ids' }), B_READS],
+    ['dry: closed before line', () => (lateClose(), badIds()), DRY(B()), R('write:closed', { case: 'before-send' }), B_READS],
+    ['dry: line before account', () => (badIds(), delete books['account/77']), DRY(B()), R('write:line', { case: 'ids' }), B_READS],
   ];
   it.each(pairs)('%s', async (_name, edit, input, reason, expected) => {
     edit();
@@ -452,9 +489,9 @@ describe('the order (contract §15, §18), each pair by a call that fails both',
   });
   it('noop before diff, and every rule before the body is built', async () => {
     const build = jest.fn(() => ({}));
-    await refused({ ...P(), lines: [{ line_id: '2', account_id: '84' }] }, 'write:noop', [...P_READS, 'account/84'], { buildBody: build });
+    await refused({ ...P(), lines: [{ line_id: '2', account_id: '84' }] }, R('write:noop'), [...P_READS, 'account/84'], { buildBody: build });
     expect(build).not.toHaveBeenCalled();
-    await refused(P(), 'write:diff', [...P_READS, 'account/84', 'class/12'], { buildBody: build });
+    await refused(P(), R('write:diff'), [...P_READS, 'account/84', 'class/12'], { buildBody: build });
     expect(build).toHaveBeenCalledTimes(1);
   });
 });
@@ -468,7 +505,7 @@ describe('A2.11: the body', () => {
     expect(checked.bodyText).toBe(JSON.stringify(expected.sparse_body));
     expect(createHash('sha256').update(checked.bodyText).digest('hex')).toBe(expected.sparse_body_sha256);
     expect(checked).toMatchObject({ company: COMPANY, entity: input.entity, mode: input.mode, changes: input.lines, fetched: entityOf(fixture(fetched)) });
-    expect(Object.keys(checked).sort()).toEqual(['body', 'bodyText', 'changes', 'company', 'entity', 'fetched', 'mode']);
+    expect(Object.keys(checked).sort()).toEqual(['body', 'bodyText', 'changes', 'checkedAt', 'company', 'entity', 'fetched', 'mode', 'names']);
     expect(isChecked(checked)).toBe(true);
     expect(compare(checked.body, checked.fetched, checked.changes)).toEqual({ same: true });
   });
@@ -573,14 +610,14 @@ describe('A2.12: write:diff', () => {
         edit(body, mode);
         return body;
       };
-      await refused(input, 'write:diff', expected, { buildBody: bad });
+      await refused(input, R('write:diff'), expected, { buildBody: bad });
     });
 
     it.each([undefined, null, [], 'x', 5, true, () => ({})])('a body that is %p', async (body) => {
       const input = inputOf();
       await allowed(input);
       const expected = gets();
-      await refused(input, 'write:diff', expected, { buildBody: () => body });
+      await refused(input, R('write:diff'), expected, { buildBody: () => body });
     });
 
     it('a body that can\'t be written, or a builder that throws, is fork-error', async () => {
@@ -599,7 +636,7 @@ describe('A2.12: write:diff', () => {
 
   it('the text that is sent is what is compared: a number JSON can\'t write', async () => {
     books['purchase/1001'] = answered(200, JSON.stringify(books['purchase/1001']).replace('"TotalAmt":120', '"TotalAmt":1e999'));
-    await refused(P(), 'write:diff', [...P_READS, 'account/84', 'class/12']);
+    await refused(P(), R('write:diff'), [...P_READS, 'account/84', 'class/12']);
   });
 
   it.each<[string, (list: any[]) => unknown]>([
@@ -615,7 +652,7 @@ describe('A2.12: write:diff', () => {
       edit(body.LinkedTxn);
       return body;
     };
-    await refused(P(), 'write:diff', [...P_READS, 'account/84', 'class/12'], { buildBody: bad });
+    await refused(P(), R('write:diff'), [...P_READS, 'account/84', 'class/12'], { buildBody: bad });
   });
 
   it('every change is made, on its own line', () => {
@@ -646,8 +683,8 @@ describe('A2.13: modes', () => {
     }
   });
   it('undo refuses a before account or class answered 610', async () => {
-    await oneChange({ name: '', base: UNDO, edit: () => delete books['account/84'], refusal: 'write:account', gets: [...P_READS, 'account/84'] });
-    await oneChange({ name: '', base: UNDO, edit: () => delete books['class/12'], refusal: 'write:class', gets: [...P_READS, 'account/84', 'class/12'] });
+    await oneChange({ name: '', base: UNDO, edit: () => delete books['account/84'], refusal: R('write:account', { case: 'undo', id: '84' }), gets: [...P_READS, 'account/84'] });
+    await oneChange({ name: '', base: UNDO, edit: () => delete books['class/12'], refusal: R('write:class', { case: 'undo', id: '12' }), gets: [...P_READS, 'account/84', 'class/12'] });
   });
   it('undo and dry need neither Active nor AccountType in the answer', async () => {
     for (const key of ['account/84', 'account/77', 'class/12']) entityOf(books[key] as Json).Active = undefined;
@@ -657,9 +694,9 @@ describe('A2.13: modes', () => {
   });
   it('dry (E3) refuses an account or class answered 610 on a line no one names', async () => {
     const reads = [...P_READS, 'account/77'];
-    await oneChange({ name: '', base: DRY, edit: () => delete books['account/77'], refusal: 'write:account', gets: reads });
-    await oneChange({ name: '', base: DRY, edit: () => delete books['account/84'], refusal: 'write:account', gets: [...reads, 'account/84'] });
-    await oneChange({ name: '', base: DRY, edit: () => delete books['class/12'], refusal: 'write:class', gets: [...reads, 'account/84', 'class/12'] });
+    await oneChange({ name: '', base: DRY, edit: () => delete books['account/77'], refusal: R('write:account', { case: 'undo', id: '77' }), gets: reads });
+    await oneChange({ name: '', base: DRY, edit: () => delete books['account/84'], refusal: R('write:account', { case: 'undo', id: '84' }), gets: [...reads, 'account/84'] });
+    await oneChange({ name: '', base: DRY, edit: () => delete books['class/12'], refusal: R('write:class', { case: 'undo', id: '12' }), gets: [...reads, 'account/84', 'class/12'] });
   });
   it('dry passes an account of another type and an inactive class, and an unchanged request categorize refuses', async () => {
     const [one, two] = purchase().Line.map(D);
@@ -708,7 +745,7 @@ describe('the hooks (E1, E2)', () => {
       net.calls.length = 0;
       await allowed({ ...input, beforeFetch: () => (seen.push(gets().length), PASSES()) });
       expect(seen).toEqual([0]);
-      await refused({ ...input, beforeFetch: () => Promise.resolve('write:sweep') }, 'write:sweep', []);
+      await refused({ ...input, beforeFetch: () => Promise.resolve('write:sweep') }, R('write:sweep'), []);
     }
   });
   it('beforeFetch is not asked for a call that is not this one\'s', async () => {
@@ -724,19 +761,19 @@ describe('the hooks (E1, E2)', () => {
       expect(seen).toEqual([[fixture('fetched/purchase-1001.json').Purchase, P_READS]]);
       delete books['account/84'];
       delete books['account/77'];
-      await refused({ ...input, afterLine: () => 'write:changed-since' }, 'write:changed-since', P_READS);
+      await refused({ ...input, afterLine: () => 'write:changed-since' }, R('write:changed-since'), P_READS);
       withoutId(books['purchase/1001'] as Json);
       const afterLine = jest.fn(() => 'write:changed-since');
-      await refused({ ...input, afterLine }, 'write:line', P_READS);
+      await refused({ ...input, afterLine }, R('write:line', { case: 'ids' }), P_READS);
       expect(afterLine).not.toHaveBeenCalled();
       resetBooks();
     }
   });
   it('undo: a named line that is missing reaches afterLine, which may refuse it; a null answer still gives no checked', async () => {
     const lines = [{ line_id: '9', account_id: '84' }];
-    await refused({ ...UNDO(), lines, afterLine: () => 'write:changed-since' }, 'write:changed-since', P_READS);
+    await refused({ ...UNDO(), lines, afterLine: () => 'write:changed-since' }, R('write:changed-since'), P_READS);
     const afterLine = jest.fn(() => null);
-    await refused({ ...UNDO(), lines, afterLine }, 'write:diff', [...P_READS, 'account/84']);
+    await refused({ ...UNDO(), lines, afterLine }, R('write:diff'), [...P_READS, 'account/84']);
     expect(afterLine).toHaveBeenCalledTimes(1);
   });
   it('a hook that throws, or answers neither null nor a reason, is fork-error and nothing more is sent', async () => {
@@ -842,10 +879,11 @@ describe('A2.15: a failed or unexpected read', () => {
     for (const file of ['get-missing', 'get-deleted']) {
       for (const input of [P(), UNDO(), DRY()]) {
         books['purchase/1001'] = answered(status, fixture(`faults/${file}.json`));
-        expect((await refused(input, 'write:not-found', ['purchase/1001'])).failure).toBeNull();
+        const detail = { case: input.mode === 'undo' ? 'undo' : 'categorize', T: 'Purchase', id: '1001' };
+        expect((await refused(input, R('write:not-found', detail), ['purchase/1001'])).failure).toBeNull();
       }
       resetBooks();
-      for (const [path, reason] of [['account/84', 'write:account'], ['class/12', 'write:class']]) {
+      for (const [path, reason] of [['account/84', R('write:account', { case: 'missing', id: '84' })], ['class/12', R('write:class', { case: 'missing', id: '12' })]] as const) {
         const kept = books[path];
         books[path] = answered(status, fixture(`faults/${file}.json`));
         expect((await refused(P(), reason, ALL.slice(0, ALL.indexOf(path) + 1))).failure).toBeNull();
@@ -910,7 +948,7 @@ describe('the call and the input', () => {
   });
 
   it('a malformed input field refuses in its own words, not a longer answer: exactly 20 digits pass the pattern', async () => {
-    await refused({ ...P(), id: '1'.repeat(20) }, 'write:not-found', [`purchase/${'1'.repeat(20)}`]);
+    await refused({ ...P(), id: '1'.repeat(20) }, R('write:not-found', { case: 'categorize', T: 'Purchase', id: '1'.repeat(20) }), [`purchase/${'1'.repeat(20)}`]);
   });
 
   it('the input is read once, and a later change to it changes nothing', async () => {
@@ -1036,18 +1074,19 @@ describe('A2.14: a checked request can\'t be forged', () => {
   });
 
   it('its class can\'t be changed, and its fields are its own (TF2)', async () => {
-    const before = await allowed(P());
+    // One fixed mono, so checkedAt agrees across the two checks (QA1).
+    const before = await allowed(P(), { mono: () => 7 });
     const proto = Object.getPrototypeOf(before);
     expect([Object.isFrozen(proto), Object.isFrozen(proto.constructor)]).toEqual([true, true]);
     const planted = { get: () => 'planted', set: () => undefined, configurable: true };
     for (const key of ['bodyText', 'mode', 'other']) expect(() => Object.defineProperty(proto, key, planted)).toThrow(TypeError);
     expect(() => Object.setPrototypeOf(proto, { bodyText: 'planted' })).toThrow(TypeError);
-    const KEYS = ['company', 'entity', 'mode', 'fetched', 'changes', 'body', 'bodyText'];
+    const KEYS = ['company', 'entity', 'mode', 'fetched', 'changes', 'body', 'bodyText', 'checkedAt', 'names'];
     // An accessor above the frozen prototype takes no write either.
     let checked: Json;
     for (const key of ['bodyText', 'mode']) Object.defineProperty(Object.prototype, key, planted);
     try {
-      checked = await allowed(P());
+      checked = await allowed(P(), { mono: () => 7 });
     } finally {
       for (const key of ['bodyText', 'mode']) delete (Object.prototype as any)[key];
     }
@@ -1061,5 +1100,132 @@ describe('A2.14: a checked request can\'t be forged', () => {
 
   it('pre-send.ts exports exactly these (SB2, E3)', () => {
     expect(Object.keys(preSendModule).sort()).toEqual(['isChecked', 'preSend', 'ruleClosed', 'ruleLines', 'ruleStacksBill', 'ruleSubjectLine', 'ruleType']);
+  });
+});
+
+describe('QA1: checkedAt, from the registry\'s kind of clock', () => {
+  it('is what deps.mono answers, asked once, after the last GET and the body check', async () => {
+    for (const input of [P(), UNDO(), DRY()]) {
+      net.calls.length = 0;
+      const seen: number[] = [];
+      const build = jest.fn(buildBody);
+      const checked = await allowed(input, { mono: () => (seen.push(gets().length, build.mock.calls.length), 1234.5), buildBody: build });
+      expect([checked.checkedAt, seen]).toEqual([1234.5, [gets().length, 1]]);
+    }
+  });
+  it('a refused check never reads the clock', async () => {
+    const mono = jest.fn(() => 5);
+    await refused(P(), R('write:diff'), [...P_READS, 'account/84', 'class/12'], { mono, buildBody: () => ({}) });
+    account('84').Active = false;
+    await refused(P(), R('write:account', { case: 'inactive', id: '84' }), [...P_READS, 'account/84'], { mono });
+    expect(mono).not.toHaveBeenCalled();
+  });
+  it('with no mono, performance.now, called as a method (a bare one throws once detached)', async () => {
+    const low = performance.now();
+    const { checkedAt } = await allowed(P());
+    expect(checkedAt).toBeGreaterThanOrEqual(low);
+    expect(checkedAt).toBeLessThanOrEqual(performance.now());
+    jest.spyOn(performance, 'now').mockReturnValue(42);
+    jest.spyOn(Date, 'now').mockReturnValue(1e12);
+    expect((await allowed(P(), {})).checkedAt).toBe(42);
+  });
+  it('an answer that is no number is NaN, which no registry takes; any number is kept as it is', async () => {
+    for (const value of ['5', 5n, null, undefined, {}, { valueOf: () => 5 }, true]) expect(Number.isNaN((await allowed(P(), { mono: () => value })).checkedAt)).toBe(true);
+    for (const value of [0, -1, Infinity, -Infinity, 1e300]) expect((await allowed(P(), { mono: () => value })).checkedAt).toBe(value);
+  });
+  it('a clock that throws is fork-error', async () => {
+    await refused(P(), 'fork-error', [...P_READS, 'account/84', 'class/12'], { mono: () => { throw new Error('x'); } });
+  });
+});
+
+describe('P12: the checked request keeps each name steps 9 and 10 read, keyed by entity and id', () => {
+  it('categorize: the new account\'s and class\'s, frozen, nothing else', async () => {
+    const { names } = await allowed(P());
+    expect(names).toEqual({ 'account:84': 'Software', 'class:12': 'Client Delivery' });
+    expect(Object.keys(names)).toEqual(['account:84', 'class:12']);
+    expect(Object.isFrozen(names)).toBe(true);
+  });
+  it('an account and a class of one id keep their own names', async () => {
+    books['account/12'] = { Account: { ...account('84'), Id: '12', Name: 'Twelve Expense' } };
+    const { names } = await allowed({ ...P(), lines: [{ line_id: '1', account_id: '12', class_id: '12' }] });
+    expect(names).toEqual({ 'account:12': 'Twelve Expense', 'class:12': 'Client Delivery' });
+  });
+  it('each distinct id once, in the order read; a cleared or kept class reads and names none', async () => {
+    withLines(books['purchase/1001'] as Json, 4);
+    const lines = [
+      { line_id: '4', account_id: '91', class_id: '13' },
+      { line_id: '1', account_id: '84', class_id: '12' },
+      { line_id: '3', account_id: '91', class_id: null },
+      { line_id: '2', account_id: '84' },
+    ];
+    const { names } = await allowed({ ...P(), lines });
+    expect(Object.entries(names)).toEqual([['account:91', 'Contractors'], ['account:84', 'Software'], ['class:13', 'Studio'], ['class:12', 'Client Delivery']]);
+  });
+  it('undo: the before values\' names; dry: every line\'s', async () => {
+    expect((await allowed(UNDO())).names).toEqual({ 'account:84': 'Software', 'class:12': 'Client Delivery' });
+    expect((await allowed(DRY())).names).toEqual({ 'account:77': 'Uncategorized Expense', 'account:84': 'Software', 'class:12': 'Client Delivery' });
+  });
+  it('a Name that is no string or is empty is left out, and the check still passes (the caller decides: spec §3 "gap: intent names")', async () => {
+    for (const name of [undefined, '', 5, null, ['Software'], { value: 'Software' }] as unknown[]) {
+      account('84').Name = name;
+      cls('12').Name = name;
+      expect((await allowed(P())).names).toEqual({});
+    }
+    account('84').Name = ' ';
+    expect((await allowed(P())).names).toEqual({ 'account:84': ' ' });
+  });
+});
+
+describe('P10: each pure rule\'s detail names its case', () => {
+  const txn = (lines: Json[]): Json => ({ Line: lines });
+  const acct = (Id: string): Json => ({ Id, DetailType: 'AccountBasedExpenseLineDetail', AccountBasedExpenseLineDetail: { AccountRef: { value: '77' } } });
+  const item = (Id: string): Json => ({ Id, DetailType: 'ItemBasedExpenseLineDetail' });
+  const named = (...ids: string[]) => ids.map((line_id) => ({ line_id }));
+  it('line, in step 8\'s order: none named, then the fetched ids, then the first named line in call order that is missing or not account-based, then the first named again', () => {
+    const t = txn([acct('1'), item('2'), acct('3')]);
+    expect(ruleLines(t, [])).toEqual(R('write:line', { case: 'none' }));
+    expect(ruleLines(txn([]), [])).toEqual(R('write:line', { case: 'none' }));
+    expect(ruleLines(txn([acct('1'), acct('1')]), named('1'))).toEqual(R('write:line', { case: 'ids' }));
+    expect(ruleLines(txn([acct('1'), acct('1')]), named('9', '9'))).toEqual(R('write:line', { case: 'ids' }));
+    expect(ruleLines(t, named('9', '2'))).toEqual(R('write:line', { case: 'missing', id: '9' }));
+    expect(ruleLines(t, named('2', '9'))).toEqual(R('write:line', { case: 'not-account', id: '2' }));
+    expect(ruleLines(t, named('1', '1', '9'))).toEqual(R('write:line', { case: 'missing', id: '9' }));
+    expect(ruleLines(t, named('1', '1', '2'))).toEqual(R('write:line', { case: 'not-account', id: '2' }));
+    expect(ruleLines(t, named('1', '3', '1', '3'))).toEqual(R('write:line', { case: 'twice', id: '1' }));
+    expect(ruleLines(t, named('3', '1', '3', '1'))).toEqual(R('write:line', { case: 'twice', id: '3' }));
+    expect(ruleLines(t, named('1', '3', '3', '1'))).toEqual(R('write:line', { case: 'twice', id: '3' }));
+    expect(ruleLines(t, named('1', '3'))).toBeNull();
+  });
+  it('subject line: none account-based, else the fetched ids', () => {
+    expect(ruleSubjectLine(txn([item('1')]))).toEqual(R('write:line', { case: 'subject' }));
+    expect(ruleSubjectLine(txn([acct('1'), { DetailType: 'AccountBasedExpenseLineDetail' }]))).toEqual(R('write:line', { case: 'ids' }));
+  });
+  it('type: the asked entity\'s name when another came, before a Credit', () => {
+    expect(ruleType('purchase', { Bill: { Credit: true } })).toEqual(R('write:type', { case: 'entity', T: 'Purchase' }));
+    expect(ruleType('bill', { Purchase: {} })).toEqual(R('write:type', { case: 'entity', T: 'Bill' }));
+    expect(ruleType('purchase', { Purchase: { Credit: true }, Bill: {} })).toEqual(R('write:type', { case: 'entity', T: 'Purchase' }));
+    expect(ruleType('purchase', { Purchase: { Credit: true } })).toEqual(R('write:type', { case: 'credit' }));
+  });
+  it('stacks-bill: DocNumber before PrivateNote', () => {
+    expect(ruleStacksBill('bill', { DocNumber: 'Stacks_1', PrivateNote: 'garden3d invoice' })).toEqual(R('write:stacks-bill', { case: 'doc-number' }));
+    expect(ruleStacksBill('bill', { DocNumber: 'x', PrivateNote: 'garden3d invoice' })).toEqual(R('write:stacks-bill', { case: 'private-note' }));
+  });
+  it('closed: a close date that is no date is unreadable in every mode; a TxnDate not after it is before-send, or undo\'s own', () => {
+    const on = { TxnDate: '2026-11-10' };
+    for (const undo of [false, true]) expect(ruleClosed(on, { BookCloseDate: '2026-02-30' }, undo)).toEqual(R('write:closed', { case: 'unreadable' }));
+    expect(ruleClosed(on, { BookCloseDate: '2026-11-10' })).toEqual(R('write:closed', { case: 'before-send' }));
+    expect(ruleClosed(on, { BookCloseDate: '2026-11-10' }, false)).toEqual(R('write:closed', { case: 'before-send' }));
+    expect(ruleClosed(on, { BookCloseDate: '2026-11-10' }, true)).toEqual(R('write:closed', { case: 'undo' }));
+    expect(ruleClosed({ TxnDate: 'x' }, { BookCloseDate: '2026-11-10' }, true)).toEqual(R('write:closed', { case: 'undo' }));
+    expect(ruleClosed(on, { BookCloseDate: '2026-11-09' }, true)).toBeNull();
+  });
+  it('noop and the size, diff and hook refusals have no case: an empty detail', async () => {
+    expect(ruleNoop(txn([acct('1')]), [{ line_id: '1', account_id: '77' }])).toEqual(R('write:noop'));
+    expect((await ask({ ...P(), afterLine: () => 'write:changed-since' })).out.detail).toEqual({});
+  });
+  it('a fork reason carries no detail', async () => {
+    const { out } = await ask({ ...P(), company: 'index-space' });
+    expect(out).toEqual({ ok: false, reason: 'fork-error' });
+    expect('detail' in out).toBe(false);
   });
 });

@@ -220,7 +220,15 @@ describe('A3.3: the call store is the only holder and reader of company identity
       'src/helpers/register-tool.ts: currentCall()',
       'src/http-guard.ts: new AsyncLocalStorage<IssuedTicket>',
       'src/http-guard.ts: new AsyncLocalStorage<{ realm: string | undefined; record: CallRecord }>', // 291's default scope, replaced at start
+      'src/write/answers.ts: line.company', // a lookup's intent line's company, compared with its key's (the call's, checked before)
+      'src/write/answers.ts: attempt.company', // the intent's attempt, the caller's: the call's company, compared with the answer's key
       'src/write/capability.ts: checked.company', // the checked request's, which the capability is bound to
+      'src/write/categorize.ts: currentCall()', // a failed name GET's call, whose recorded failure it answers
+      'src/write/change.ts: checked.company', // the intent's company: the checked request's, made in the call for the call's company
+      'src/write/change.ts: currentCall()', // QA4: the call's own realm, which a forced token must match
+      'src/write/change.ts: intent.company', // the intent's attempt, compared with the receipt command's key
+      'src/write/change.ts: intent.company', // the forced token's company: the call's, as the intent carries it
+      'src/write/change.ts: intent.company', // the change item's company, the call's
       'src/write/client.ts: currentCall()', // the write client's GETs: the call's own token and realm
       'src/write/client.ts: call.company', // the update's call, compared with the checked request's company
       'src/write/client.ts: checked.company', // the same
@@ -230,6 +238,7 @@ describe('A3.3: the call store is the only holder and reader of company identity
       'src/write/mode.ts: currentCall()', // the same
       'src/write/pre-send.ts: currentCall()', // the pre-send check's call, whose failure it reads
       'src/write/pre-send.ts: call.company', // compared with the input's company, which must be the call's
+      'src/write/results.ts: change.company', // the change item's company, the call's as the change flow gives it, written into the success
     ]);
   });
 

@@ -76,7 +76,8 @@ describe('A3.3: without a live capability nothing is sent', () => {
     rig.clock += 60_000;
     await expect(send(checked)).rejects.toMatchObject(REFUSED);
     expect(rig.posts()).toEqual([]);
-    rig.registry.register(checked);
+    // QA1: a fresh check of the same change (the same body) makes the new capability.
+    rig.registry.register(await rig.check());
     rig.clock += 59_999;
     expect((await send(checked)).status).toBe(200);
     expect(rig.posts()).toHaveLength(1);
@@ -167,7 +168,8 @@ describe('one body registered twice (TG1)', () => {
   ];
   it.each(ANSWERS)('%s: one send leaves the other capability untouched', async (_name, set) => {
     const checked = await registered();
-    rig.registry.register(checked);
+    // QA1: the second capability of one body is a second check's.
+    rig.registry.register(await rig.check());
     set();
     await send(checked).catch(() => undefined);
     expect([rig.posts().length, rig.seen.length, rig.registry.size, holds(checked)]).toEqual([1, 1, 1, true]);
@@ -202,7 +204,9 @@ describe('what an answer looks like', () => {
     const checked = await rig.check();
     for (const [body, data] of READ) {
       for (const status of [200, 500]) {
-        rig.registry.register(checked);
+        // QA1: a fresh check of the same body each turn, its GETs read from the books.
+        rig.read = undefined;
+        rig.registry.register(await rig.check());
         rig.answer = () => ({ status, body });
         rig.read = { status, body };
         await withDefaults(set, async () => {
@@ -222,7 +226,8 @@ describe('what an answer looks like', () => {
   it.each([[200, FAULT], [200, '{}'], [400, FAULT], [429, '']])('a %i of %j gives its intuit_tid, or none (TG6)', async (status, body) => {
     const checked = await rig.check();
     const tidOf = async (headers: Record<string, string>, call = send) => {
-      rig.registry.register(checked);
+      // QA1: a fresh check of the same body per send.
+      rig.registry.register(await rig.check());
       rig.answer = () => ({ status, body, headers });
       const answer = await call(checked);
       expect(answer.status).toBe(status);
