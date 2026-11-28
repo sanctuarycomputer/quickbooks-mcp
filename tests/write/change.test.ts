@@ -420,6 +420,38 @@ describe('task-8-2 TN1-TN3: step 6’s refetch reads any Fault before the entity
   });
 });
 
+describe('T9 QA4: a forced token only after an update answered 401 (spec §3 QA4; the flow shared by both tools, runChange)', () => {
+  const faultBody = JSON.stringify({ Fault: { Error: [{ Message: 'm', Detail: 'd', code: '6000' }], type: 'ValidationFault' }, time: '2026-11-18T09:00:00.000-08:00' });
+  /** An update answered `status`, with Fault 6000 or with no Fault. */
+  const answered = (status: number, withFault: boolean) => (withFault ? { status, headers: { intuit_tid: 'fake-tid-0002' }, body: faultBody } : { status, body: '{}' });
+  /** One categorize whose update is answered `status`: its result and the options of every Stacks get it asked with force: true. */
+  const run = async (status: number, withFault: boolean) => {
+    const w = world(rig, { intent: ['intent-ok.json'], outcome: [withFault ? 'outcome-failed.json' : 'outcome-unknown.json'] });
+    w.post = () => answered(status, withFault);
+    const { client, runtime } = await w.start();
+    const get = runtime.stacks.get.bind(runtime.stacks);
+    const forced: unknown[] = [];
+    jest.spyOn(runtime.stacks, 'get').mockImplementation(((company: string, opts?: { force?: boolean; sentAt?: number }) => {
+      if (opts?.force === true) forced.push(opts);
+      return get(company, opts);
+    }) as any);
+    return { result: await client.callTool(args()), forced };
+  };
+  const cases: Array<[number, boolean]> = [400, 403, 429, 500].flatMap((s): Array<[number, boolean]> => [[s, false], [s, true]]);
+  it.each(cases)('an update answered %i (Fault 6000: %s): no forced token asked; the result that status gives (unknown.json, or failed.json with a Fault)', async (status, withFault) => {
+    const { result, forced } = await run(status, withFault);
+    expect(forced).toEqual([]);
+    expect(result).toEqual(expected(withFault ? 'failed.json' : 'unknown.json'));
+  });
+  // The boundary; categorize.test.ts A1.15 pins the forced get's options and its effects, this its count beside the cases above.
+  it.each([false, true])('the boundary, an update answered 401 (Fault 6000: %s): exactly one forced token asked', async (withFault) => {
+    const { result, forced } = await run(401, withFault);
+    expect(forced).toHaveLength(1);
+    expect(forced[0]).toMatchObject({ force: true });
+    expect(result).toEqual(expected(withFault ? 'failed.json' : 'unknown.json'));
+  });
+});
+
 describe('TJ2: a refusal with no §6 text never reaches freeText unchecked', () => {
   it('ruleLines decides `none` before the fetched ids', () => {
     const txn = sharedId(fixture('fetched/purchase-1001.json')).Purchase;
